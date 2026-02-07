@@ -48,3 +48,4 @@ htmlcov/
 
 # Node (if any backend tooling uses it)
 node_modules/
+OmniAI-frontend/

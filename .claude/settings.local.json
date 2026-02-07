@@ -34,7 +34,12 @@
       "Bash(gh auth status:*)",
       "Bash(test:*)",
       "Bash(git init:*)",
-      "Bash(git remote add:*)"
+      "Bash(git remote add:*)",
+      "Bash(git branch:*)",
+      "Bash(git pull:*)",
+      "Bash(git merge:*)",
+      "Bash(npm run build:*)",
+      "Bash(git remote set-url:*)"
     ]
   }
 }
