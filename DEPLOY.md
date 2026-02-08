@@ -1,5 +1,37 @@
 # OmniAI Deployment Guide
 
+## Configuration Reference
+
+### CORS_ORIGINS vs ALLOWED_HOSTS
+
+These two settings serve different purposes and are often confused:
+
+| Setting | Purpose | Values |
+|---------|---------|--------|
+| `CORS_ORIGINS` | Browser CORS - frontend origins only | `https://omniplexity.github.io` (prod), `http://localhost:3000` (dev) |
+| `ALLOWED_HOSTS` | Host header validation - API hostnames | `localhost,127.0.0.1,my-app.ngrok-free.dev` |
+
+**CORS_ORIGINS**: The browser Origin header must match one of these values. This is the frontend's domain (GitHub Pages). Never add tunnel domains (ngrok, cloudflare) here - the browser Origin is always the frontend, not the tunnel.
+
+**ALLOWED_HOSTS**: The Host header in HTTP requests must match one of these values. This includes tunnel domains when using ngrok or cloudflared, plus localhost for local development.
+
+### Environment Modes
+
+| Mode | Purpose | TestServer Required |
+|------|---------|-------------------|
+| `development` | Local development | No |
+| `test` | pytest runs | **Yes** - TestClient requires this |
+| `staging` | Pre-production testing | No |
+| `production` | Live deployment | No |
+
+**Important**: When running pytest, always set `ENVIRONMENT=test`. The TestClient requires this for deterministic behavior and test isolation.
+
+### OpenAPI Docs
+
+For security, OpenAPI docs (`/docs`, `/redoc`) are automatically disabled in production when `ENVIRONMENT=production`. Use `development` or `staging` if you need access to these endpoints.
+
+---
+
 ## Overview
 
 This guide covers deploying OmniAI with:
@@ -55,7 +87,10 @@ Open `.env` in your editor and set these required values:
 # SERVER
 # =============================================================================
 ENVIRONMENT=development
-HOST=0.0.0.0
+# SECURITY: Bind to 127.0.0.1 for localhost-only access.
+# In Docker containers, use 0.0.0.0. Docker Compose publishes ports as
+# 127.0.0.1:8000:8000 to prevent LAN exposure.
+HOST=127.0.0.1
 PORT=8000
 DEBUG=false
 LOG_LEVEL=INFO
@@ -67,8 +102,11 @@ LOG_LEVEL=INFO
 # python -c "import secrets; print(secrets.token_urlsafe(64))"
 SECRET_KEY=your-secure-secret-key-here
 
-# CORS - Must include your GitHub Pages domain
-CORS_ORIGINS=https://omniplexity.github.io,https://rossie-chargeful-plentifully.ngrok-free.dev
+# CORS - Must include ONLY your GitHub Pages domain
+# NOTE: Do NOT add tunnel domains (ngrok, cloudflare) here. The browser
+# Origin is always the frontend domain (GitHub Pages). Tunnel domains handle
+# TLS termination but don't participate in CORS.
+CORS_ORIGINS=https://omniplexity.github.io
 
 # Rate limiting
 RATE_LIMIT_RPM=200
@@ -273,13 +311,143 @@ docker compose exec backend alembic upgrade head
 
 ---
 
+## Security Testing
+
+OmniAI's security architecture uses **defense-in-depth** with multiple layers:
+
+| Layer | Component | Purpose |
+|-------|-----------|---------|
+| Startup validation | `startup_checks.py` | Validates production config before allowing startup |
+| Origin validation | `ChatCSRFMiddleware` | Enforces Origin headers on SSE endpoints (`/v1/chat/stream`, `/api/runs/`) |
+| CSRF protection | `ChatCSRFMiddleware` | Validates CSRF tokens on state-changing requests |
+| Security headers | `SecurityHeadersMiddleware` | Sets HSTS, X-Content-Type-Options, Referrer-Policy, etc. |
+| Rate limiting | Middleware | Per-IP and per-user request limits |
+| Login protection | `login_limiter.py` | Account lockout after repeated failed login attempts |
+| Host validation | `TrustedHostMiddleware` | Validates Host header against ALLOWED_HOSTS |
+| Forward headers | `ForwardedHeadersMiddleware` | Validates X-Forwarded-* headers from trusted proxies only |
+
+---
+
+## Production Security Validation
+
+**OmniAI automatically validates production configuration at startup** via `backend/core/startup_checks.py`. If validation fails, the backend refuses to start and lists all violations.
+
+**Startup checks enforce:**
+
+| Check | Requirement | Rationale |
+|-------|-------------|-----------|
+| `COOKIE_SECURE` | Must be `true` | Prevents cookie theft over HTTP |
+| `COOKIE_SAMESITE` | Must be `'none'` | Required for cross-site cookies (GitHub Pages → API) |
+| `CORS_ORIGINS` | Must contain required frontend origins | Default: `https://omniplexity.github.io` |
+| `CORS_ORIGINS` | No wildcard (`*`) allowed | Prevents credential exposure to any origin |
+| `CORS_ORIGINS` | HTTPS-only (no `http://`) | Prevents downgrade attacks |
+| `ALLOWED_HOSTS` | No wildcard (`*`) allowed | Prevents Host header injection |
+
+**Environment override:**
+```env
+# Customize required frontend origins for your deployment
+REQUIRED_FRONTEND_ORIGINS=https://yourdomain.com,https://app.yourdomain.com
+```
+
+**Failure behavior:**
+If validation fails, the backend logs all violations and exits with status code 1. This prevents accidental deployment with insecure configuration.
+
+**Example validation error:**
+```
+Production security validation failed:
+  ✗ CORS_ORIGINS does not include required origin: https://omniplexity.github.io
+  ✗ ALLOWED_HOSTS contains wildcard '*' which is not allowed in production
+Fix these issues in .env before deploying to production.
+```
+
+This ensures that production deployments are secure by default and cannot run with dangerous configuration.
+
+---
+
+## Post-Deployment Verification
+
+Run these commands after every deployment to verify security controls:
+
+### 1. Host Header Rejection
+```bash
+curl -i https://<api-host>/v1/health -H "Host: evil.example"
+```
+**Expected**: `403 Forbidden`
+
+### 2. CORS Preflight - Allowed Origin
+```bash
+curl -i -X OPTIONS https://<api-host>/v1/chat \
+  -H "Origin: https://omniplexity.github.io" \
+  -H "Access-Control-Request-Method: POST"
+```
+**Expected**: `200 OK` with CORS headers (`Access-Control-Allow-Origin: https://omniplexity.github.io`)
+
+### 3. CORS Preflight - Disallowed Origin
+```bash
+curl -i -X OPTIONS https://<api-host>/v1/chat \
+  -H "Origin: https://evil.example" \
+  -H "Access-Control-Request-Method: POST"
+```
+**Expected**: `403 Forbidden`
+
+### 4. SSE Origin Gate (with valid session)
+```bash
+# First login to get cookies, then test origin
+curl -i https://<api-host>/v1/chat/stream \
+  -H "Origin: https://evil.example" \
+  -c cookies.txt -b cookies.txt
+```
+**Expected**: `403 Forbidden` (cookie-auth with bad origin)
+
+### 5. SSE Origin Validation (Authenticated Stream)
+
+Test that SSE streaming endpoints validate Origin headers for CSRF protection:
+
+```bash
+# Step 1: Login first to get valid session cookie
+curl -i -X POST https://<api-host>/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email":"user@example.com","password":"password"}' \
+  -c cookies.txt
+
+# Step 2: Try SSE stream with valid session but wrong origin (should fail)
+curl -i https://<api-host>/v1/chat/stream \
+  -H "Origin: https://evil.example.com" \
+  -b cookies.txt
+```
+
+**Expected:** `403 Forbidden` with message about invalid or missing origin
+
+**Why this works:**
+- `ChatCSRFMiddleware` validates Origin headers on `GET_DATA_PATHS` (includes `/v1/chat/stream`)
+- Even with a valid session cookie, requests from disallowed origins are rejected
+- Prevents CSRF attacks on Server-Sent Events endpoints
+- Defense-in-depth: SSE streams require both authentication AND valid origin
+
+This test verifies that an attacker who tricks a user into visiting a malicious site cannot establish SSE streams using the victim's session.
+
+---
+
 ## Troubleshooting
 
 ### CORS errors in browser
-- Ensure `CORS_ORIGINS` in `.env` includes both:
-  - `https://omniplexity.github.io`
-  - Your ngrok domain
-- Restart backend: `docker compose restart backend`
+
+- Ensure `CORS_ORIGINS` in `.env` includes only your **stable frontend origins**:
+  - Production: `https://omniplexity.github.io` (or your custom domain)
+  - Local development: `http://localhost:3000`
+
+- **⚠️ Do NOT add ngrok/tunnel domains to CORS_ORIGINS**
+  - Tunnel URLs (e.g., `xyz.ngrok-free.app`) are temporary and change on every restart
+  - Adding them to CORS_ORIGINS defeats the security purpose
+  - Instead, use `ENVIRONMENT=development` to relax validation for local testing
+  - For production tunnels (ngrok paid, cloudflared), use a stable custom domain
+
+- **Why tunnels are different:**
+  - CORS_ORIGINS is for **where the frontend is hosted**
+  - Tunnels are for **how the backend is accessed**
+  - The frontend stays on GitHub Pages; tunnels just proxy backend requests
+
+- Restart backend after changes: `docker compose restart backend`
 
 ### Cannot connect to backend
 - Check ngrok tunnel: `docker compose logs ngrok`

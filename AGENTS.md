@@ -19,8 +19,37 @@ Memory Agent	Provides long‑term storage and retrieval of user‑saved content.
 Knowledge Agent	Connects to external or internal knowledge bases (e.g., documentation, manuals, vector stores). Provides search and retrieval operations to enrich chat context. Currently a stub; will be implemented in phase 7 (Admin/Knowledge).	Queries from Chat or Planner Agents.	Snippets/documents, citation metadata.
 Voice Agent	Handles transcription of audio and synthesis of text to speech via the voice service. Exposes endpoints for /voice/transcribe and /voice/tts. Enforces file size limits and returns transcripts or audio data to the Chat Agent.	Uploads of audio files or text; optional language selection for transcription.	JSON with transcription (text, language, segments) or binary audio in MP3 format.
 Tool Agent	Mediates access to third‑party tools and plugins (code execution, file search, web browsing, etc.). The front‑end exposes toggles for enabling tools (web, files, code, vision). The Tool Agent validates these settings, authorizes tool usage per user policy and proxies requests to the appropriate service.	Tool invocations from Chat Agent, user settings (which tools are enabled).	Tool responses (e.g., code output, search results), error messages.
-Planner Agent	Parses high‑level user instructions into sequences of tool calls and provider interactions. Coordinates the Chat, Tool and Knowledge Agents to complete complex tasks. Uses heuristics or large‑language‑model planning to decide when to call memory search, external research or direct chat.	High‑level tasks (e.g., “Research this topic and summarize”), conversation history.	Task plans, intermediate tool outputs, final synthesized responses.
+Planner Agent	Parses high‑level user instructions into sequences of tool calls and provider interactions. Coordinates the Chat, Tool and Knowledge Agents to complete complex tasks. Uses heuristics or large‑language‑model planning to decide when to call memory search, external research or direct chat.	High‑level tasks (e.g., "Research this topic and summarize"), conversation history.	Task plans, intermediate tool outputs, final synthesized responses.
 Admin Agent	Provides administrative functionality: managing invites, users, quotas and audit logs. Only accessible to admin users. Persists audit entries on actions (login, invite creation, user deletion). Exposes metrics and status information via an /ops endpoint (e.g., provider health and rate limits).	Admin commands (create invite, disable user), system events.	User lists, invite codes, audit logs, health metrics.
+
+---
+
+## 🔒 Security Architecture Note
+
+**All security policy is enforced server-side.** Frontend settings (tool toggles, provider selection, model choices, etc.) are UI preferences that the backend validates against authoritative configuration.
+
+**Backend security authority includes:**
+
+- **Tool access:** `settings.tools_enabled` controls which tools are available; frontend toggles are suggestions that backend validates before execution
+- **Provider selection:** Backend verifies provider exists, is healthy, and is allowed before processing requests
+- **Origin validation:** SSE streams (`/v1/chat/stream`) validate Origin headers via `ChatCSRFMiddleware` to prevent CSRF attacks
+- **CSRF protection:** All state-changing requests (POST, PUT, DELETE) require valid CSRF tokens
+- **Rate limiting:** Enforced by middleware before reaching agent logic (per-IP, per-user, per-endpoint)
+- **Authentication:** Session validation occurs at middleware layer; expired/invalid sessions are rejected
+
+**The frontend is untrusted.** A malicious or compromised frontend cannot:
+
+- Enable disabled tools
+- Bypass rate limits
+- Access unauthorized providers
+- Establish SSE streams from disallowed origins
+- Forge CSRF tokens
+- Escalate privileges
+
+All requests are validated, authenticated, and authorized by the backend before being processed by agent logic.
+
+---
+
 Detailed Agent Descriptions
 Chat Agent
 
@@ -32,7 +61,11 @@ Creates or selects the current conversation via the Conversation Agent; if none 
 
 Uploads attachments (if any) to the Media/Tool Agent and constructs a settings payload capturing temperature, top p, max tokens, system prompt, reasoning mode and tool toggles.
 
-Invokes the Provider Agent for either streaming or one‑shot chat. For streaming, it uses SSE via streamChatLegacy() or streamChat(), updating the message content on each delta and handling final messages, errors and cancellations. For non‑streaming, it calls createMessageV1() and appends the returned message.
+Invokes the Provider Agent for either streaming or one‑shot chat. For streaming, it uses Server-Sent Events (SSE) via streamChatLegacy() or streamChat(), updating the message content on each delta and handling final messages, errors and cancellations.
+
+**SSE streams validate Origin headers to prevent CSRF attacks:** Only requests from allowed `CORS_ORIGINS` can establish streaming connections. This is enforced by `ChatCSRFMiddleware` which validates the `Origin` header on `GET` requests to `/v1/chat/stream` and related endpoints. Even with a valid session cookie, requests from disallowed origins are rejected with `403 Forbidden`.
+
+For non‑streaming, it calls createMessageV1() and appends the returned message.
 
 Optionally compares multiple models and synthesizes a consensus answer.
 
@@ -102,7 +135,17 @@ These endpoints rely on a voice service provided via settings (get_voice_service
 
 Tool Agent
 
-The Tool Agent is responsible for accessing additional capabilities such as web browsing, file search, code execution or vision. Each tool is a pluggable module with its own interface. Users can enable or disable tools through chat settings; for example, the UI exposes toggles for web, files, code and vision. The Tool Agent ensures that:
+The Tool Agent is responsible for accessing additional capabilities such as web browsing, file search, code execution or vision. Each tool is a pluggable module with its own interface. Users can enable or disable tools through chat settings; for example, the UI exposes toggles for web, files, code and vision.
+
+**Security enforcement:** Tool policy is server-enforced via `settings.tools_enabled` (environment variable). Frontend toggles are UI preferences that allow users to express intent, but **the backend validates all tool invocations against the authoritative configuration**. A tool that is disabled server-side cannot be invoked, regardless of frontend state.
+
+For example:
+
+- User enables "web" tool in frontend UI → sends tool invocation request
+- Backend checks `settings.tools_enabled` → if "web" not in list → rejects request with 403
+- Frontend cannot bypass this validation
+
+The Tool Agent ensures that:
 
 The requested tool is enabled for the current user and conversation.
 
@@ -150,7 +193,7 @@ The Chat Agent validates input, ensures a conversation exists and uploads attach
 
 It constructs settings (model, temperature, top p, tools) and calls the Provider Agent via chat_stream() or chat_once().
 
-The Provider Agent forwards the request to the selected provider; responses stream back via SSE. The Chat Agent updates the UI incrementally and handles stops/retries.
+The Provider Agent forwards the request to the selected provider; responses stream back via Server-Sent Events (SSE). **The backend validates the Origin header on SSE requests to ensure they come from an allowed frontend origin** (defense-in-depth with CSRF protection). The Chat Agent updates the UI incrementally and handles stops/retries.
 
 The Conversation Agent appends the messages and provider metadata to the database.
 
