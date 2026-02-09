@@ -50,20 +50,60 @@ This guide covers deploying OmniAI with:
 
 ## Step 1: Deploy Frontend to GitHub Pages
 
-The frontend has already been built and pushed. It will be live at:
+The frontend is a static SPA (vanilla JS, no build step). It will be live at:
 **https://omniplexity.github.io**
 
-### To update the frontend in the future:
+### Frontend Structure
+
+```
+OmniAI-frontend/
+  index.html          # Main app with CSP meta tag
+  login.html           # Login page
+  runtime-config.json  # Backend URL configuration
+  assets/css/style.css # Styles
+  js/
+    config.js         # Runtime config loader
+    api.js            # Fetch wrapper + SSE helper
+    auth.js           # Session bootstrap, login/logout
+    app.js            # Routing + UI controller
+    sse.js            # Server-Sent Events streaming
+    state.js          # Client state management
+    ui.js             # DOM render helpers
+  icons/              # SVG icons
+```
+
+### To update the frontend:
 
 ```bash
 cd OmniAI-frontend
-npm run build
+# Edit files as needed (no build step required)
 git add -A
-git commit -m "Deploy: Update built assets"
+git commit -m "Update: <description of changes>"
 git push origin main
 ```
 
 GitHub Pages will automatically update within a few minutes.
+
+### CSP Configuration
+
+The frontend includes a CSP meta tag in `index.html` for defense-in-depth:
+
+```html
+<meta http-equiv="Content-Security-Policy" content="
+  default-src 'self';
+  base-uri 'self';
+  object-src 'none';
+  frame-ancestors 'none';
+  img-src 'self' data: blob:;
+  style-src 'self' 'unsafe-inline';
+  script-src 'self';
+  connect-src 'self' https:;
+  font-src 'self' https://fonts.gstatic.com;
+  prefetch-src 'self' https://fonts.googleapis.com;
+">
+```
+
+The backend enforces additional CSP via `Content-Security-Policy` response headers.
 
 ---
 
