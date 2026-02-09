@@ -123,6 +123,21 @@ SESSION_TTL_SECONDS=604800
 COOKIE_SECURE=true
 COOKIE_SAMESITE=none
 COOKIE_DOMAIN=
+```
+
+> **Cookie SameSite Decision Matrix:**
+>
+> | Deployment Architecture | Frontend | Backend | `COOKIE_SAMESITE` | Why |
+> |------------------------|----------|---------|-------------------|-----|
+> | **Cross-site** (default) | `omniplexity.github.io` | `*.ngrok-free.dev` / `*.trycloudflare.com` | `none` | Different eTLD+1 → browser blocks cookies unless SameSite=None |
+> | **Same-site** (custom domain) | `chat.yourdomain.com` | `api.yourdomain.com` | `lax` | Same eTLD+1 → Lax cookies work for top-level navigation + XHR |
+> | **Local development** | `localhost:3000` | `localhost:8000` | `lax` | Same-site by definition |
+>
+> **Symptom of wrong setting:** Login succeeds (POST sets cookie) but subsequent API calls are unauthenticated (browser doesn't send the cookie back).
+>
+> `startup_checks.py` enforces `COOKIE_SAMESITE=none` in production because the default architecture is cross-site (GitHub Pages → tunnel).
+
+```env
 
 CSRF_HEADER_NAME=X-CSRF-Token
 CSRF_COOKIE_NAME=omni_csrf
@@ -487,6 +502,88 @@ This test verifies that an attacker who tricks a user into visiting a malicious 
                                 │    ngrok-free.dev   │
                                 └─────────────────────┘
 ```
+
+---
+
+## Production Deployment Checklist
+
+Complete this checklist before going live. All items are validated by `startup_checks.py` at startup.
+
+### Required Environment Variables
+
+| Variable | Value | Notes |
+|----------|-------|-------|
+| `ENVIRONMENT` | `production` | Enables strict validation |
+| `SECRET_KEY` | 64+ char random string | `python -c "import secrets; print(secrets.token_urlsafe(64))"` |
+| `CORS_ORIGINS` | `https://omniplexity.github.io` | Your frontend origin(s), comma-separated |
+| `ALLOWED_HOSTS` | `your-api-domain.com,localhost` | API hostnames (include tunnel domain) |
+| `COOKIE_SECURE` | `true` | Required for HTTPS cookies |
+| `COOKIE_SAMESITE` | `none` | Required for cross-site (GitHub Pages → API) |
+| `BOOTSTRAP_ADMIN_ENABLED` | `false` | Disable after first admin creation |
+
+### Cookie SameSite Decision
+
+| Architecture | `COOKIE_SAMESITE` | Example |
+|-------------|-------------------|---------|
+| Cross-site (GitHub Pages → tunnel) | `none` | `omniplexity.github.io` → `*.ngrok-free.dev` |
+| Same-site (custom domain) | `lax` | `chat.example.com` → `api.example.com` |
+
+### Multi-Worker / Scaling
+
+| Variable | Value | When Needed |
+|----------|-------|-------------|
+| `LIMITS_BACKEND` | `redis` | Multiple workers or containers |
+| `REDIS_URL` | `redis://redis:6379/0` | When `LIMITS_BACKEND=redis` |
+
+### Optional Overrides
+
+| Variable | Default | Purpose |
+|----------|---------|---------|
+| `REQUIRED_FRONTEND_ORIGINS` | `https://omniplexity.github.io` | Custom required CORS origins |
+| `RATE_LIMIT_RPM` | `200` | Requests per minute per IP |
+| `MAX_REQUEST_BYTES` | `10485760` (10MB) | Max request body size |
+
+---
+
+## CI Security Gates
+
+### Required (run on every PR)
+
+```bash
+# All security and CSRF tests (pytest markers: security, csrf)
+pytest -m "security or csrf" -v
+
+# Full test suite with coverage
+pytest --cov=. --cov-report=term -v
+```
+
+These tests validate:
+
+- Cookie SameSite normalization and cross-field constraints
+- CSRF token validation on state-changing endpoints
+- SSE Origin header validation on streaming endpoints
+- Host header rejection for unlisted hosts
+- Forwarded header validation (trusted proxy only)
+- Production config validation (startup_checks.py)
+- Privilege escalation hardening (session rotation/revocation)
+
+### Optional (weekly / manual trigger)
+
+```bash
+# Integration tests (requires Redis)
+pytest -m integration -v
+
+# Dependency vulnerability audit
+pip-audit -r requirements.txt
+```
+
+### CI Workflow Reference
+
+| Workflow | Trigger | What It Does |
+|----------|---------|-------------|
+| `backend-ci.yml` | Every push/PR | Lint + typecheck + full test suite + Docker build |
+| `integration-tests.yml` | Weekly + manual | Integration tests with Redis |
+| `security-audit.yml` | Weekly + PRs | `pip-audit` dependency scan |
 
 ---
 
