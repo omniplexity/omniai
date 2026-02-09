@@ -1,9 +1,16 @@
 #!/usr/bin/env python3
 """Detect duplicate FastAPI routes."""
 from __future__ import annotations
+import os
+import sys
 from collections import defaultdict
 
 def main() -> int:
+    # Add project root to path for absolute imports (backend.api, etc.)
+    project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    if project_root not in sys.path:
+        sys.path.insert(0, project_root)
+    
     from backend.main import app
 
     route_map = defaultdict(list)
