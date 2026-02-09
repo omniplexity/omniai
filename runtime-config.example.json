@@ -1,5 +1,5 @@
 {
-  "BACKEND_BASE_URL": "https://rossie-chargeful-plentifully.ngrok-free.dev",
+  "BACKEND_BASE_URL": "https://silent-eventually-movie-geometry.trycloudflare.com",
   "_note": "Example only. In the GitHub Pages repo, commit runtime-config.json with the actual backend URL. Locally, use runtime-config.local.json (gitignored).",
-  "_tunnel_note": "OmniAI uses ngrok for SSE streaming support. The domain is configured in docker-compose.yml via NGROK_DOMAIN."
+  "_tunnel_note": "OmniAI uses Cloudflare Tunnel for SSE streaming. The tunnel URL is generated automatically with --url flag. Cookies work correctly (unlike ngrok free tier)."
 }

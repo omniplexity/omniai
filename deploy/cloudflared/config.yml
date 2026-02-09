@@ -1,0 +1,6 @@
+tunnel: d7d88c55-78d9-4364-b832-c6c5fd426271
+credentials-file: /etc/cloudflared/credentials.json
+
+ingress:
+  - service: http://backend:8000
+  - service: http_status:404

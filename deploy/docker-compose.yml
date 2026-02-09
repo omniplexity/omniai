@@ -115,9 +115,9 @@ services:
     image: cloudflare/cloudflared:latest
     container_name: omniai-cloudflared
     restart: unless-stopped
-    command: tunnel run omniai
+    command: >-
+      tunnel --url http://backend:8000
     volumes:
-      - ./cloudflared/config.yml:/etc/cloudflared/config.yml:ro
       - ./cloudflared/credentials.json:/etc/cloudflared/credentials.json:ro
     depends_on:
       backend:
