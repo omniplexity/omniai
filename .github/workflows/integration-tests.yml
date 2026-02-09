@@ -1,0 +1,67 @@
+name: Integration Tests
+
+# Optional CI job for Redis integration tests
+# This job runs Redis and executes integration tests
+# It does not block main CI - it's informational only
+
+on:
+  workflow_dispatch:
+  schedule:
+    # Run weekly to catch Redis integration issues
+    - cron: '0 0 * * 0'
+  push:
+    branches: [main, develop]
+    paths:
+      - 'backend/tests/test_concurrency_redis.py'
+      - 'backend/core/limits/'
+      - '.github/workflows/integration-tests.yml'
+
+jobs:
+  redis-integration:
+    name: Redis Integration Tests
+    runs-on: ubuntu-latest
+    services:
+      redis:
+        image: redis:7-alpine
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+    defaults:
+      run:
+        working-directory: ./backend
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          version: '0.5.x'
+
+      - name: Install dependencies
+        run: |
+          uv pip install --system -r requirements.txt
+          uv pip install --system pytest pytest-asyncio
+
+      - name: Run Redis integration tests
+        env:
+          REDIS_URL: redis://localhost:6379/0
+        run: |
+          pytest -m integration -v --tb=short
+
+      - name: Report status
+        run: |
+          if [ $? -eq 0 ]; then
+            echo "✅ Redis integration tests passed"
+          else
+            echo "❌ Redis integration tests failed"
+            exit 1
+          fi

@@ -7,9 +7,13 @@ from sqlalchemy.orm import Session as DBSession
 
 from backend.config import get_settings
 from backend.core.exceptions import AuthenticationError
+from backend.core.logging import get_logger
 from backend.db import get_db
 from backend.db.models import User
 from backend.auth.session import validate_session
+from backend.services.audit_service import audit_log_event
+
+logger = get_logger(__name__)
 
 
 async def get_current_user(
@@ -27,6 +31,13 @@ async def get_current_user(
     session_token = request.cookies.get(settings.session_cookie_name)
 
     if not session_token:
+        audit_log_event(
+            db,
+            event_type="auth_missing_token",
+            user_id=None,
+            request=request,
+            data={"path": request.url.path},
+        )
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Not authenticated",
@@ -37,6 +48,13 @@ async def get_current_user(
     session = validate_session(db, session_token)
 
     if not session:
+        audit_log_event(
+            db,
+            event_type="auth_invalid_session",
+            user_id=None,
+            request=request,
+            data={"path": request.url.path},
+        )
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Session expired or invalid",
@@ -47,6 +65,13 @@ async def get_current_user(
     user = db.query(User).filter(User.id == session.user_id).first()
 
     if not user or not user.is_active:
+        audit_log_event(
+            db,
+            event_type="auth_inactive_user",
+            user_id=session.user_id,
+            request=request,
+            data={"path": request.url.path},
+        )
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="User not found or inactive",
@@ -85,6 +110,13 @@ async def get_admin_user(
 ) -> User:
     """Require admin privileges."""
     if not current_user.is_admin:
+        audit_log_event(
+            getattr(current_user, "_db", None),
+            event_type="admin_access_denied",
+            user_id=current_user.id,
+            request=None,
+            data={"attempted": "admin_access"},
+        )
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Admin access required",

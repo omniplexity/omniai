@@ -85,8 +85,10 @@ services:
     volumes:
       - backend_data:/app/data
       - backend_logs:/app/logs
+    # Bind to 127.0.0.1 only to prevent LAN exposure
+    # Use "8000:8000" without prefix for all-interfaces binding (containers only)
     ports:
-      - "8000:8000"
+      - "127.0.0.1:8000:8000"
     depends_on:
       postgres:
         condition: service_healthy

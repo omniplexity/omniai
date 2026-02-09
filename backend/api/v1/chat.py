@@ -151,11 +151,12 @@ async def retry_chat_run(
 @router.post("/cancel")
 async def cancel_chat_run(
     body: ChatCancelRequest,
+    request: Request,
     db: DBSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
     """Cancel a running chat."""
-    chat_agent = _create_chat_agent(db, request := Request)
+    chat_agent = _create_chat_agent(db, request)
 
     run = chat_agent.get_run(body.run_id, current_user)
     if not run:
@@ -173,10 +174,33 @@ async def stream_chat_run(
     db: DBSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Stream events from a chat run."""
+    """Stream events from a chat run.
+    
+    Enforces concurrent stream limits per user using the concurrency store.
+    """
     run = db.query(ChatRun).filter(ChatRun.id == run_id, ChatRun.user_id == current_user.id).first()
     if not run:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Run not found")
+
+    # Acquire concurrency slot for this stream
+    conc_store = getattr(request.app.state, "concurrency_store", None)
+    settings = get_settings()
+    conc_token = None
+    
+    if conc_store:
+        # Key format: stream:{user_id}:{endpoint}
+        conc_key = f"stream:{current_user.id}:v1"
+        acquired, token = await conc_store.acquire(
+            key=conc_key,
+            limit=settings.sse_max_concurrent_per_user,
+            ttl_s=settings.sse_max_duration_seconds + 60,  # TTL > max duration
+        )
+        if not acquired:
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail=f"Too many concurrent streams. Maximum: {settings.sse_max_concurrent_per_user}",
+            )
+        conc_token = token
 
     last_event_id = after
     if last_event_id is None:
@@ -186,38 +210,59 @@ async def stream_chat_run(
         else:
             last_event_id = 0
 
-    settings = get_settings()
     ping_interval = settings.sse_ping_interval_seconds
+    max_duration = settings.sse_max_duration_seconds
+    idle_timeout = settings.sse_idle_timeout_seconds
 
     async def event_stream():
         nonlocal last_event_id
-        last_ping = time.monotonic()
-        while True:
-            events = (
-                db.query(ChatRunEvent)
-                .filter(ChatRunEvent.run_id == run.id, ChatRunEvent.seq > last_event_id)
-                .order_by(ChatRunEvent.seq.asc())
-                .limit(200)
-                .all()
-            )
-            for evt in events:
-                last_event_id = evt.seq
-                payload = evt.payload_json or {}
-                yield _format_sse_event(evt.seq, evt.type, payload)
+        try:
+            last_ping = time.monotonic()
+            start_time = time.monotonic()
+            last_activity = last_ping
+            while True:
+                # Enforce max duration
+                elapsed = time.monotonic() - start_time
+                if elapsed >= max_duration:
+                    logger.info("SSE stream exceeded max duration", data={"run_id": run.id, "elapsed": elapsed})
+                    break
 
-            if await request.is_disconnected():
-                break
+                events = (
+                    db.query(ChatRunEvent)
+                    .filter(ChatRunEvent.run_id == run.id, ChatRunEvent.seq > last_event_id)
+                    .order_by(ChatRunEvent.seq.asc())
+                    .limit(200)
+                    .all()
+                )
+                for evt in events:
+                    last_event_id = evt.seq
+                    payload = evt.payload_json or {}
+                    yield _format_sse_event(evt.seq, evt.type, payload)
+                    last_activity = time.monotonic()
 
-            now = time.monotonic()
-            if ping_interval and (now - last_ping) >= ping_interval:
-                last_ping = now
-                yield ": ping\n\n"
+                if await request.is_disconnected():
+                    break
 
-            refreshed = db.query(ChatRun).filter(ChatRun.id == run.id).first()
-            if refreshed and refreshed.status in {"completed", "cancelled", "error"} and not events:
-                break
+                now = time.monotonic()
+                # Enforce idle timeout
+                if now - last_activity >= idle_timeout:
+                    logger.info("SSE stream idle timeout", data={"run_id": run.id, "idle_seconds": now - last_activity})
+                    break
 
-            await asyncio.sleep(0.5)
+                if ping_interval and (now - last_ping) >= ping_interval:
+                    last_ping = now
+                    yield ": ping\n\n"
+                    last_activity = now
+
+                refreshed = db.query(ChatRun).filter(ChatRun.id == run.id).first()
+                if refreshed and refreshed.status in {"completed", "cancelled", "error"} and not events:
+                    break
+
+                await asyncio.sleep(0.5)
+        finally:
+            # Release concurrency slot on stream end
+            if conc_store and conc_token:
+                await conc_store.release(key=f"stream:{current_user.id}:v1", token=conc_token)
 
     return StreamingResponse(
         event_stream(),

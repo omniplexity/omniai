@@ -128,8 +128,10 @@ npm run test
 
 ## Documentation
 
-- [AGENTS.md](AGENTS.md) - Agent architecture
-- [v1scope.md](v1scope.md) - v1 constraints and requirements
-- [DEPLOY.md](DEPLOY.md) - Deployment guide
-- `deploy/README.md` - Docker Compose options
-- `OmniAI-frontend/README.md` - Frontend development
+- [DEPLOY.md](DEPLOY.md) - Deployment guide, production checklist, CI gates
+- [AGENTS.md](AGENTS.md) - Agent architecture and security model
+- [docs/SECURITY.md](docs/SECURITY.md) - Security headers, cookies, CORS, CSRF
+- [docs/CSP_PATCH.md](docs/CSP_PATCH.md) - Content Security Policy for frontend
+- [docs/SCALING.md](docs/SCALING.md) - Multi-worker and Redis scaling
+- [docs/BACKUPS.md](docs/BACKUPS.md) - Database backup and restore
+- [v1scope.md](v1scope.md) - v1 API constraints and requirements

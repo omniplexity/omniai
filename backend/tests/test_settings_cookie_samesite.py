@@ -1,10 +1,12 @@
 import pytest
+pytestmark = pytest.mark.security
 
 from backend.config import get_settings
 
 
 def test_cookie_samesite_normalizes(monkeypatch):
     monkeypatch.setenv("COOKIE_SAMESITE", "None")
+    monkeypatch.setenv("COOKIE_SECURE", "true")
     get_settings.cache_clear()
     s = get_settings()
     assert s.cookie_samesite == "none"

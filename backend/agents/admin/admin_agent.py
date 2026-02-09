@@ -140,6 +140,7 @@ class AdminAgent:
         user_id: str,
         is_active: Optional[bool] = None,
         is_admin: Optional[bool] = None,
+        http_request = None,
     ) -> Optional[UserSummary]:
         """Update a user.
         
@@ -148,6 +149,7 @@ class AdminAgent:
             user_id: User ID to update
             is_active: New active status
             is_admin: New admin status
+            http_request: Optional request for audit logging
             
         Returns:
             Updated UserSummary or None if not found
@@ -160,6 +162,7 @@ class AdminAgent:
         if user.id == admin.id and is_admin is False:
             raise ValueError("Cannot remove your own admin status")
         
+        was_admin = user.is_admin
         if is_active is not None:
             user.is_active = is_active
         if is_admin is not None:
@@ -168,12 +171,30 @@ class AdminAgent:
         self.db.commit()
         self.db.refresh(user)
         
+        # Session rotation on privilege escalation (non-admin -> admin)
+        if is_admin is True and not was_admin:
+            from backend.auth.session import rotate_session, revoke_all_user_sessions, hash_session_token, validate_session
+            
+            # Rotate admin's own session on granting admin rights
+            session_token = getattr(http_request, 'cookies', {}).get('omni_session') if http_request else None
+            if session_token:
+                rotated = rotate_session(self.db, session_token)
+                if rotated:
+                    logger.info(f"Session rotated for admin privilege escalation: {admin.username}")
+                    # Note: The frontend will need to handle the new session cookie
+            
+            # Revoke all other sessions for the target user (security hardening)
+            # This ensures no attacker-persisted sessions survive privilege escalation
+            revoked_count = revoke_all_user_sessions(self.db, user_id)
+            if revoked_count > 0:
+                logger.info(f"Revoked {revoked_count} sessions for user {user_id} during privilege escalation")
+        
         logger.info(f"Admin {admin.username} updated user {user.username}")
         audit_log_event(
             self.db,
             event_type="admin.user_update",
             user_id=admin.id,
-            request=None,
+            request=http_request,
             data={"target_user_id": user.id, "is_active": is_active, "is_admin": is_admin},
         )
         

@@ -85,6 +85,12 @@ class SessionInfoResponse(BaseModel):
     is_current: bool
 
 
+# Cache-control headers for sensitive auth endpoints
+# Prevents caching of session data in browser/history
+_AUTH_CACHE_CONTROL = "no-store, no-cache, must-revalidate, private"
+_AUTH_PRAGMA = "no-cache"
+
+
 @router.post("/register", response_model=AuthResponse)
 async def register(
     payload: RegisterRequest,
@@ -94,6 +100,10 @@ async def register(
 ):
     """Register a new user account."""
     settings = get_settings()
+    
+    # Prevent caching of auth responses
+    response.headers["Cache-Control"] = _AUTH_CACHE_CONTROL
+    response.headers["Pragma"] = _AUTH_PRAGMA
 
     # Validate password complexity
     password_error = validate_password_complexity(payload.password)
@@ -168,13 +178,13 @@ async def register(
     # Create session
     session_token, csrf_token = create_session(db, user)
 
-    # Set session cookie
+    # Set session cookie (use cookie_samesite_header for correct capitalization)
     response.set_cookie(
         key=settings.session_cookie_name,
         value=session_token,
         httponly=True,
         secure=settings.cookie_secure,
-        samesite=settings.cookie_samesite,
+        samesite=settings.cookie_samesite_header,
         domain=settings.cookie_domain or None,
         path="/",
         max_age=settings.session_ttl_seconds,
@@ -186,7 +196,7 @@ async def register(
         value=csrf_token,
         httponly=False,
         secure=settings.cookie_secure,
-        samesite=settings.cookie_samesite,
+        samesite=settings.cookie_samesite_header,
         domain=settings.cookie_domain or None,
         path="/",
         max_age=settings.session_ttl_seconds,
@@ -209,6 +219,10 @@ async def login(
 ):
     """Log in with username and password."""
     settings = get_settings()
+    
+    # Prevent caching of auth responses
+    response.headers["Cache-Control"] = _AUTH_CACHE_CONTROL
+    response.headers["Pragma"] = _AUTH_PRAGMA
 
     # Determine client IP for rate limiting
     forwarded_for = http_request.headers.get("x-forwarded-for", "")
@@ -280,13 +294,13 @@ async def login(
     # Create session
     session_token, csrf_token = create_session(db, user)
 
-    # Set cookies
+    # Set cookies (use cookie_samesite_header for correct capitalization)
     response.set_cookie(
         key=settings.session_cookie_name,
         value=session_token,
         httponly=True,
         secure=settings.cookie_secure,
-        samesite=settings.cookie_samesite,
+        samesite=settings.cookie_samesite_header,
         domain=settings.cookie_domain or None,
         path="/",
         max_age=settings.session_ttl_seconds,
@@ -297,7 +311,7 @@ async def login(
         value=csrf_token,
         httponly=False,
         secure=settings.cookie_secure,
-        samesite=settings.cookie_samesite,
+        samesite=settings.cookie_samesite_header,
         domain=settings.cookie_domain or None,
         path="/",
         max_age=settings.session_ttl_seconds,
@@ -326,6 +340,10 @@ async def logout(
 ):
     """Log out and invalidate session."""
     settings = get_settings()
+    
+    # Prevent caching of auth responses
+    response.headers["Cache-Control"] = _AUTH_CACHE_CONTROL
+    response.headers["Pragma"] = _AUTH_PRAGMA
 
     session_token = request.cookies.get(settings.session_cookie_name)
     user_id = None
@@ -360,6 +378,10 @@ async def refresh_session(
 ):
     """Rotate session + CSRF token for an authenticated user."""
     settings = get_settings()
+    
+    # Prevent caching of auth responses
+    response.headers["Cache-Control"] = _AUTH_CACHE_CONTROL
+    response.headers["Pragma"] = _AUTH_PRAGMA
 
     session_token = request.cookies.get(settings.session_cookie_name)
     if not session_token:
@@ -387,7 +409,7 @@ async def refresh_session(
         value=new_session_token,
         httponly=True,
         secure=settings.cookie_secure,
-        samesite=settings.cookie_samesite,
+        samesite=settings.cookie_samesite_header,
         domain=settings.cookie_domain or None,
         path="/",
         max_age=settings.session_ttl_seconds,
@@ -397,7 +419,7 @@ async def refresh_session(
         value=new_csrf_token,
         httponly=False,
         secure=settings.cookie_secure,
-        samesite=settings.cookie_samesite,
+        samesite=settings.cookie_samesite_header,
         domain=settings.cookie_domain or None,
         path="/",
         max_age=settings.session_ttl_seconds,
@@ -446,7 +468,7 @@ async def get_csrf_token(
         value=csrf_token,
         httponly=False,
         secure=settings.cookie_secure,
-        samesite=settings.cookie_samesite,
+        samesite=settings.cookie_samesite_header,
         domain=settings.cookie_domain or None,
         path="/",
         max_age=settings.session_ttl_seconds,
@@ -671,6 +693,10 @@ async def delete_my_account(
     current_user: User = Depends(get_current_user),
 ):
     """Delete the current user's account (irreversible)."""
+    # Prevent caching of auth responses
+    response.headers["Cache-Control"] = _AUTH_CACHE_CONTROL
+    response.headers["Pragma"] = _AUTH_PRAGMA
+    
     verify = verify_password_with_upgrade(payload.password, current_user.hashed_password)
     if not verify.ok:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid password")

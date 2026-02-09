@@ -35,17 +35,38 @@ class Settings(BaseSettings):
     # Explicit environment selector. Keep this separate from DEBUG so production
     # checks don't accidentally trigger just because SECRET_KEY looks "strong".
     environment: str = Field(default="development")
-    host: str = Field(default="0.0.0.0")
+    # Bind to 127.0.0.1 by default for security. Use 0.0.0.0 only in containers.
+    # On host machines, always prefer localhost binding to prevent LAN exposure.
+    host: str = Field(default="127.0.0.1")
     port: int = Field(default=8000)
     debug: bool = Field(default=False)
+    
+    # Trusted hosts for Host header validation
+    # Required for tunnel deployments (ngrok/cloudflared) which forward original Host
+    # Format: comma-separated list of allowed hostnames
+    allowed_hosts: str = Field(
+        default="localhost,127.0.0.1",
+        description="Comma-separated allowed Host headers. Include tunnel domains when using ngrok/cloudflared.",
+    )
     log_level: str = Field(default="INFO")
     log_file: Optional[str] = Field(default=None)
 
     # Security
     secret_key: str = Field(default_factory=lambda: secrets.token_urlsafe(64))
     cors_origins: str = Field(default="http://localhost:3000,https://omniplexity.github.io")
+    required_frontend_origins: str = Field(
+        default="",
+        description="Comma-separated frontend origins required for CORS. Overrides default GH Pages origin. Leave empty to use default.",
+    )
     rate_limit_rpm: int = Field(default=60)
     rate_limit_user_rpm: int = Field(default=60)
+    # Rate limit + concurrency store backend
+    # "memory" = in-memory (current, single-worker only)
+    # "redis" = distributed (requires redis_url, multi-worker)
+    limits_backend: str = Field(default="memory")
+    # Redis URL for distributed rate limiting (when limits_backend=redis)
+    # Format: redis://localhost:6379/0
+    redis_url: str = Field(default="")
     max_request_bytes: int = Field(default=1048576)
     voice_max_request_bytes: int = Field(default=26214400)
 
@@ -106,6 +127,43 @@ class Settings(BaseSettings):
     voice_whisper_device: str = Field(default="cpu")
     voice_openai_audio_model: str = Field(default="whisper-1")
 
+    # Tools (server-side policy enforcement)
+    # These settings enforce tool usage policy - client hints are NOT trusted
+    tools_enabled: str = Field(default="")  # Empty = all disabled, comma-separated list to enable
+    tools_web_browsing_enabled: bool = Field(default=False)
+    tools_web_depth_max: int = Field(default=3)
+    tools_max_calls_per_request: int = Field(default=10)
+    tools_rate_limit_per_minute: int = Field(default=30)
+
+    # SSE streaming abuse controls
+    # Limits to prevent resource exhaustion from long-lived connections
+    sse_max_concurrent_per_user: int = Field(default=3)
+    sse_max_duration_seconds: int = Field(default=1800)  # 30 minutes
+    sse_max_tokens_per_stream: int = Field(default=32768)
+    sse_idle_timeout_seconds: int = Field(default=60)
+
+    # Legacy API deprecation
+    # Set to false to disable legacy /api/* endpoints entirely
+    # Defaults to false in production for security
+    legacy_api_enabled: bool = Field(default=True)
+
+    @property
+    def allowed_hosts_list(self) -> List[str]:
+        """Parse allowed hosts from comma-separated string."""
+        if not self.allowed_hosts:
+            return []
+        return [h.strip() for h in self.allowed_hosts.split(",") if h.strip()]
+
+    @field_validator("legacy_api_enabled", mode="before")
+    @classmethod
+    def validate_legacy_api_default(cls, v, info):
+        """Default legacy_api_enabled to False in production."""
+        env = (info.data.get("environment") or "").strip().lower()
+        # Only apply default if not explicitly set
+        if v is True and env == "production":
+            return False
+        return v
+
     @property
     def cors_origins_list(self) -> List[str]:
         """Parse CORS origins from comma-separated string."""
@@ -131,6 +189,13 @@ class Settings(BaseSettings):
         ]
 
     @property
+    def tools_enabled_list(self) -> List[str]:
+        """Parse enabled tools from comma-separated string."""
+        if not self.tools_enabled:
+            return []
+        return [t.strip() for t in self.tools_enabled.split(",") if t.strip()]
+
+    @property
     def is_production(self) -> bool:
         """Check if running in production mode."""
         return self.environment.lower() == "production"
@@ -154,13 +219,53 @@ class Settings(BaseSettings):
             raise ValueError("COOKIE_SAMESITE must be one of: lax, strict, none")
         return vv
 
+    @property
+    def cookie_samesite_header(self) -> str:
+        """Return SameSite value for HTTP header (capitalized for browser compatibility).
+        
+        Browsers require SameSite=None (capital N) for cross-site cookies.
+        """
+        if self.cookie_samesite == "none":
+            return "None"
+        return self.cookie_samesite.capitalize()
+
     @field_validator("environment")
     @classmethod
     def validate_environment(cls, v: str) -> str:
         vv = (v or "").strip().lower()
-        if vv not in {"development", "staging", "production"}:
-            raise ValueError("ENVIRONMENT must be one of: development, staging, production")
+        if vv not in {"development", "staging", "production", "test"}:
+            raise ValueError("ENVIRONMENT must be one of: development, staging, production, test")
         return vv
+    
+    @property
+    def is_test(self) -> bool:
+        """Check if running in test mode."""
+        return self.environment.lower() == "test"
+
+    @property
+    def is_staging(self) -> bool:
+        """Check if running in staging mode."""
+        return self.environment.lower() == "staging"
+
+    @property
+    def is_prod_like(self) -> bool:
+        """Check if running in production or staging mode."""
+        return self.is_production or self.is_staging
+
+    @property
+    def docs_url(self) -> str | None:
+        """Return docs URL if not in prod-like environment, else None."""
+        return None if self.is_prod_like else "/docs"
+
+    @property
+    def redoc_url(self) -> str | None:
+        """Return redoc URL if not in prod-like environment, else None."""
+        return None if self.is_prod_like else "/redoc"
+
+    @property
+    def openapi_url(self) -> str | None:
+        """Return openapi URL if not in prod-like environment, else None."""
+        return None if self.is_prod_like else "/openapi.json"
 
     @field_validator("cors_origins")
     @classmethod
@@ -179,6 +284,15 @@ class Settings(BaseSettings):
         # SameSite=None requires Secure=true.
         if self.cookie_samesite == "none" and not self.cookie_secure:
             raise ValueError("COOKIE_SECURE must be true when COOKIE_SAMESITE=none")
+        
+        # Wildcard hosts not allowed in production
+        if self.is_production:
+            for host in self.allowed_hosts_list:
+                if host.startswith("*."):
+                    raise ValueError(
+                        f"Wildcard hosts (*.{host[2:]}) are not allowed in production. "
+                        "Use exact hostnames or configure origin-locking."
+                    )
         return self
 
 

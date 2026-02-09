@@ -39,7 +39,11 @@
       "Bash(git pull:*)",
       "Bash(git merge:*)",
       "Bash(npm run build:*)",
-      "Bash(git remote set-url:*)"
+      "Bash(git remote set-url:*)",
+      "Bash(powershell.exe -Command \"Remove-Item -Path ''C:\\\\Users\\\\storm\\\\Desktop\\\\OmniAI\\\\OmniAI-frontend'' -Recurse -Force\")",
+      "Bash(git config:*)",
+      "Bash(git reset:*)",
+      "Bash(calls are unauthenticated\" caused by wrong COOKIE_SAMESITE setting.\n\nDEPLOY.md:\n- Add SameSite decision matrix \\(cross-site vs same-site vs local dev\\)\n- Add Production Deployment Checklist with required env vars\n- Add CI Security Gates section with pytest markers and workflow reference\n\nbackend/.env.example:\n- Expand COOKIE_SAMESITE comment with three deployment scenarios\n- Document symptom of wrong setting and startup_checks.py enforcement\n\ndocs/SECURITY.md:\n- Expand Authentication section with cookie config matrix\n- Add CSRF protection details \\(double-submit, SSE Origin validation\\)\n- Add CORS validation rules and REQUIRED_FRONTEND_ORIGINS reference\n\ndocs/CSP_PATCH.md:\n- Add Common CSP Violations table \\(inline scripts, fonts, workers, etc.\\)\n- Add Preact/Vite specific notes \\(no unsafe-eval needed, HMR WebSocket\\)\n- Add Production connect-src tightening guide with rollout strategy\n\nCo-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>\nEOF\n\\)\")"
     ]
   }
 }

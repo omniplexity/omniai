@@ -369,7 +369,10 @@ async def send_message(
     db: DBSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Send a message and get a response."""
+    """Send a message and get a response.
+    
+    Enforces concurrent stream limits per user when streaming.
+    """
     registry = getattr(request.app.state, "provider_registry", None)
 
     if not registry:
@@ -389,6 +392,25 @@ async def send_message(
         )
 
     if body.stream:
+        # Acquire concurrency slot for streaming
+        conc_store = getattr(request.app.state, "concurrency_store", None)
+        settings = get_settings()
+        conc_token = None
+        
+        if conc_store:
+            conc_key = f"stream:{current_user.id}:legacy"
+            acquired, token = await conc_store.acquire(
+                key=conc_key,
+                limit=settings.sse_max_concurrent_per_user,
+                ttl_s=settings.sse_max_duration_seconds + 60,
+            )
+            if not acquired:
+                raise HTTPException(
+                    status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                    detail=f"Too many concurrent streams. Maximum: {settings.sse_max_concurrent_per_user}",
+                )
+            conc_token = token
+
         async def stream_response():
             """Stream the chat response as SSE."""
             import json
@@ -428,6 +450,10 @@ async def send_message(
             except Exception as e:
                 logger.error(f"Stream error: {e}")
                 yield f"data: {json.dumps({'error': str(e)})}\n\n"
+            finally:
+                # Release concurrency slot
+                if conc_store and conc_token:
+                    await conc_store.release(key=f"stream:{current_user.id}:legacy", token=conc_token)
 
         return StreamingResponse(
             stream_response(),
@@ -491,12 +517,37 @@ async def stream_run(
     db: DBSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
+    """Stream a chat run.
+    
+    Enforces concurrent stream limits per user.
+    """
     registry = getattr(request.app.state, "provider_registry", None)
     if not registry:
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="No providers available")
+    
+    conc_store = getattr(request.app.state, "concurrency_store", None)
+    settings = get_settings()
+    conc_token = None
+    
+    if conc_store:
+        conc_key = f"stream:{current_user.id}:legacy-runs"
+        acquired, token = await conc_store.acquire(
+            key=conc_key,
+            limit=settings.sse_max_concurrent_per_user,
+            ttl_s=settings.sse_max_duration_seconds + 60,
+        )
+        if not acquired:
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail=f"Too many concurrent streams. Maximum: {settings.sse_max_concurrent_per_user}",
+            )
+        conc_token = token
+
     service = ChatService(db, registry)
     conversation = service.get_conversation(conversation_id, current_user)
     if not conversation:
+        if conc_store and conc_token:
+            await conc_store.release(key=f"stream:{current_user.id}:legacy-runs", token=conc_token)
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Conversation not found")
 
     run = ChatRun(
@@ -679,6 +730,10 @@ async def stream_run(
                     "error_message": run.error_message,
                 },
             )
+        finally:
+            # Release concurrency slot
+            if conc_store and conc_token:
+                await conc_store.release(key=f"stream:{current_user.id}:legacy-runs", token=conc_token)
 
     return StreamingResponse(
         event_stream(),

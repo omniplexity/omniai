@@ -1,5 +1,7 @@
 """Bootstrap admin user from environment variables."""
 
+import sys
+
 from sqlalchemy.orm import sessionmaker
 
 from backend.auth.password import hash_password
@@ -12,9 +14,21 @@ logger = get_logger(__name__)
 
 
 def ensure_bootstrap_admin(settings: Settings) -> None:
-    """Create an admin user from env vars if none exists."""
+    """Create an admin user from env vars if none exists.
+    
+    Security: In production, refuse to start if bootstrap admin is still enabled.
+    This prevents accidental exposure of bootstrap admin credentials.
+    """
     if not settings.bootstrap_admin_enabled:
         return
+
+    # Security: Refuse startup in production if bootstrap admin is enabled
+    if settings.is_production:
+        logger.error(
+            "CRITICAL SECURITY: Bootstrap admin is enabled in production. "
+            "This must be disabled after initial setup. Refusing to start.",
+        )
+        sys.exit(1)
 
     username = (settings.bootstrap_admin_username or "").strip()
     email = (settings.bootstrap_admin_email or "").strip()

@@ -383,7 +383,20 @@ This ensures that production deployments are secure by default and cannot run wi
 
 ## Post-Deployment Verification
 
-Run these commands after every deployment to verify security controls:
+**Quick check (run all security tests + smoke test):**
+
+```bash
+# Security & CSRF tests (from backend/)
+pytest -m "security or csrf" -v
+
+# Smoke test: health + CORS + Origin gate
+API=https://<api-host>
+curl -sf $API/health && echo "✓ health"
+curl -sf -o /dev/null -w "%{http_code}" -H "Host: evil.example" $API/v1/health | grep -q 403 && echo "✓ host rejection"
+curl -sf -o /dev/null -w "%{http_code}" -X OPTIONS -H "Origin: https://evil.example" $API/v1/chat | grep -q 403 && echo "✓ CORS rejection"
+```
+
+Run the detailed checks below after every production deployment:
 
 ### 1. Host Header Rejection
 ```bash
