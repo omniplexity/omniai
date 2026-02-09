@@ -5,27 +5,21 @@ Privacy-first AI chat platform with local backend and static GitHub Pages fronte
 ## Repository Structure
 
 ```
-OmniAI/                     # Root of monorepo
+OmniAI/                     # Backend repository
 ├── backend/                # Canonical FastAPI backend
-│   ├── api/               # API routers (/api/* legacy, /api/v1/* canonical)
+│   ├── api/               # API routers (/api/* legacy, /v1/* canonical)
 │   ├── auth/              # Authentication (invite-only, sessions, CSRF)
 │   ├── config/            # Settings (get_settings())
 │   ├── core/              # Middleware, exceptions, logging
 │   ├── db/                # Database (SQLite default, PostgreSQL ready)
 │   ├── providers/         # LLM providers (LM Studio, Ollama, OpenAI compat)
 │   ├── services/          # Business logic
-│   ├── agents/           # Agent implementations
+│   ├── agents/            # Agent implementations
 │   ├── tests/             # 40+ tests
 │   ├── main.py            # FastAPI app entrypoint
 │   └── Dockerfile
-├── OmniAI-frontend/       # Static SPA (GitHub Pages)
-│   ├── src/               # TypeScript/Preact source
-│   ├── public/            # Runtime assets
-│   ├── scripts/           # Build scripts
-│   ├── tests/e2e/         # Playwright tests
-│   └── vite.config.ts     # Build config
 ├── deploy/                # Deployment configurations
-│   ├── docker-compose.yml # Full stack (postgres, redis, backend, ngrok)
+│   ├── docker-compose.yml # Full stack (postgres, redis, backend)
 │   ├── caddy/             # Caddy reverse proxy
 │   ├── nginx/             # Nginx config
 │   ├── traefik/           # Traefik config
@@ -33,6 +27,8 @@ OmniAI/                     # Root of monorepo
 ├── contracts/              # OpenAPI spec, JSON schemas
 └── docs/                  # Architecture docs
     └── archive/           # Archived documentation
+
+Frontend lives in a separate repo: omniplexity/omniplexity.github.io
 ```
 
 ## Quick Start
@@ -51,16 +47,6 @@ python -m uvicorn backend.main:app --reload --host 127.0.0.1 --port 8000
 ```
 
 **Health check:** `GET http://127.0.0.1:8000/health`
-
-### Frontend
-
-```powershell
-cd OmniAI-frontend
-npm install
-npm run build   # Outputs to dist/ and root
-```
-
-**Note:** Frontend is designed for GitHub Pages. Build output serves from `omniplexity/omniplexity.github.io` repo.
 
 ### Docker Compose (Full Stack)
 
@@ -109,14 +95,6 @@ docker compose up -d   # postgres + redis + backend + optional ngrok
 # Backend tests (40+ tests)
 cd backend
 python -m pytest
-
-# Frontend build
-cd OmniAI-frontend
-npm run build
-
-# Frontend e2e tests
-cd OmniAI-frontend
-npm run test
 ```
 
 ## Deployment

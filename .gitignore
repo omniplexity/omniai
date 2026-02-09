@@ -33,12 +33,19 @@ build/
 logs/
 *.log
 
-# Frontend (separate repository)
-OmniAI-frontend/
+# Frontend (separate repository — omniplexity.github.io)
+frontend-assets/
 
 # Runtime config should never be committed in backend/API repo
 runtime-config.json
 runtime-config.local.json
+
+# Debug/test artifacts
+cookies*.txt
+console_logs.txt
+headers_local.txt
+login_payload.json
+nul
 
 # OS
 .DS_Store
@@ -51,4 +58,3 @@ htmlcov/
 
 # Node (if any backend tooling uses it)
 node_modules/
-OmniAI-frontend/

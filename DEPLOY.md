@@ -56,26 +56,26 @@ The frontend is a static SPA (vanilla JS, no build step). It will be live at:
 ### Frontend Structure
 
 ```
-OmniAI-frontend/
-  index.html          # Main app with CSP meta tag
-  login.html           # Login page
-  runtime-config.json  # Backend URL configuration
-  assets/css/style.css # Styles
+omniplexity.github.io/      # Separate repo: omniplexity/omniplexity.github.io
+  index.html                # Auth gate
+  chat.html                 # Chat UI
+  login.html                # Login page
+  runtime-config.json       # Backend URL configuration
+  assets/css/style.css      # Styles
   js/
-    config.js         # Runtime config loader
-    api.js            # Fetch wrapper + SSE helper
-    auth.js           # Session bootstrap, login/logout
-    app.js            # Routing + UI controller
-    sse.js            # Server-Sent Events streaming
-    state.js          # Client state management
-    ui.js             # DOM render helpers
-  icons/              # SVG icons
+    config.js               # Runtime config loader
+    api.js                  # Fetch wrapper + SSE helper
+    auth.js                 # Session bootstrap, login/logout
+    app.js                  # Chat orchestration
+    sse.js                  # Server-Sent Events streaming
+    state.js                # Client state management
+    ui.js                   # DOM render helpers
 ```
 
 ### To update the frontend:
 
 ```bash
-cd OmniAI-frontend
+cd omniplexity.github.io    # Separate repo, not inside OmniAI
 # Edit files as needed (no build step required)
 git add -A
 git commit -m "Update: <description of changes>"

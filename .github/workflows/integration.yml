@@ -11,7 +11,6 @@ on:
 
 env:
   PYTHON_VERSION: '3.11'
-  NODE_VERSION: '20'
   UV_VERSION: '0.5.x'
 
 jobs:
@@ -26,7 +25,6 @@ jobs:
 
       - name: Build and start stack
         run: |
-          cd OmniAI-backend
           # Create minimal .env for testing
           cat > backend/.env << 'EOF'
           ENVIRONMENT=test
@@ -37,9 +35,10 @@ jobs:
           INVITE_REQUIRED=false
           BOOTSTRAP_ADMIN_ENABLED=false
           EOF
-          
+
+          cd deploy
           docker compose up -d --build backend
-          
+
           # Wait for health check
           sleep 30
           docker compose ps
@@ -65,7 +64,7 @@ jobs:
       - name: Cleanup
         if: always()
         run: |
-          cd OmniAI-backend
+          cd deploy
           docker compose down -v
 
   api-contract-test:
