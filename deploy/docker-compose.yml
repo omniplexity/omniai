@@ -1,20 +1,21 @@
 # =============================================================================
-# OmniAI Backend - Full Stack Docker Compose
+# OmniAI Backend - DuckDNS Production Deployment
 # =============================================================================
-# This is the SINGLE SOURCE OF TRUTH for backend deployment.
+# Target: https://omniplexity.duckdns.org
+# Architecture: Caddy (TLS) → Backend (localhost-only)
+# Database: PostgreSQL (Docker)
 #
 # Usage:
-#   Full stack (Cloudflare):   docker compose up -d
-#   Full stack (no tunnel):    docker compose up -d
-#   Stop all:                  docker compose down
-#   View logs:                 docker compose logs -f
+#   Start:     docker compose up -d
+#   Stop:      docker compose down
+#   Logs:      docker compose logs -f
 #
 # Services:
-#   - backend:     FastAPI application (port 8000 internal)
 #   - postgres:    PostgreSQL 16 database
 #   - redis:       Redis 7 cache/sessions
-#   - cloudflared: Cloudflare Tunnel (recommended for external access)
-#   - ngrok:       ngrok tunnel (DEPRECATED - use Cloudflare instead)
+#   - backend:     FastAPI application
+#   - caddy:       TLS reverse proxy (handles Let's Encrypt)
+#
 # =============================================================================
 
 services:
@@ -28,8 +29,8 @@ services:
     environment:
       POSTGRES_DB: omniai
       POSTGRES_USER: omniai
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-omniai_secure_2024}
-      POSTGRES_INITDB_ARGS: "--encoding=UTF-8"
+      POSTGRES_PASSWORD: omniai_secure_2024
+      POSTGRES_INITDB_ARGS: "--encoding=UTF-8 --data-checksums"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     expose:
@@ -42,6 +43,12 @@ services:
       timeout: 5s
       retries: 5
       start_period: 30s
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+        reservations:
+          memory: 256M
 
   # ===========================================================================
   # Redis Cache & Sessions
@@ -63,6 +70,12 @@ services:
       timeout: 3s
       retries: 3
       start_period: 5s
+    deploy:
+      resources:
+        limits:
+          memory: 384M
+        reservations:
+          memory: 128M
 
   # ===========================================================================
   # Backend API Service
@@ -76,19 +89,18 @@ services:
     env_file:
       - ../.env
     environment:
+      # Backend binds to 0.0.0.0 inside container, but port is only exposed to localhost
       HOST: "0.0.0.0"
       PORT: "8000"
-      LOG_FILE: /app/logs/omniai.log
-      # Override database to use PostgreSQL
-      DATABASE_URL: postgresql://omniai:${POSTGRES_PASSWORD:-omniai_secure_2024}@postgres:5432/omniai
+      # Database: PostgreSQL from compose
+      DATABASE_URL: postgresql://omniai:omniai_secure_2024@postgres:5432/omniai
       # Redis connection
       REDIS_URL: redis://redis:6379/0
     volumes:
       - backend_data:/app/data
       - backend_logs:/app/logs
-    # Bind to 127.0.0.1 only to prevent LAN exposure
-    # Use "8000:8000" without prefix for all-interfaces binding (containers only)
-    # Access via Cloudflare Tunnel (cloudflared service) or localhost only
+    # CRITICAL: Bind to 127.0.0.1 only - not LAN exposed
+    # Caddy (on same host or Docker) connects via localhost
     ports:
       - "127.0.0.1:8000:8000"
     depends_on:
@@ -107,49 +119,35 @@ services:
     extra_hosts:
       - "host.docker.internal:host-gateway"
     user: root
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 1G
+        reservations:
+          cpus: "0.5"
+          memory: 512M
 
   # ===========================================================================
-  # Cloudflare Tunnel (recommended for external access)
+  # Caddy Reverse Proxy (TLS Termination)
   # ===========================================================================
-  # See docs/CLOUDFLARE_TUNNEL.md for setup instructions
-  cloudflared:
-    image: cloudflare/cloudflared:latest
-    container_name: omniai-cloudflared
+  caddy:
+    image: caddy:2-alpine
+    container_name: omniai-caddy
     restart: unless-stopped
-    command: >-
-      tunnel --url http://backend:8000
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"  # HTTP/3
     volumes:
-      - ./cloudflared/credentials.json:/etc/cloudflared/credentials.json:ro
+      - ./caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    networks:
+      - omniai_internal
     depends_on:
       backend:
         condition: service_healthy
-    networks:
-      - omniai_internal
-    profiles:
-      - tunnel
-
-  # ===========================================================================
-  # Ngrok Tunnel (DEPRECATED - use Cloudflare instead)
-  # ===========================================================================
-  # ngrok free tier strips Set-Cookie headers, breaking cross-site authentication
-  # See docs/CLOUDFLARE_TUNNEL.md for migration to Cloudflare Tunnel
-  ngrok:
-    image: ngrok/ngrok:latest
-    container_name: omniai-ngrok
-    restart: unless-stopped
-    command: >-
-      http backend:8000
-      --log=stdout
-      --domain=${NGROK_DOMAIN:-rossie-chargeful-plentifully.ngrok-free.dev}
-    environment:
-      NGROK_AUTHTOKEN: ${NGROK_AUTHTOKEN}
-    depends_on:
-      backend:
-        condition: service_healthy
-    networks:
-      - omniai_internal
-    profiles:
-      - tunnel
 
 # =============================================================================
 # Volumes (persistent data)
@@ -162,6 +160,10 @@ volumes:
   backend_data:
     driver: local
   backend_logs:
+    driver: local
+  caddy_data:
+    driver: local
+  caddy_config:
     driver: local
 
 # =============================================================================

@@ -1,5 +1,5 @@
 {
-  "BACKEND_BASE_URL": "https://silent-eventually-movie-geometry.trycloudflare.com",
-  "_note": "Example only. In the GitHub Pages repo, commit runtime-config.json with the actual backend URL. Locally, use runtime-config.local.json (gitignored).",
-  "_tunnel_note": "OmniAI uses Cloudflare Tunnel for SSE streaming. The tunnel URL is generated automatically with --url flag. Cookies work correctly (unlike ngrok free tier)."
+  "BACKEND_BASE_URL": "https://omniplexity.duckdns.org",
+  "_note": "Example only. In the GitHub Pages repo, commit runtime-config.json with the actual backend URL.",
+  "_deployment": "DuckDNS with Caddy TLS proxy"
 }
