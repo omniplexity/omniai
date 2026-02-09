@@ -136,6 +136,8 @@ COOKIE_DOMAIN=
 > **Symptom of wrong setting:** Login succeeds (POST sets cookie) but subsequent API calls are unauthenticated (browser doesn't send the cookie back).
 >
 > `startup_checks.py` enforces `COOKIE_SAMESITE=none` in production because the default architecture is cross-site (GitHub Pages → tunnel).
+>
+> **CORS must allow credentials:** The backend sets `allow_credentials=True` in CORS middleware (`main.py`). This is required for browsers to include cookies in cross-origin requests. Without it, `SameSite=None` + `Secure=true` alone won't work.
 
 ```env
 

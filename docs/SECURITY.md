@@ -127,6 +127,7 @@ The backend automatically adds security headers via `SecurityHeadersMiddleware`:
 - No wildcards (`*`) allowed
 - HTTPS-only (no `http://`)
 - Override default with: `REQUIRED_FRONTEND_ORIGINS=https://yourdomain.com`
+- `allow_credentials=True` is set in CORS middleware (required for cookie auth)
 
 See `backend/core/startup_checks.py` for complete validation rules.
 See [AGENTS.md](../AGENTS.md) for detailed agent security architecture.

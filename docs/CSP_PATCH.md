@@ -127,4 +127,11 @@ connect-src 'self' https://api.yourdomain.com;
 3. Switch to enforcing `Content-Security-Policy` once clean
 4. Remove the Report-Only header
 
+**Post-tightening verification:**
+
+- [ ] Login flow works (POST to `/auth/login` sets cookies)
+- [ ] SSE streaming works (`/v1/chat/stream` establishes EventSource connection)
+- [ ] API calls succeed (check Network tab for blocked requests)
+- [ ] No CSP violations in browser console
+
 **Note:** On GitHub Pages you cannot set HTTP response headers. CSP is applied via `<meta>` tag, which does NOT support `report-uri`. Monitor violations via browser console only.
