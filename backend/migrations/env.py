@@ -14,8 +14,8 @@ if _backend_dir not in sys.path:
 
 # Import your models and settings
 from backend.config import get_settings
-from backend.db.database import Base
 from backend.db import models  # noqa: F401 - Import to register models
+from backend.db.database import Base
 
 # Alembic Config object
 config = context.config

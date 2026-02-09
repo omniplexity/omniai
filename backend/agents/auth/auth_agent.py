@@ -4,19 +4,25 @@ Manages user authentication, sessions, CSRF tokens, and invite codes.
 Provides registration, login, logout, and session management.
 """
 
-from typing import Optional, List, Dict, Any
 from dataclasses import dataclass
 from datetime import datetime
+from typing import List, Optional
 
+from fastapi import HTTPException, Request, status
 from sqlalchemy.orm import Session as DBSession
-from fastapi import Request, HTTPException, status
 
-from backend.config import Settings
-from backend.db.models import User, Session as SessionModel, InviteCode
 from backend.auth.password import hash_password, validate_password_complexity, verify_password
-from backend.auth.session import create_session, validate_session, invalidate_session, rotate_session
-from backend.core.time import utcnow
+from backend.auth.session import (
+    create_session,
+    invalidate_session,
+    rotate_session,
+    validate_session,
+)
+from backend.config import Settings
 from backend.core.logging import get_logger
+from backend.core.time import utcnow
+from backend.db.models import InviteCode, User
+from backend.db.models import Session as SessionModel
 from backend.services.audit_service import audit_log_event
 
 logger = get_logger(__name__)
@@ -425,13 +431,13 @@ class AuthAgent:
             InviteCode.code == code,
             InviteCode.used_by.is_(None),
         ).first()
-        
+
         if not invite:
             return None
-            
+
         if invite.expires_at and invite.expires_at < utcnow():
             return None
-            
+
         return invite
 
     def list_sessions(
@@ -451,7 +457,7 @@ class AuthAgent:
             List of SessionInfo
         """
         from backend.auth.session import hash_session_token
-        
+
         current_hash = None
         if current_session_token:
             current_hash = hash_session_token(current_session_token)
@@ -462,7 +468,7 @@ class AuthAgent:
             .order_by(SessionModel.created_at.desc())
             .all()
         )
-        
+
         return [
             SessionInfo(
                 id=s.id,
@@ -492,13 +498,12 @@ class AuthAgent:
         Returns:
             True if revoked, False if not found
         """
-        from backend.auth.session import hash_session_token
-        
+
         session = db.query(SessionModel).filter(
             SessionModel.id == session_id,
             SessionModel.user_id == user.id
         ).first()
-        
+
         if not session:
             return False
 

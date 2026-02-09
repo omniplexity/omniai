@@ -10,8 +10,10 @@ from fastapi import APIRouter, Depends, Request
 
 from backend.auth.dependencies import get_admin_user
 from backend.config import get_settings
-from backend.config.settings import Settings
-from backend.core.limits.factory import get_concurrency_store, get_rate_limit_store, _redis_available
+from backend.core.limits.factory import (
+    _redis_available,
+    get_concurrency_store,
+)
 from backend.core.logging import get_logger
 from backend.db.models import User
 
@@ -75,7 +77,7 @@ async def store_health(
     result: Dict[str, Any] = {
         "limits_backend": settings.limits_backend,
     }
-    
+
     if settings.limits_backend == "redis":
         # Check Redis connectivity without exposing URLs
         if _redis_available:
@@ -93,5 +95,5 @@ async def store_health(
                 result["redis_connected"] = False
         else:
             result["redis_connected"] = False
-    
+
     return result

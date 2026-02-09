@@ -11,14 +11,14 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session as DBSession
 
+from backend.agents.chat import ChatAgent
+from backend.agents.conversation import ConversationAgent
+from backend.agents.provider import ProviderAgent
 from backend.auth.dependencies import get_current_user
 from backend.config import get_settings
 from backend.core.logging import get_logger
 from backend.db import get_db
 from backend.db.models import ChatRun, ChatRunEvent, Conversation, User
-from backend.agents.chat import ChatAgent
-from backend.agents.provider import ProviderAgent
-from backend.agents.conversation import ConversationAgent
 from backend.streaming.sse import format_sse_event
 
 logger = get_logger(__name__)
@@ -82,7 +82,7 @@ async def create_chat_run(
     if body.stream:
         if not body.input and not body.retry_from_message_id:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Input required")
-        
+
         run = chat_agent.create_run(
             conversation=conversation,
             user=current_user,
@@ -181,7 +181,7 @@ async def stream_chat_run(
     conc_store = getattr(request.app.state, "concurrency_store", None)
     settings = get_settings()
     conc_token = None
-    
+
     if conc_store:
         # Key format: stream:{user_id}:{endpoint}
         conc_key = f"stream:{current_user.id}:v1"

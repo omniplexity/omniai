@@ -7,14 +7,12 @@ to decompose a goal into structured sub-steps.
 from __future__ import annotations
 
 import re
-from typing import Dict, List, Optional
+from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
-from sqlalchemy.orm import Session as DBSession
 
 from backend.auth.dependencies import get_current_user
-from backend.db import get_db
 from backend.db.models import User
 from backend.providers.base import ChatMessage, ChatRequest
 from backend.providers.registry import ProviderRegistry

@@ -7,10 +7,8 @@ These tests verify that stream concurrency slots are properly released:
 - Opening and immediately closing streams should return concurrency to baseline
 """
 
-import pytest
-from fastapi.testclient import TestClient
-
 from backend.main import create_app
+from fastapi.testclient import TestClient
 
 
 class TestStreamConcurrencyLimiter:
@@ -18,11 +16,11 @@ class TestStreamConcurrencyLimiter:
 
     def test_stream_slot_released_on_immediate_disconnect(self, monkeypatch, tmp_path):
         """Stream slot should be released when client disconnects immediately."""
+        from backend.auth.session import create_session
         from backend.config import get_settings
         from backend.db import Base, dispose_engine
         from backend.db.database import get_engine
-        from backend.auth.session import create_session
-        from backend.db.models import User, Conversation
+        from backend.db.models import Conversation, User
 
         # Set up test database
         db_path = tmp_path / "stream_test.db"
@@ -111,11 +109,11 @@ class TestStreamConcurrencyLimiter:
 
     def test_concurrent_streams_enforced(self, monkeypatch, tmp_path):
         """System should limit concurrent streams per user."""
+        from backend.auth.session import create_session
         from backend.config import get_settings
         from backend.db import Base, dispose_engine
         from backend.db.database import get_engine
-        from backend.auth.session import create_session
-        from backend.db.models import User, Conversation
+        from backend.db.models import Conversation, User
 
         # Set up test database
         db_path = tmp_path / "stream_limit_test.db"

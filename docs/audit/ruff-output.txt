@@ -1,0 +1,3022 @@
+W293 Blank line contains whitespace
+  --> backend\agents\admin\admin_agent.py:68:1
+   |
+66 |     def __init__(self, db: DBSession, settings: Dict[str, Any] = None):
+67 |         """Initialize the Admin Agent.
+68 |         
+   | ^^^^^^^^
+69 |         Args:
+70 |             db: Database session
+   |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+  --> backend\agents\admin\admin_agent.py:85:1
+   |
+83 |     ) -> List[UserSummary]:
+84 |         """List all users.
+85 |         
+   | ^^^^^^^^
+86 |         Args:
+87 |             admin: Admin user making the request
+   |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+  --> backend\agents\admin\admin_agent.py:90:1
+   |
+88 |             limit: Maximum results
+89 |             offset: Offset for pagination
+90 |             
+   | ^^^^^^^^^^^^
+91 |         Returns:
+92 |             List of UserSummary objects
+   |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+   --> backend\agents\admin\admin_agent.py:116:1
+    |
+114 |     def get_user(self, admin: User, user_id: str) -> Optional[UserSummary]:
+115 |         """Get a user by ID.
+116 |         
+    | ^^^^^^^^
+117 |         Args:
+118 |             admin: Admin user making the request
+    |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+   --> backend\agents\admin\admin_agent.py:120:1
+    |
+118 |             admin: Admin user making the request
+119 |             user_id: User ID to get
+120 |             
+    | ^^^^^^^^^^^^
+121 |         Returns:
+122 |             UserSummary if found, None otherwise
+    |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+   --> backend\agents\admin\admin_agent.py:146:1
+    |
+144 |     ) -> Optional[UserSummary]:
+145 |         """Update a user.
+146 |         
+    | ^^^^^^^^
+147 |         Args:
+148 |             admin: Admin user making the request
+    |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+   --> backend\agents\admin\admin_agent.py:153:1
+    |
+151 |             is_admin: New admin status
+152 |             http_request: Optional request for audit logging
+153 |             
+    | ^^^^^^^^^^^^
+154 |         Returns:
+155 |             Updated UserSummary or None if not found
+    |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+   --> backend\agents\admin\admin_agent.py:215:1
+    |
+213 |     def delete_user(self, admin: User, user_id: str) -> bool:
+214 |         """Delete a user.
+215 |         
+    | ^^^^^^^^
+216 |         Args:
+217 |             admin: Admin user making the request
+    |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+   --> backend\agents\admin\admin_agent.py:219:1
+    |
+217 |             admin: Admin user making the request
+218 |             user_id: User ID to delete
+219 |             
+    | ^^^^^^^^^^^^
+220 |         Returns:
+221 |             True if deleted, False if not found
+    |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+   --> backend\agents\admin\admin_agent.py:252:1
+    |
+250 |     ) -> InviteSummary:
+251 |         """Create an invite code.
+252 |         
+    | ^^^^^^^^
+253 |         Args:
+254 |             admin: Admin creating the invite
+    |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+   --> backend\agents\admin\admin_agent.py:256:1
+    |
+254 |             admin: Admin creating the invite
+255 |             expires_in_days: Days until expiration
+256 |             
+    | ^^^^^^^^^^^^
+257 |         Returns:
+258 |             Created InviteSummary
+    |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+   --> backend\agents\admin\admin_agent.py:294:1
+    |
+292 |     def list_invites(self, admin: User) -> List[InviteSummary]:
+293 |         """List all invite codes.
+294 |         
+    | ^^^^^^^^
+295 |         Args:
+296 |             admin: Admin listing invites
+    |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+   --> backend\agents\admin\admin_agent.py:297:1
+    |
+295 |         Args:
+296 |             admin: Admin listing invites
+297 |             
+    | ^^^^^^^^^^^^
+298 |         Returns:
+299 |             List of InviteSummary objects
+    |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+   --> backend\agents\admin\admin_agent.py:321:1
+    |
+319 |     def delete_invite(self, admin: User, invite_id: str) -> bool:
+320 |         """Delete an invite code.
+321 |         
+    | ^^^^^^^^
+322 |         Args:
+323 |             admin: Admin deleting the invite
+    |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+   --> backend\agents\admin\admin_agent.py:325:1
+    |
+323 |             admin: Admin deleting the invite
+324 |             invite_id: Invite ID to delete
+325 |             
+    | ^^^^^^^^^^^^
+326 |         Returns:
+327 |             True if deleted, False if not found
+    |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+   --> backend\agents\admin\admin_agent.py:350:1
+    |
+348 |     def get_user_sessions(self, admin: User, user_id: str) -> List[Dict[str, Any]]:
+349 |         """Get sessions for a user.
+350 |         
+    | ^^^^^^^^
+351 |         Args:
+352 |             admin: Admin requesting sessions
+    |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+   --> backend\agents\admin\admin_agent.py:354:1
+    |
+352 |             admin: Admin requesting sessions
+353 |             user_id: User ID
+354 |             
+    | ^^^^^^^^^^^^
+355 |         Returns:
+356 |             List of session info dicts
+    |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+   --> backend\agents\admin\admin_agent.py:380:1
+    |
+378 |     def revoke_user_sessions(self, admin: User, user_id: str) -> int:
+379 |         """Revoke all sessions for a user.
+380 |         
+    | ^^^^^^^^
+381 |         Args:
+382 |             admin: Admin revoking sessions
+    |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+   --> backend\agents\admin\admin_agent.py:384:1
+    |
+382 |             admin: Admin revoking sessions
+383 |             user_id: User ID
+384 |             
+    | ^^^^^^^^^^^^
+385 |         Returns:
+386 |             Number of sessions revoked
+    |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+   --> backend\agents\admin\admin_agent.py:421:1
+    |
+419 |     ) -> List[AuditEntry]:
+420 |         """Get audit log entries.
+421 |         
+    | ^^^^^^^^
+422 |         Args:
+423 |             admin: Admin requesting logs
+    |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+   --> backend\agents\admin\admin_agent.py:429:1
+    |
+427 |             limit: Maximum results
+428 |             offset: Offset for pagination
+429 |             
+    | ^^^^^^^^^^^^
+430 |         Returns:
+431 |             List of AuditEntry objects
+    |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+   --> backend\agents\admin\admin_agent.py:462:1
+    |
+460 |     def get_stats(self, admin: User) -> SystemStats:
+461 |         """Get system statistics.
+462 |         
+    | ^^^^^^^^
+463 |         Args:
+464 |             admin: Admin requesting stats
+    |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+   --> backend\agents\admin\admin_agent.py:465:1
+    |
+463 |         Args:
+464 |             admin: Admin requesting stats
+465 |             
+    | ^^^^^^^^^^^^
+466 |         Returns:
+467 |             SystemStats object
+    |
+help: Remove whitespace from blank line
+
+E712 Avoid equality comparisons to `True`; use `User.is_active:` for truth checks
+   --> backend\agents\admin\admin_agent.py:470:51
+    |
+468 |         """
+469 |         total_users = self.db.query(User).count()
+470 |         active_users = self.db.query(User).filter(User.is_active == True).count()
+    |                                                   ^^^^^^^^^^^^^^^^^^^^^^
+471 |         admin_users = self.db.query(User).filter(User.is_admin == True).count()
+472 |         unused_invites = (
+    |
+help: Replace with `User.is_active`
+
+E712 Avoid equality comparisons to `True`; use `User.is_admin:` for truth checks
+   --> backend\agents\admin\admin_agent.py:471:50
+    |
+469 |         total_users = self.db.query(User).count()
+470 |         active_users = self.db.query(User).filter(User.is_active == True).count()
+471 |         admin_users = self.db.query(User).filter(User.is_admin == True).count()
+    |                                                  ^^^^^^^^^^^^^^^^^^^^^
+472 |         unused_invites = (
+473 |             self.db.query(InviteCode)
+    |
+help: Replace with `User.is_admin`
+
+W293 Blank line contains whitespace
+  --> backend\agents\auth\auth_agent.py:65:1
+   |
+63 |     def __init__(self, settings: Settings):
+64 |         """Initialize the Auth Agent.
+65 |         
+   | ^^^^^^^^
+66 |         Args:
+67 |             settings: Application settings
+   |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+  --> backend\agents\auth\auth_agent.py:81:1
+   |
+79 |     ) -> AuthResult:
+80 |         """Register a new user.
+81 |         
+   | ^^^^^^^^
+82 |         Args:
+83 |             db: Database session
+   |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+  --> backend\agents\auth\auth_agent.py:89:1
+   |
+87 |             invite_code: Optional invite code
+88 |             request: HTTP request for audit logging
+89 |             
+   | ^^^^^^^^^^^^
+90 |         Returns:
+91 |             AuthResult with user and session tokens
+   |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+  --> backend\agents\auth\auth_agent.py:92:1
+   |
+90 |         Returns:
+91 |             AuthResult with user and session tokens
+92 |             
+   | ^^^^^^^^^^^^
+93 |         Raises:
+94 |             HTTPException: If registration fails
+   |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+   --> backend\agents\auth\auth_agent.py:190:1
+    |
+188 |     ) -> AuthResult:
+189 |         """Login with username and password.
+190 |         
+    | ^^^^^^^^
+191 |         Args:
+192 |             db: Database session
+    |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+   --> backend\agents\auth\auth_agent.py:196:1
+    |
+194 |             password: Plain text password
+195 |             request: HTTP request for audit logging
+196 |             
+    | ^^^^^^^^^^^^
+197 |         Returns:
+198 |             AuthResult with user and session tokens
+    |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+   --> backend\agents\auth\auth_agent.py:199:1
+    |
+197 |         Returns:
+198 |             AuthResult with user and session tokens
+199 |             
+    | ^^^^^^^^^^^^
+200 |         Raises:
+201 |             HTTPException: If login fails
+    |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+   --> backend\agents\auth\auth_agent.py:257:1
+    |
+255 |     ) -> None:
+256 |         """Logout and invalidate session.
+257 |         
+    | ^^^^^^^^
+258 |         Args:
+259 |             db: Database session
+    |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+   --> backend\agents\auth\auth_agent.py:282:1
+    |
+280 |     def validate_session(self, db: DBSession, session_token: str) -> Optional[UserInfo]:
+281 |         """Validate a session token.
+282 |         
+    | ^^^^^^^^
+283 |         Args:
+284 |             db: Database session
+    |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+   --> backend\agents\auth\auth_agent.py:286:1
+    |
+284 |             db: Database session
+285 |             session_token: Session token to validate
+286 |             
+    | ^^^^^^^^^^^^
+287 |         Returns:
+288 |             UserInfo if valid, None otherwise
+    |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+   --> backend\agents\auth\auth_agent.py:314:1
+    |
+312 |     ) -> AuthResult:
+313 |         """Rotate session and CSRF tokens.
+314 |         
+    | ^^^^^^^^
+315 |         Args:
+316 |             db: Database session
+    |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+   --> backend\agents\auth\auth_agent.py:319:1
+    |
+317 |             session_token: Current session token
+318 |             request: HTTP request for audit logging
+319 |             
+    | ^^^^^^^^^^^^
+320 |         Returns:
+321 |             AuthResult with new tokens
+    |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+   --> backend\agents\auth\auth_agent.py:322:1
+    |
+320 |         Returns:
+321 |             AuthResult with new tokens
+322 |             
+    | ^^^^^^^^^^^^
+323 |         Raises:
+324 |             HTTPException: If session is invalid
+    |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+   --> backend\agents\auth\auth_agent.py:379:1
+    |
+377 |     ) -> InviteCode:
+378 |         """Create an invite code.
+379 |         
+    | ^^^^^^^^
+380 |         Args:
+381 |             db: Database session
+    |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+   --> backend\agents\auth\auth_agent.py:385:1
+    |
+383 |             expires_in_days: Days until expiration
+384 |             request: HTTP request for audit logging
+385 |             
+    | ^^^^^^^^^^^^
+386 |         Returns:
+387 |             Created InviteCode
+    |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+   --> backend\agents\auth\auth_agent.py:422:1
+    |
+420 |     ) -> Optional[InviteCode]:
+421 |         """Validate an invite code.
+422 |         
+    | ^^^^^^^^
+423 |         Args:
+424 |             db: Database session
+    |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+   --> backend\agents\auth\auth_agent.py:426:1
+    |
+424 |             db: Database session
+425 |             code: Invite code to validate
+426 |             
+    | ^^^^^^^^^^^^
+427 |         Returns:
+428 |             InviteCode if valid, None otherwise
+    |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+   --> backend\agents\auth\auth_agent.py:450:1
+    |
+448 |     ) -> List[SessionInfo]:
+449 |         """List active sessions for a user.
+450 |         
+    | ^^^^^^^^
+451 |         Args:
+452 |             db: Database session
+    |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+   --> backend\agents\auth\auth_agent.py:455:1
+    |
+453 |             user: User to list sessions for
+454 |             current_session_token: Current session token to mark as current
+455 |             
+    | ^^^^^^^^^^^^
+456 |         Returns:
+457 |             List of SessionInfo
+    |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+   --> backend\agents\auth\auth_agent.py:491:1
+    |
+489 |     ) -> bool:
+490 |         """Revoke a session.
+491 |         
+    | ^^^^^^^^
+492 |         Args:
+493 |             db: Database session
+    |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+   --> backend\agents\auth\auth_agent.py:497:1
+    |
+495 |             user: User revoking (for audit)
+496 |             request: HTTP request for audit logging
+497 |             
+    | ^^^^^^^^^^^^
+498 |         Returns:
+499 |             True if revoked, False if not found
+    |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+  --> backend\agents\chat\chat_agent.py:58:1
+   |
+56 |     ):
+57 |         """Initialize the Chat Agent.
+58 |         
+   | ^^^^^^^^
+59 |         Args:
+60 |             db: Database session
+   |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+  --> backend\agents\chat\chat_agent.py:70:1
+   |
+68 |     def _build_messages(self, conversation: Conversation) -> List[ChatMessage]:
+69 |         """Build message list from conversation history.
+70 |         
+   | ^^^^^^^^
+71 |         Args:
+72 |             conversation: Conversation to build from
+   |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+  --> backend\agents\chat\chat_agent.py:73:1
+   |
+71 |         Args:
+72 |             conversation: Conversation to build from
+73 |             
+   | ^^^^^^^^^^^^
+74 |         Returns:
+75 |             List of ChatMessage objects
+   |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+  --> backend\agents\chat\chat_agent.py:96:1
+   |
+94 |     ) -> Dict[str, Any]:
+95 |         """Send a message and optionally stream the response.
+96 |         
+   | ^^^^^^^^
+97 |         Args:
+98 |             conversation: Conversation to send in
+   |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+   --> backend\agents\chat\chat_agent.py:106:1
+    |
+104 |             stream: Whether to stream the response
+105 |             parent_message_id: Parent message ID for branching
+106 |             
+    | ^^^^^^^^^^^^
+107 |         Returns:
+108 |             Dict with message and metadata
+    |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+   --> backend\agents\chat\chat_agent.py:191:1
+    |
+189 |     ) -> AsyncGenerator[Dict[str, Any], None]:
+190 |         """Stream a chat response.
+191 |         
+    | ^^^^^^^^
+192 |         Args:
+193 |             conversation: Conversation to send in
+    |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+   --> backend\agents\chat\chat_agent.py:200:1
+    |
+198 |             settings: Chat settings
+199 |             parent_message_id: Parent message ID for branching
+200 |             
+    | ^^^^^^^^^^^^
+201 |         Yields:
+202 |             Dict containing chunk data
+    |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+   --> backend\agents\chat\chat_agent.py:306:1
+    |
+304 |     ) -> ChatRun:
+305 |         """Create a new chat run.
+306 |         
+    | ^^^^^^^^
+307 |         Args:
+308 |             conversation: Conversation for the run
+    |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+   --> backend\agents\chat\chat_agent.py:315:1
+    |
+313 |             settings: Chat settings
+314 |             retry_from_message_id: Message ID to retry from
+315 |             
+    | ^^^^^^^^^^^^
+316 |         Returns:
+317 |             Created ChatRun
+    |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+   --> backend\agents\chat\chat_agent.py:336:1
+    |
+334 |     def get_run(self, run_id: str, user: User) -> Optional[ChatRun]:
+335 |         """Get a chat run by ID.
+336 |         
+    | ^^^^^^^^
+337 |         Args:
+338 |             run_id: Run ID
+    |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+   --> backend\agents\chat\chat_agent.py:340:1
+    |
+338 |             run_id: Run ID
+339 |             user: User requesting the run
+340 |             
+    | ^^^^^^^^^^^^
+341 |         Returns:
+342 |             ChatRun if found, None otherwise
+    |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+   --> backend\agents\chat\chat_agent.py:352:1
+    |
+350 |     def cancel_run(self, run: ChatRun) -> None:
+351 |         """Cancel a chat run.
+352 |         
+    | ^^^^^^^^
+353 |         Args:
+354 |             run: Run to cancel
+    |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+   --> backend\agents\chat\chat_agent.py:370:1
+    |
+368 |     ) -> ChatRun:
+369 |         """Retry a message in a conversation.
+370 |         
+    | ^^^^^^^^
+371 |         Args:
+372 |             conversation: Conversation to retry in
+    |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+   --> backend\agents\chat\chat_agent.py:378:1
+    |
+376 |             model: Model to use
+377 |             settings: Chat settings
+378 |             
+    | ^^^^^^^^^^^^
+379 |         Returns:
+380 |             Created ChatRun for the retry
+    |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+  --> backend\agents\conversation\conversation_agent.py:68:1
+   |
+66 |     def __init__(self, db: DBSession):
+67 |         """Initialize the Conversation Agent.
+68 |         
+   | ^^^^^^^^
+69 |         Args:
+70 |             db: Database session
+   |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+  --> backend\agents\conversation\conversation_agent.py:86:1
+   |
+84 |     ) -> Conversation:
+85 |         """Create a new conversation.
+86 |         
+   | ^^^^^^^^
+87 |         Args:
+88 |             user: User creating the conversation
+   |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+  --> backend\agents\conversation\conversation_agent.py:96:1
+   |
+94 |             settings_json: Optional settings JSON
+95 |             preset_id: Optional preset ID
+96 |             
+   | ^^^^^^^^^^^^
+97 |         Returns:
+98 |             Created Conversation
+   |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+   --> backend\agents\conversation\conversation_agent.py:125:1
+    |
+123 |     ) -> List[Conversation]:
+124 |         """List user's conversations.
+125 |         
+    | ^^^^^^^^
+126 |         Args:
+127 |             user: User to list conversations for
+    |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+   --> backend\agents\conversation\conversation_agent.py:130:1
+    |
+128 |             limit: Maximum number of results
+129 |             offset: Offset for pagination
+130 |             
+    | ^^^^^^^^^^^^
+131 |         Returns:
+132 |             List of Conversation objects
+    |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+   --> backend\agents\conversation\conversation_agent.py:149:1
+    |
+147 |     ) -> Optional[Conversation]:
+148 |         """Get a conversation by ID.
+149 |         
+    | ^^^^^^^^
+150 |         Args:
+151 |             conversation_id: Conversation ID
+    |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+   --> backend\agents\conversation\conversation_agent.py:153:1
+    |
+151 |             conversation_id: Conversation ID
+152 |             user: User requesting the conversation
+153 |             
+    | ^^^^^^^^^^^^
+154 |         Returns:
+155 |             Conversation if found and owned by user, None otherwise
+    |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+   --> backend\agents\conversation\conversation_agent.py:176:1
+    |
+174 |     ) -> Conversation:
+175 |         """Update a conversation.
+176 |         
+    | ^^^^^^^^
+177 |         Args:
+178 |             conversation: Conversation to update
+    |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+   --> backend\agents\conversation\conversation_agent.py:184:1
+    |
+182 |             settings_json: New settings (optional)
+183 |             preset_id: New preset ID (optional)
+184 |             
+    | ^^^^^^^^^^^^
+185 |         Returns:
+186 |             Updated Conversation
+    |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+   --> backend\agents\conversation\conversation_agent.py:206:1
+    |
+204 |     def delete_conversation(self, conversation: Conversation) -> None:
+205 |         """Delete a conversation.
+206 |         
+    | ^^^^^^^^
+207 |         Args:
+208 |             conversation: Conversation to delete
+    |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+   --> backend\agents\conversation\conversation_agent.py:222:1
+    |
+220 |     ) -> Conversation:
+221 |         """Create a branch of a conversation from a message.
+222 |         
+    | ^^^^^^^^
+223 |         Args:
+224 |             conversation: Source conversation
+    |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+   --> backend\agents\conversation\conversation_agent.py:228:1
+    |
+226 |             user: User creating the branch
+227 |             title: Optional new title
+228 |             
+    | ^^^^^^^^^^^^
+229 |         Returns:
+230 |             New Conversation that is a branch
+    |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+   --> backend\agents\conversation\conversation_agent.py:300:1
+    |
+298 |     ) -> Message:
+299 |         """Add a message to a conversation.
+300 |         
+    | ^^^^^^^^
+301 |         Args:
+302 |             conversation: Conversation to add message to
+    |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+   --> backend\agents\conversation\conversation_agent.py:311:1
+    |
+309 |             parent_message_id: Parent message ID
+310 |             provider_meta_json: Provider metadata
+311 |             
+    | ^^^^^^^^^^^^
+312 |         Returns:
+313 |             Created Message
+    |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+   --> backend\agents\conversation\conversation_agent.py:343:1
+    |
+341 |     ) -> List[Message]:
+342 |         """Get messages in a conversation.
+343 |         
+    | ^^^^^^^^
+344 |         Args:
+345 |             conversation: Conversation to get messages from
+    |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+   --> backend\agents\conversation\conversation_agent.py:347:1
+    |
+345 |             conversation: Conversation to get messages from
+346 |             limit: Maximum number of messages
+347 |             
+    | ^^^^^^^^^^^^
+348 |         Returns:
+349 |             List of Message objects
+    |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+   --> backend\agents\conversation\conversation_agent.py:365:1
+    |
+363 |     ) -> Optional[Message]:
+364 |         """Get a message by ID.
+365 |         
+    | ^^^^^^^^
+366 |         Args:
+367 |             message_id: Message ID
+    |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+   --> backend\agents\conversation\conversation_agent.py:369:1
+    |
+367 |             message_id: Message ID
+368 |             user: User requesting the message
+369 |             
+    | ^^^^^^^^^^^^
+370 |         Returns:
+371 |             Message if found, None otherwise
+    |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+   --> backend\agents\conversation\conversation_agent.py:396:1
+    |
+394 |     ) -> ContextBlock:
+395 |         """Create a context block.
+396 |         
+    | ^^^^^^^^
+397 |         Args:
+398 |             user: User creating the block
+    |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+   --> backend\agents\conversation\conversation_agent.py:404:1
+    |
+402 |             conversation_id: Optional conversation ID
+403 |             enabled: Whether block is enabled
+404 |             
+    | ^^^^^^^^^^^^
+405 |         Returns:
+406 |             Created ContextBlock
+    |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+   --> backend\agents\conversation\conversation_agent.py:431:1
+    |
+429 |     ) -> List[ContextBlock]:
+430 |         """Get context blocks for a user.
+431 |         
+    | ^^^^^^^^
+432 |         Args:
+433 |             user: User to get blocks for
+    |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+   --> backend\agents\conversation\conversation_agent.py:437:1
+    |
+435 |             conversation_id: Optional conversation filter
+436 |             enabled_only: Only return enabled blocks
+437 |             
+    | ^^^^^^^^^^^^
+438 |         Returns:
+439 |             List of ContextBlock objects
+    |
+help: Remove whitespace from blank line
+
+E712 Avoid equality comparisons to `True`; use `ContextBlock.enabled:` for truth checks
+   --> backend\agents\conversation\conversation_agent.py:457:34
+    |
+455 |             )
+456 |         if enabled_only:
+457 |             query = query.filter(ContextBlock.enabled == True)
+    |                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+458 |
+459 |         return query.order_by(ContextBlock.created_at.asc()).all()
+    |
+help: Replace with `ContextBlock.enabled`
+
+W293 Blank line contains whitespace
+   --> backend\agents\conversation\conversation_agent.py:469:1
+    |
+467 |     ) -> ContextBlock:
+468 |         """Update a context block.
+469 |         
+    | ^^^^^^^^
+470 |         Args:
+471 |             block: Block to update
+    |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+   --> backend\agents\conversation\conversation_agent.py:475:1
+    |
+473 |             content: New content
+474 |             enabled: New enabled status
+475 |             
+    | ^^^^^^^^^^^^
+476 |         Returns:
+477 |             Updated ContextBlock
+    |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+   --> backend\agents\conversation\conversation_agent.py:493:1
+    |
+491 |     def delete_context_block(self, block: ContextBlock) -> None:
+492 |         """Delete a context block.
+493 |         
+    | ^^^^^^^^
+494 |         Args:
+495 |             block: Block to delete
+    |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+  --> backend\agents\knowledge\knowledge_agent.py:44:1
+   |
+42 |     def __init__(self, db: DBSession):
+43 |         """Initialize the Knowledge Agent.
+44 |         
+   | ^^^^^^^^
+45 |         Args:
+46 |             db: Database session
+   |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+  --> backend\agents\knowledge\knowledge_agent.py:58:1
+   |
+56 |     ) -> KnowledgeDocument:
+57 |         """Create a new knowledge document.
+58 |         
+   | ^^^^^^^^
+59 |         Args:
+60 |             user: User creating the document
+   |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+  --> backend\agents\knowledge\knowledge_agent.py:64:1
+   |
+62 |             mime_type: MIME type
+63 |             size: Document size in bytes
+64 |             
+   | ^^^^^^^^^^^^
+65 |         Returns:
+66 |             Created KnowledgeDocument
+   |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+  --> backend\agents\knowledge\knowledge_agent.py:83:1
+   |
+81 |     def get_document(self, doc_id: str, user: User) -> Optional[KnowledgeDocument]:
+82 |         """Get a document by ID.
+83 |         
+   | ^^^^^^^^
+84 |         Args:
+85 |             doc_id: Document ID
+   |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+  --> backend\agents\knowledge\knowledge_agent.py:87:1
+   |
+85 |             doc_id: Document ID
+86 |             user: User requesting the document
+87 |             
+   | ^^^^^^^^^^^^
+88 |         Returns:
+89 |             KnowledgeDocument if found, None otherwise
+   |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+   --> backend\agents\knowledge\knowledge_agent.py:104:1
+    |
+102 |     ) -> List[KnowledgeDocument]:
+103 |         """List user's knowledge documents.
+104 |         
+    | ^^^^^^^^
+105 |         Args:
+106 |             user: User to list documents for
+    |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+   --> backend\agents\knowledge\knowledge_agent.py:109:1
+    |
+107 |             limit: Maximum results
+108 |             offset: Offset for pagination
+109 |             
+    | ^^^^^^^^^^^^
+110 |         Returns:
+111 |             List of KnowledgeDocument objects
+    |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+   --> backend\agents\knowledge\knowledge_agent.py:124:1
+    |
+122 |     def delete_document(self, doc: KnowledgeDocument) -> None:
+123 |         """Delete a document and its chunks.
+124 |         
+    | ^^^^^^^^
+125 |         Args:
+126 |             doc: Document to delete
+    |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+   --> backend\agents\knowledge\knowledge_agent.py:140:1
+    |
+138 |     ) -> KnowledgeChunk:
+139 |         """Create a document chunk.
+140 |         
+    | ^^^^^^^^
+141 |         Args:
+142 |             doc_id: Parent document ID
+    |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+   --> backend\agents\knowledge\knowledge_agent.py:146:1
+    |
+144 |             chunk_index: Chunk position
+145 |             content: Chunk content
+146 |             
+    | ^^^^^^^^^^^^
+147 |         Returns:
+148 |             Created KnowledgeChunk
+    |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+   --> backend\agents\knowledge\knowledge_agent.py:164:1
+    |
+162 |     def get_chunks(self, doc_id: str) -> List[KnowledgeChunk]:
+163 |         """Get all chunks for a document.
+164 |         
+    | ^^^^^^^^
+165 |         Args:
+166 |             doc_id: Document ID
+    |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+   --> backend\agents\knowledge\knowledge_agent.py:167:1
+    |
+165 |         Args:
+166 |             doc_id: Document ID
+167 |             
+    | ^^^^^^^^^^^^
+168 |         Returns:
+169 |             List of KnowledgeChunk objects
+    |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+   --> backend\agents\knowledge\knowledge_agent.py:185:1
+    |
+183 |     ) -> List[Dict[str, Any]]:
+184 |         """Search knowledge documents.
+185 |         
+    | ^^^^^^^^
+186 |         Args:
+187 |             user: User to search for
+    |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+   --> backend\agents\knowledge\knowledge_agent.py:190:1
+    |
+188 |             query: Search query
+189 |             limit: Maximum results
+190 |             
+    | ^^^^^^^^^^^^
+191 |         Returns:
+192 |             List of matching chunks with document info
+    |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+  --> backend\agents\memory\memory_agent.py:34:1
+   |
+32 |     def __init__(self, db: DBSession):
+33 |         """Initialize the Memory Agent.
+34 |         
+   | ^^^^^^^^
+35 |         Args:
+36 |             db: Database session
+   |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+  --> backend\agents\memory\memory_agent.py:48:1
+   |
+46 |     ) -> MemoryEntry:
+47 |         """Create a new memory entry.
+48 |         
+   | ^^^^^^^^
+49 |         Args:
+50 |             user: User creating the memory
+   |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+  --> backend\agents\memory\memory_agent.py:54:1
+   |
+52 |             content: Memory content
+53 |             tags: Optional tags
+54 |             
+   | ^^^^^^^^^^^^
+55 |         Returns:
+56 |             Created MemoryEntry
+   |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+  --> backend\agents\memory\memory_agent.py:73:1
+   |
+71 |     def get_memory(self, memory_id: str, user: User) -> Optional[MemoryEntry]:
+72 |         """Get a memory entry by ID.
+73 |         
+   | ^^^^^^^^
+74 |         Args:
+75 |             memory_id: Memory ID
+   |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+  --> backend\agents\memory\memory_agent.py:77:1
+   |
+75 |             memory_id: Memory ID
+76 |             user: User requesting the memory
+77 |             
+   | ^^^^^^^^^^^^
+78 |         Returns:
+79 |             MemoryEntry if found, None otherwise
+   |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+  --> backend\agents\memory\memory_agent.py:94:1
+   |
+92 |     ) -> List[MemoryEntry]:
+93 |         """List user's memory entries.
+94 |         
+   | ^^^^^^^^
+95 |         Args:
+96 |             user: User to list memories for
+   |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+   --> backend\agents\memory\memory_agent.py:99:1
+    |
+ 97 |             limit: Maximum number of results
+ 98 |             offset: Offset for pagination
+ 99 |             
+    | ^^^^^^^^^^^^
+100 |         Returns:
+101 |             List of MemoryEntry objects
+    |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+   --> backend\agents\memory\memory_agent.py:120:1
+    |
+118 |     ) -> MemoryEntry:
+119 |         """Update a memory entry.
+120 |         
+    | ^^^^^^^^
+121 |         Args:
+122 |             entry: Entry to update
+    |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+   --> backend\agents\memory\memory_agent.py:126:1
+    |
+124 |             content: New content
+125 |             tags: New tags
+126 |             
+    | ^^^^^^^^^^^^
+127 |         Returns:
+128 |             Updated MemoryEntry
+    |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+   --> backend\agents\memory\memory_agent.py:144:1
+    |
+142 |     def delete_memory(self, entry: MemoryEntry) -> None:
+143 |         """Delete a memory entry.
+144 |         
+    | ^^^^^^^^
+145 |         Args:
+146 |             entry: Entry to delete
+    |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+   --> backend\agents\memory\memory_agent.py:159:1
+    |
+157 |     ) -> List[MemoryEntry]:
+158 |         """Search memories by content.
+159 |         
+    | ^^^^^^^^
+160 |         Args:
+161 |             user: User to search for
+    |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+   --> backend\agents\memory\memory_agent.py:164:1
+    |
+162 |             query: Search query
+163 |             limit: Maximum results
+164 |             
+    | ^^^^^^^^^^^^
+165 |         Returns:
+166 |             List of matching MemoryEntry objects
+    |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+  --> backend\agents\provider\provider_agent.py:73:1
+   |
+71 |     def __init__(self, settings: Settings, registry: ProviderRegistry = None):
+72 |         """Initialize the Provider Agent.
+73 |         
+   | ^^^^^^^^
+74 |         Args:
+75 |             settings: Application settings
+   |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+  --> backend\agents\provider\provider_agent.py:90:1
+   |
+88 |     async def list_providers(self) -> List[str]:
+89 |         """List available provider names.
+90 |         
+   | ^^^^^^^^
+91 |         Returns:
+92 |             List of provider names
+   |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+   --> backend\agents\provider\provider_agent.py:98:1
+    |
+ 96 |     async def get_provider_health(self, provider_name: str) -> Dict[str, Any]:
+ 97 |         """Get health status of a provider.
+ 98 |         
+    | ^^^^^^^^
+ 99 |         Args:
+100 |             provider_name: Name of the provider
+    |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+   --> backend\agents\provider\provider_agent.py:101:1
+    |
+ 99 |         Args:
+100 |             provider_name: Name of the provider
+101 |             
+    | ^^^^^^^^^^^^
+102 |         Returns:
+103 |             Dict with health information
+    |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+   --> backend\agents\provider\provider_agent.py:117:1
+    |
+115 |     async def healthcheck_all(self) -> Dict[str, bool]:
+116 |         """Check health of all providers.
+117 |         
+    | ^^^^^^^^
+118 |         Returns:
+119 |             Dict mapping provider names to health status
+    |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+   --> backend\agents\provider\provider_agent.py:125:1
+    |
+123 |     async def list_models(self, provider_name: str = None) -> List[ModelInfo]:
+124 |         """List available models from a provider.
+125 |         
+    | ^^^^^^^^
+126 |         Args:
+127 |             provider_name: Optional provider name (uses default if not specified)
+    |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+   --> backend\agents\provider\provider_agent.py:128:1
+    |
+126 |         Args:
+127 |             provider_name: Optional provider name (uses default if not specified)
+128 |             
+    | ^^^^^^^^^^^^
+129 |         Returns:
+130 |             List of ModelInfo objects
+    |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+   --> backend\agents\provider\provider_agent.py:153:1
+    |
+151 |     async def get_capabilities(self, provider_name: str) -> ProviderCapabilities:
+152 |         """Get capabilities of a provider.
+153 |         
+    | ^^^^^^^^
+154 |         Args:
+155 |             provider_name: Name of the provider
+    |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+   --> backend\agents\provider\provider_agent.py:156:1
+    |
+154 |         Args:
+155 |             provider_name: Name of the provider
+156 |             
+    | ^^^^^^^^^^^^
+157 |         Returns:
+158 |             ProviderCapabilities object
+    |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+   --> backend\agents\provider\provider_agent.py:180:1
+    |
+178 |     async def chat_once(self, request: ChatRequest) -> ChatResponse:
+179 |         """Perform a non-streaming chat completion.
+180 |         
+    | ^^^^^^^^
+181 |         Args:
+182 |             request: ChatRequest with messages and settings
+    |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+   --> backend\agents\provider\provider_agent.py:183:1
+    |
+181 |         Args:
+182 |             request: ChatRequest with messages and settings
+183 |             
+    | ^^^^^^^^^^^^
+184 |         Returns:
+185 |             ChatResponse with the completion
+    |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+   --> backend\agents\provider\provider_agent.py:220:1
+    |
+218 |     ) -> AsyncGenerator[Dict[str, Any], None]:
+219 |         """Perform a streaming chat completion.
+220 |         
+    | ^^^^^^^^
+221 |         Args:
+222 |             request: ChatRequest with messages and settings
+    |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+   --> backend\agents\provider\provider_agent.py:223:1
+    |
+221 |         Args:
+222 |             request: ChatRequest with messages and settings
+223 |             
+    | ^^^^^^^^^^^^
+224 |         Yields:
+225 |             Dict containing chunk data
+    |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+   --> backend\agents\provider\provider_agent.py:249:1
+    |
+247 |     def get_default_provider(self) -> Optional[str]:
+248 |         """Get the default provider name.
+249 |         
+    | ^^^^^^^^
+250 |         Returns:
+251 |             Default provider name or None
+    |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+  --> backend\agents\tool\tool_agent.py:53:1
+   |
+51 |     def __init__(self, db: DBSession, settings: Dict[str, Any] = None):
+52 |         """Initialize the Tool Agent.
+53 |         
+   | ^^^^^^^^
+54 |         Args:
+55 |             db: Database session
+   |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+  --> backend\agents\tool\tool_agent.py:68:1
+   |
+66 |     ) -> bool:
+67 |         """Check if a tool is enabled for a user/conversation.
+68 |         
+   | ^^^^^^^^
+69 |         Args:
+70 |             user: User to check
+   |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+  --> backend\agents\tool\tool_agent.py:73:1
+   |
+71 |             tool_type: Tool type to check
+72 |             conversation_id: Optional conversation ID
+73 |             
+   | ^^^^^^^^^^^^
+74 |         Returns:
+75 |             True if enabled, False otherwise
+   |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+   --> backend\agents\tool\tool_agent.py:105:1
+    |
+103 |     ) -> ToolSettings:
+104 |         """Get effective tool settings for a user/conversation.
+105 |         
+    | ^^^^^^^^
+106 |         Args:
+107 |             user: User to get settings for
+    |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+   --> backend\agents\tool\tool_agent.py:109:1
+    |
+107 |             user: User to get settings for
+108 |             conversation_id: Optional conversation ID
+109 |             
+    | ^^^^^^^^^^^^
+110 |         Returns:
+111 |             ToolSettings with effective values
+    |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+   --> backend\agents\tool\tool_agent.py:145:1
+    |
+143 |     ) -> ToolSetting:
+144 |         """Enable or disable a tool for a user/conversation.
+145 |         
+    | ^^^^^^^^
+146 |         Args:
+147 |             user: User to update
+    |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+   --> backend\agents\tool\tool_agent.py:151:1
+    |
+149 |             enabled: New enabled state
+150 |             conversation_id: Optional conversation ID
+151 |             
+    | ^^^^^^^^^^^^
+152 |         Returns:
+153 |             Updated or created ToolSetting
+    |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+   --> backend\agents\tool\tool_agent.py:190:1
+    |
+188 |     ) -> ToolResult:
+189 |         """Execute a tool.
+190 |         
+    | ^^^^^^^^
+191 |         Args:
+192 |             user: User executing the tool
+    |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+   --> backend\agents\tool\tool_agent.py:197:1
+    |
+195 |             conversation_id: Optional conversation ID
+196 |             run_id: Optional run ID for tracking
+197 |             
+    | ^^^^^^^^^^^^
+198 |         Returns:
+199 |             ToolResult with output or error
+    |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+   --> backend\agents\tool\tool_agent.py:245:1
+    |
+243 |     def _execute_web_tool(self, input_payload: Dict[str, Any]) -> ToolResult:
+244 |         """Execute web browsing tool.
+245 |         
+    | ^^^^^^^^
+246 |         Args:
+247 |             input_payload: Tool input
+    |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+   --> backend\agents\tool\tool_agent.py:248:1
+    |
+246 |         Args:
+247 |             input_payload: Tool input
+248 |             
+    | ^^^^^^^^^^^^
+249 |         Returns:
+250 |             ToolResult with content
+    |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+  --> backend\agents\voice\voice_agent.py:37:1
+   |
+35 |     def __init__(self, settings: Settings):
+36 |         """Initialize the Voice Agent.
+37 |         
+   | ^^^^^^^^
+38 |         Args:
+39 |             settings: Application settings
+   |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+  --> backend\agents\voice\voice_agent.py:58:1
+   |
+56 |     ) -> TranscriptionResult:
+57 |         """Transcribe audio to text.
+58 |         
+   | ^^^^^^^^
+59 |         Args:
+60 |             audio_data: Audio data
+   |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+  --> backend\agents\voice\voice_agent.py:63:1
+   |
+61 |             mime_type: MIME type of the audio
+62 |             language: Optional language hint
+63 |             
+   | ^^^^^^^^^^^^
+64 |         Returns:
+65 |             TranscriptionResult with transcribed text
+   |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+  --> backend\agents\voice\voice_agent.py:91:1
+   |
+89 |     ) -> bytes:
+90 |         """Synthesize text to speech.
+91 |         
+   | ^^^^^^^^
+92 |         Args:
+93 |             text: Text to synthesize
+   |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+   --> backend\agents\voice\voice_agent.py:98:1
+    |
+ 96 |             pitch: Pitch adjustment (0.5 - 2.0)
+ 97 |             volume: Volume level (0.0 - 1.0)
+ 98 |             
+    | ^^^^^^^^^^^^
+ 99 |         Returns:
+100 |             Audio data as bytes (MP3)
+    |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+   --> backend\agents\voice\voice_agent.py:115:1
+    |
+113 |     async def get_voices(self) -> list:
+114 |         """Get available voices.
+115 |         
+    | ^^^^^^^^
+116 |         Returns:
+117 |             List of available voice IDs
+    |
+help: Remove whitespace from blank line
+
+E712 Avoid equality comparisons to `True`; use `User.is_active:` for truth checks
+   --> backend\api\admin.py:270:42
+    |
+268 |     """Get system statistics (admin only)."""
+269 |     total_users = db.query(User).count()
+270 |     active_users = db.query(User).filter(User.is_active == True).count()
+    |                                          ^^^^^^^^^^^^^^^^^^^^^^
+271 |     admin_users = db.query(User).filter(User.is_admin == True).count()
+272 |     unused_invites = db.query(InviteCode).filter(InviteCode.used_by.is_(None)).count()
+    |
+help: Replace with `User.is_active`
+
+E712 Avoid equality comparisons to `True`; use `User.is_admin:` for truth checks
+   --> backend\api\admin.py:271:41
+    |
+269 |     total_users = db.query(User).count()
+270 |     active_users = db.query(User).filter(User.is_active == True).count()
+271 |     admin_users = db.query(User).filter(User.is_admin == True).count()
+    |                                         ^^^^^^^^^^^^^^^^^^^^^
+272 |     unused_invites = db.query(InviteCode).filter(InviteCode.used_by.is_(None)).count()
+    |
+help: Replace with `User.is_admin`
+
+W293 Blank line contains whitespace
+   --> backend\api\admin.py:385:1
+    |
+383 | ):
+384 |     """Revoke all sessions for a user (admin only).
+385 |     
+    | ^^^^
+386 |     This logs the user out from all devices.
+387 |     """
+    |
+help: Remove whitespace from blank line
+
+F821 Undefined name `request`
+   --> backend\api\admin.py:617:24
+    |
+615 | ):
+616 |     """Update provider configuration."""
+617 |     registry = getattr(request.app.state, "provider_registry", None)
+    |                        ^^^^^^^
+618 |
+619 |     if not registry:
+    |
+
+F821 Undefined name `request`
+   --> backend\api\admin.py:706:24
+    |
+704 | ):
+705 |     """Set the default provider."""
+706 |     registry = getattr(request.app.state, "provider_registry", None)
+    |                        ^^^^^^^
+707 |
+708 |     if not registry:
+    |
+
+E402 Module level import not at top of file
+    --> backend\api\admin.py:1031:1
+     |
+1029 | # =============================================================================
+1030 |
+1031 | import csv
+     | ^^^^^^^^^^
+1032 | import io
+1033 | import json
+     |
+
+E402 Module level import not at top of file
+    --> backend\api\admin.py:1032:1
+     |
+1031 | import csv
+1032 | import io
+     | ^^^^^^^^^
+1033 | import json
+1034 | from typing import Literal
+     |
+
+E402 Module level import not at top of file
+    --> backend\api\admin.py:1033:1
+     |
+1031 | import csv
+1032 | import io
+1033 | import json
+     | ^^^^^^^^^^^
+1034 | from typing import Literal
+     |
+
+E402 Module level import not at top of file
+    --> backend\api\admin.py:1034:1
+     |
+1032 | import io
+1033 | import json
+1034 | from typing import Literal
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^
+1035 |
+1036 | ExportFormat = Literal["json", "csv", "markdown", "pdf"]
+     |
+
+F821 Undefined name `check_database`
+    --> backend\api\admin.py:1227:30
+     |
+1225 |             # Get current diagnostics data
+1226 |             registry = getattr(request.app.state, "provider_registry", None)
+1227 |             db_check = await check_database(db, get_settings())
+     |                              ^^^^^^^^^^^^^^
+1228 |             provider_check = await check_providers(registry)
+     |
+
+F821 Undefined name `get_settings`
+    --> backend\api\admin.py:1227:49
+     |
+1225 |             # Get current diagnostics data
+1226 |             registry = getattr(request.app.state, "provider_registry", None)
+1227 |             db_check = await check_database(db, get_settings())
+     |                                                 ^^^^^^^^^^^^
+1228 |             provider_check = await check_providers(registry)
+     |
+
+F821 Undefined name `check_providers`
+    --> backend\api\admin.py:1228:36
+     |
+1226 |             registry = getattr(request.app.state, "provider_registry", None)
+1227 |             db_check = await check_database(db, get_settings())
+1228 |             provider_check = await check_providers(registry)
+     |                                    ^^^^^^^^^^^^^^^
+1229 |
+1230 |             data["diagnostics"] = [
+     |
+
+F821 Undefined name `check_providers`
+    --> backend\api\admin.py:1248:40
+     |
+1246 |             registry = getattr(request.app.state, "provider_registry", None)
+1247 |             if registry:
+1248 |                 provider_check = await check_providers(registry)
+     |                                        ^^^^^^^^^^^^^^^
+1249 |                 data["providers"] = [
+1250 |                     {
+     |
+
+W293 Blank line contains whitespace
+  --> backend\api\health.py:92:1
+   |
+90 |     """
+91 |     Get service capabilities.
+92 |     
+   | ^^^^
+93 |     Returns feature flags and capabilities that the frontend can use
+94 |     to enable/disable features dynamically.
+   |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+   --> backend\api\v1\chat.py:173:1
+    |
+171 | ):
+172 |     """Stream events from a chat run.
+173 |     
+    | ^^^^
+174 |     Enforces concurrent stream limits per user using the concurrency store.
+175 |     """
+    |
+help: Remove whitespace from blank line
+
+E402 Module level import not at top of file
+   --> backend\api\v1\chat.py:270:1
+    |
+269 | # Import asyncio at module level for the streaming function
+270 | import asyncio
+    | ^^^^^^^^^^^^^^
+    |
+
+W293 Blank line contains whitespace
+  --> backend\api\v1\ops.py:43:1
+   |
+41 | ) -> Dict[str, Any]:
+42 |     """Return operational limits summary. Admin only.
+43 |     
+   | ^^^^
+44 |     Note: Returns only safe aggregates, not exact capacity values
+45 |     that could be used for resource exhaustion attacks.
+   |
+help: Remove whitespace from blank line
+
+F841 Local variable `settings` is assigned to but never used
+  --> backend\api\v1\ops.py:47:5
+   |
+45 |     that could be used for resource exhaustion attacks.
+46 |     """
+47 |     settings = get_settings()
+   |     ^^^^^^^^
+48 |     return {
+49 |         "rate_limiting_enabled": True,
+   |
+help: Remove assignment to unused variable `settings`
+
+W293 Blank line contains whitespace
+  --> backend\api\v1\ops.py:72:1
+   |
+70 | ) -> Dict[str, Any]:
+71 |     """Return store backend health status. Admin only.
+72 |     
+   | ^^^^
+73 |     Exposes which backend is in use and connectivity status.
+74 |     Does not expose credentials or connection URLs.
+   |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+  --> backend\auth\bootstrap.py:18:1
+   |
+16 | def ensure_bootstrap_admin(settings: Settings) -> None:
+17 |     """Create an admin user from env vars if none exists.
+18 |     
+   | ^^^^
+19 |     Security: In production, refuse to start if bootstrap admin is still enabled.
+20 |     This prevents accidental exposure of bootstrap admin credentials.
+   |
+help: Remove whitespace from blank line
+
+E712 Avoid equality comparisons to `True`; use `User.is_admin:` for truth checks
+  --> backend\auth\bootstrap.py:52:48
+   |
+50 |     db = SessionLocal()
+51 |     try:
+52 |         existing_admin = db.query(User).filter(User.is_admin == True).first()
+   |                                                ^^^^^^^^^^^^^^^^^^^^^
+53 |         if existing_admin:
+54 |             return
+   |
+help: Replace with `User.is_admin`
+
+W293 Blank line contains whitespace
+   --> backend\auth\session.py:119:1
+    |
+117 | def get_user_sessions(db: DBSession, user_id: str) -> List[Session]:
+118 |     """Get all active sessions for a user.
+119 |     
+    | ^^^^
+120 |     Returns only non-expired sessions ordered by creation date.
+121 |     """
+    |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+   --> backend\auth\session.py:130:1
+    |
+128 | def revoke_all_user_sessions(db: DBSession, user_id: str, except_session_id: Optional[str] = None) -> int:
+129 |     """Revoke all sessions for a user.
+130 |     
+    | ^^^^
+131 |     Args:
+132 |         db: Database session
+    |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+   --> backend\auth\session.py:135:1
+    |
+133 |         user_id: User ID to revoke sessions for
+134 |         except_session_id: Optional session ID to preserve (e.g., admin's current session)
+135 |         
+    | ^^^^^^^^
+136 |     Returns:
+137 |         Number of sessions revoked
+    |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+   --> backend\auth\session.py:156:1
+    |
+154 | def revoke_session_by_id(db: DBSession, session_id: str) -> bool:
+155 |     """Revoke a specific session by its ID.
+156 |     
+    | ^^^^
+157 |     Returns:
+158 |         True if a session was found and deleted, False otherwise
+    |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+   --> backend\config\settings.py:210:1
+    |
+208 |     def cookie_samesite_header(self) -> str:
+209 |         """Return SameSite value for HTTP header (capitalized for browser compatibility).
+210 |         
+    | ^^^^^^^^
+211 |         Browsers require SameSite=None (capital N) for cross-site cookies.
+212 |         """
+    |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+  --> backend\conftest.py:18:1
+   |
+16 | def pytest_configure(config):
+17 |     """Configure test environment before any tests run.
+18 |     
+   | ^^^^
+19 |     This runs at pytest startup and ensures that test environment is properly
+20 |     configured. We use ENVIRONMENT=test (not development) to avoid accidentally
+   |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+  --> backend\conftest.py:22:1
+   |
+20 |     configured. We use ENVIRONMENT=test (not development) to avoid accidentally
+21 |     relying on "dev permissiveness" that could mask production/test-only behaviors.
+22 |     
+   | ^^^^
+23 |     Key test settings:
+24 |     - ENVIRONMENT=test (not development) - ensures production checks work correctly
+   |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+  --> backend\conftest.py:28:1
+   |
+26 |     - CORS_ORIGINS includes localhost:3000 for test requests
+27 |     - BOOTSTRAP_ADMIN_ENABLED=false to avoid admin creation during tests
+28 |     
+   | ^^^^
+29 |     IMPORTANT: Set environment variables BEFORE importing the app to ensure
+30 |     settings are loaded with the test environment.
+   |
+help: Remove whitespace from blank line
+
+F821 Undefined name `RateLimitResult`
+   --> backend\core\limits\factory.py:160:79
+    |
+158 |         return self._client
+159 |
+160 |     async def hit(self, key: str, limit: int, window_s: int | None = None) -> RateLimitResult:
+    |                                                                               ^^^^^^^^^^^^^^^
+161 |         """Record a request using Redis INCR + EXPIRE."""
+162 |         ws = window_s or self._window_seconds
+    |
+
+F821 Undefined name `RateLimitResult`
+   --> backend\core\limits\factory.py:189:16
+    |
+187 |             remaining = limit - current_count
+188 |
+189 |         return RateLimitResult(
+    |                ^^^^^^^^^^^^^^^
+190 |             allowed=allowed,
+191 |             remaining=remaining,
+    |
+
+W293 Blank line contains whitespace
+   --> backend\core\limits\factory.py:230:1
+    |
+228 |     -- Clean expired entries (score < now_ms)
+229 |     local removed = redis.call('ZREMRANGEBYSCORE', zset_key, '-inf', now_ms)
+230 |     
+    | ^^^^
+231 |     -- Count active slots (exclude our own token if already present)
+232 |     local active_count = redis.call('ZCARD', zset_key)
+    |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+   --> backend\core\limits\factory.py:242:1
+    |
+240 |     local expiry_score = now_ms + ttl_ms
+241 |     redis.call('ZADD', zset_key, expiry_score, token)
+242 |     
+    | ^^^^
+243 |     -- Set/refresh key TTL to slightly longer than slot TTL
+244 |     -- This ensures key is cleaned up when all slots expire
+    |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+   --> backend\core\limits\factory.py:246:1
+    |
+244 |     -- This ensures key is cleaned up when all slots expire
+245 |     redis.call('PEXPIRE', zset_key, ttl_ms + 60000)  -- +1 minute margin
+246 |     
+    | ^^^^
+247 |     return {1, active_count + 1}  -- Success, new count
+248 |     """
+    |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+   --> backend\core\limits\factory.py:260:1
+    |
+258 |     -- Check if token exists and remove it
+259 |     local removed = redis.call('ZREM', zset_key, token)
+260 |     
+    | ^^^^
+261 |     if removed > 0 then
+262 |         return 1  -- Success
+    |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+  --> backend\core\logging.py:54:1
+   |
+52 | def _redact_value(value: str) -> str:
+53 |     """Redact a sensitive value.
+54 |     
+   | ^^^^
+55 |     Args:
+56 |         value: The value to redact
+   |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+  --> backend\core\logging.py:82:1
+   |
+80 | def redact_sensitive_data(data: Any) -> Any:
+81 |     """Recursively redact sensitive data from dictionaries or strings.
+82 |     
+   | ^^^^
+83 |     Redacts:
+84 |     - Authorization header values
+   |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+  --> backend\core\middleware.py:47:1
+   |
+45 | def _is_trusted_proxy(client_ip: str) -> bool:
+46 |     """Check if the client IP is from a trusted proxy.
+47 |     
+   | ^^^^
+48 |     Only IPs from trusted proxy ranges can provide X-Forwarded-* headers
+49 |     that we'll trust for determining the real client address.
+   |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+  --> backend\core\middleware.py:64:1
+   |
+62 | def get_client_ip(request: Request) -> Tuple[str, bool]:
+63 |     """Get the real client IP, respecting X-Forwarded-* headers from trusted proxies.
+64 |     
+   | ^^^^
+65 |     Returns:
+66 |         Tuple of (client_ip, is_trusted) where is_trusted indicates whether
+   |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+  --> backend\core\middleware.py:93:1
+   |
+91 | class ForwardedHeadersMiddleware(BaseHTTPMiddleware):
+92 |     """Validate and normalize X-Forwarded-* headers from trusted proxies.
+93 |     
+   | ^^^^
+94 |     This middleware ensures that forwarded headers are only trusted when
+95 |     the request comes from a known proxy IP address.
+   |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+  --> backend\core\middleware.py:96:1
+   |
+94 |     This middleware ensures that forwarded headers are only trusted when
+95 |     the request comes from a known proxy IP address.
+96 |     
+   | ^^^^
+97 |     Security: Prevents IP spoofing attacks where attackers send fake
+98 |     X-Forwarded-For headers to bypass rate limits or appear as other users.
+   |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+   --> backend\core\middleware.py:107:1
+    |
+105 |     ):
+106 |         """Initialize forwarded headers middleware.
+107 |         
+    | ^^^^^^^^
+108 |         Args:
+109 |             app: The ASGI application
+    |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+   --> backend\core\middleware.py:220:1
+    |
+218 | class RequestSizeLimitMiddleware(BaseHTTPMiddleware):
+219 |     """Enforces a maximum request body size for all requests.
+220 |     
+    | ^^^^
+221 |     Features:
+222 |     - Voice path awareness: uses separate limit for /v1/voice endpoints
+    |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+   --> backend\core\middleware.py:229:1
+    |
+227 |     def __init__(self, app, max_bytes: int = 1048576, voice_max_bytes: int | None = None):
+228 |         """Initialize with max size in bytes.
+229 |         
+    | ^^^^^^^^
+230 |         Args:
+231 |             app: The ASGI application
+    |
+help: Remove whitespace from blank line
+
+F811 Redefinition of unused `TrustedHostMiddleware` from line 11
+   --> backend\core\middleware.py:304:7
+    |
+304 | class TrustedHostMiddleware(BaseHTTPMiddleware):
+    |       ^^^^^^^^^^^^^^^^^^^^^ `TrustedHostMiddleware` redefined here
+305 |     """Validate Host header to prevent host header injection attacks.
+    |
+   ::: backend\core\middleware.py:11:46
+    |
+ 10 | from starlette.middleware.base import BaseHTTPMiddleware
+ 11 | from starlette.middleware.trustedhost import TrustedHostMiddleware
+    |                                              --------------------- previous definition of `TrustedHostMiddleware` here
+ 12 | from starlette.requests import Request
+ 13 | from starlette.responses import Response
+    |
+help: Remove definition: `TrustedHostMiddleware`
+
+W293 Blank line contains whitespace
+   --> backend\core\middleware.py:306:1
+    |
+304 | class TrustedHostMiddleware(BaseHTTPMiddleware):
+305 |     """Validate Host header to prevent host header injection attacks.
+306 |     
+    | ^^^^
+307 |     This middleware rejects requests with Host headers that don't match
+308 |     expected allowed hosts (localhost, tunnel domains, etc.).
+    |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+   --> backend\core\middleware.py:318:1
+    |
+316 |     ):
+317 |         """Initialize trusted host middleware.
+318 |         
+    | ^^^^^^^^
+319 |         Args:
+320 |             app: The ASGI application
+    |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+   --> backend\core\middleware.py:374:1
+    |
+372 | def _normalize_path(path: str) -> str:
+373 |     """Normalize request path for consistent matching.
+374 |     
+    | ^^^^
+375 |     - Strips trailing slashes for consistency
+376 |     - Returns "/" for empty or root paths
+    |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+   --> backend\core\middleware.py:383:1
+    |
+381 | class HotPathRateLimitMiddleware(BaseHTTPMiddleware):
+382 |     """Stricter rate limiting for hot-path endpoints.
+383 |     
+    | ^^^^
+384 |     Applies additional rate limits to endpoints that are commonly targeted:
+385 |     - /api/auth/login - Brute force protection
+    |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+   --> backend\core\middleware.py:389:1
+    |
+387 |     - /api/auth/invite* - Invite spam protection
+388 |     - /v1/chat/stream GET - Streaming abuse protection
+389 |     
+    | ^^^^
+390 |     Security exemptions:
+391 |     - OPTIONS method (CORS preflight - browsers need this unblocked)
+    |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+   --> backend\core\middleware.py:420:1
+    |
+418 |     ):
+419 |         """Initialize hot-path rate limiter.
+420 |         
+    | ^^^^^^^^
+421 |         Args:
+422 |             app: The ASGI application
+    |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+   --> backend\core\middleware.py:629:1
+    |
+627 | def _parse_origin(origin: str) -> tuple[str, str, int] | None:
+628 |     """Parse origin into (scheme, hostname, port) tuple.
+629 |     
+    | ^^^^
+630 |     Returns None if the origin is malformed, missing required parts, or explicitly invalid.
+    |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+   --> backend\core\middleware.py:631:1
+    |
+630 |     Returns None if the origin is malformed, missing required parts, or explicitly invalid.
+631 |     
+    | ^^^^
+632 |     Security considerations:
+633 |     - Rejects "null" origin (used by browser in opaque requests)
+    |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+   --> backend\core\middleware.py:668:1
+    |
+666 | def _is_origin_allowed(origin: str, allowed_origins: Set[str]) -> bool:
+667 |     """Check if origin matches allowed origins with exact scheme+hostname+port matching.
+668 |     
+    | ^^^^
+669 |     Prevents substring bypass attacks like:
+670 |     - https://omniplexity.github.io.evil.com (should NOT match omniplexity.github.io)
+    |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+   --> backend\core\middleware.py:672:1
+    |
+670 |     - https://omniplexity.github.io.evil.com (should NOT match omniplexity.github.io)
+671 |     - https://evil.com?origin=https://omniplexity.github.io
+672 |     
+    | ^^^^
+673 |     Supports fnmatch-style wildcards for hostname only (e.g., *.example.com).
+674 |     """
+    |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+   --> backend\core\middleware.py:734:1
+    |
+732 | class SecurityHeadersMiddleware(BaseHTTPMiddleware):
+733 |     """Add security headers to all responses.
+734 |     
+    | ^^^^
+735 |     Sets headers to protect against common web vulnerabilities:
+736 |     - X-Content-Type-Options: nosniff
+    |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+   --> backend\core\middleware.py:740:1
+    |
+738 |     - Permissions-Policy: restrictive (camera, mic, etc. disabled)
+739 |     - Cross-Origin-Resource-Policy: NOT set by default (can break future embedding)
+740 |     
+    | ^^^^
+741 |     Note: Cross-Origin-Resource-Policy is intentionally NOT set by default.
+742 |     If you need cross-origin embedding later, configure it at the reverse proxy level.
+    |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+   --> backend\core\middleware.py:788:1
+    |
+786 | class ChatCSRFMiddleware(BaseHTTPMiddleware):
+787 |     """CSRF protection middleware for chat endpoints.
+788 |     
+    | ^^^^
+789 |     Validates CSRF tokens AND origin/referer for cross-site protection.
+    |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+   --> backend\core\middleware.py:790:1
+    |
+789 |     Validates CSRF tokens AND origin/referer for cross-site protection.
+790 |     
+    | ^^^^
+791 |     Security notes:
+792 |     - GET requests are generally safe methods, BUT streaming endpoints that
+    |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+   --> backend\core\middleware.py:823:1
+    |
+821 |     ) -> Response | None:
+822 |         """Check origin validation for authenticated requests.
+823 |         
+    | ^^^^^^^^
+824 |         Returns a Response if validation fails, None if it passes.
+825 |         """
+    |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+  --> backend\core\startup_checks.py:22:1
+   |
+20 | def validate_production_settings(settings: Settings) -> List[str]:
+21 |     """Validate production configuration requirements.
+22 |     
+   | ^^^^
+23 |     Returns a list of error messages (empty if valid).
+24 |     This allows collecting all violations before failing.
+   |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+  --> backend\core\startup_checks.py:25:1
+   |
+23 |     Returns a list of error messages (empty if valid).
+24 |     This allows collecting all violations before failing.
+25 |     
+   | ^^^^
+26 |     Args:
+27 |         settings: The application settings to validate
+   |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+  --> backend\core\startup_checks.py:28:1
+   |
+26 |     Args:
+27 |         settings: The application settings to validate
+28 |         
+   | ^^^^^^^^
+29 |     Returns:
+30 |         List of error messages (empty if valid)
+   |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+  --> backend\core\startup_checks.py:86:1
+   |
+84 | def assert_production_settings(settings: Settings) -> None:
+85 |     """Assert production configuration requirements.
+86 |     
+   | ^^^^
+87 |     Raises ProductionConfigError with details if validation fails.
+88 |     This is called at startup in production mode.
+   |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+  --> backend\core\startup_checks.py:89:1
+   |
+87 |     Raises ProductionConfigError with details if validation fails.
+88 |     This is called at startup in production mode.
+89 |     
+   | ^^^^
+90 |     Args:
+91 |         settings: The application settings to validate
+   |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+  --> backend\core\startup_checks.py:92:1
+   |
+90 |     Args:
+91 |         settings: The application settings to validate
+92 |         
+   | ^^^^^^^^
+93 |     Raises:
+94 |         ProductionConfigError: If any validation fails
+   |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+   --> backend\core\startup_checks.py:112:1
+    |
+110 | def validate_test_settings(settings: Settings) -> List[str]:
+111 |     """Validate test environment configuration.
+112 |     
+    | ^^^^
+113 |     Returns a list of warning messages.
+    |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+   --> backend\core\startup_checks.py:114:1
+    |
+113 |     Returns a list of warning messages.
+114 |     
+    | ^^^^
+115 |     Args:
+116 |         settings: The application settings to validate
+    |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+   --> backend\core\startup_checks.py:117:1
+    |
+115 |     Args:
+116 |         settings: The application settings to validate
+117 |         
+    | ^^^^^^^^
+118 |     Returns:
+119 |         List of warning messages
+    |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+   --> backend\core\startup_checks.py:136:1
+    |
+134 | def run_startup_validations(settings: Settings) -> None:
+135 |     """Run all startup validations based on environment.
+136 |     
+    | ^^^^
+137 |     Args:
+138 |         settings: The application settings
+    |
+help: Remove whitespace from blank line
+
+E402 Module level import not at top of file
+  --> backend\migrations\env.py:16:1
+   |
+15 | # Import your models and settings
+16 | from backend.config import get_settings
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+17 | from backend.db import models  # noqa: F401 - Import to register models
+18 | from backend.db.database import Base
+   |
+
+E402 Module level import not at top of file
+  --> backend\migrations\env.py:17:1
+   |
+15 | # Import your models and settings
+16 | from backend.config import get_settings
+17 | from backend.db import models  # noqa: F401 - Import to register models
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+18 | from backend.db.database import Base
+   |
+
+E402 Module level import not at top of file
+  --> backend\migrations\env.py:18:1
+   |
+16 | from backend.config import get_settings
+17 | from backend.db import models  # noqa: F401 - Import to register models
+18 | from backend.db.database import Base
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+19 |
+20 | # Alembic Config object
+   |
+
+W293 Blank line contains whitespace
+   --> backend\providers\ollama.py:192:1
+    |
+190 |         """
+191 |         Start speech-to-text stream using Ollama's voice extension.
+192 |         
+    | ^^^^^^^^
+193 |         Note: This requires Ollama to have voice extensions installed.
+194 |         """
+    |
+help: Remove whitespace from blank line
+
+E712 Avoid equality comparisons to `True`; use `User.is_admin:` for truth checks
+  --> backend\scripts\create_admin.py:38:48
+   |
+37 |     try:
+38 |         existing_admin = db.query(User).filter(User.is_admin == True).first()
+   |                                                ^^^^^^^^^^^^^^^^^^^^^
+39 |         if existing_admin:
+40 |             print("An admin user already exists. Aborting.", file=sys.stderr)
+   |
+help: Replace with `User.is_admin`
+
+E402 Module level import not at top of file
+  --> backend\scripts\run_migrations.py:16:1
+   |
+14 | os.chdir(backend_dir)
+15 |
+16 | from alembic import command
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+17 | from alembic.config import Config
+   |
+
+E402 Module level import not at top of file
+  --> backend\scripts\run_migrations.py:17:1
+   |
+16 | from alembic import command
+17 | from alembic.config import Config
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+
+W293 Blank line contains whitespace
+  --> backend\streaming\sse.py:9:1
+   |
+ 7 | def format_sse_event(seq: int, event_type: str, payload: Dict[str, Any]) -> str:
+ 8 |     """Format a single SSE event string.
+ 9 |     
+   | ^^^^
+10 |     Args:
+11 |         seq: Sequence number for the event
+   |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+  --> backend\streaming\sse.py:14:1
+   |
+12 |         event_type: Type of the event (e.g., 'message', 'error', 'done')
+13 |         payload: Dictionary of data to send
+14 |         
+   | ^^^^^^^^
+15 |     Returns:
+16 |         Formatted SSE event string ready for streaming
+   |
+help: Remove whitespace from blank line
+
+E712 Avoid equality comparisons to `True`; use `User.is_admin:` for truth checks
+  --> backend\tests\test_bootstrap_admin.py:48:39
+   |
+46 |     db = _get_session(engine)
+47 |     try:
+48 |         admin = db.query(User).filter(User.is_admin == True).first()
+   |                                       ^^^^^^^^^^^^^^^^^^^^^
+49 |         assert admin is not None
+50 |         assert admin.username == "admin"
+   |
+help: Replace with `User.is_admin`
+
+E712 Avoid equality comparisons to `True`; use `User.is_admin:` for truth checks
+  --> backend\tests\test_bootstrap_admin.py:87:40
+   |
+85 |     db = _get_session(engine)
+86 |     try:
+87 |         admins = db.query(User).filter(User.is_admin == True).all()
+   |                                        ^^^^^^^^^^^^^^^^^^^^^
+88 |         assert len(admins) == 1
+89 |         assert admins[0].username == "existing"
+   |
+help: Replace with `User.is_admin`
+
+E712 Avoid equality comparisons to `True`; use `User.is_admin:` for truth checks
+   --> backend\tests\test_bootstrap_admin.py:110:39
+    |
+108 |     db = _get_session(engine)
+109 |     try:
+110 |         admin = db.query(User).filter(User.is_admin == True).first()
+    |                                       ^^^^^^^^^^^^^^^^^^^^^
+111 |         assert admin is None
+112 |     finally:
+    |
+help: Replace with `User.is_admin`
+
+F841 Local variable `engine` is assigned to but never used
+   --> backend\tests\test_chat_api.py:642:9
+    |
+640 |     def test_list_conversations_requires_auth(self, monkeypatch, tmp_path):
+641 |         """Test that listing conversations requires authentication."""
+642 |         engine = _setup_db(tmp_path, monkeypatch)
+    |         ^^^^^^
+643 |         get_settings()
+    |
+help: Remove assignment to unused variable `engine`
+
+F841 Local variable `engine` is assigned to but never used
+   --> backend\tests\test_chat_api.py:656:9
+    |
+654 |     def test_create_conversation_requires_auth(self, monkeypatch, tmp_path):
+655 |         """Test that creating a conversation requires authentication."""
+656 |         engine = _setup_db(tmp_path, monkeypatch)
+    |         ^^^^^^
+657 |         get_settings()
+    |
+help: Remove assignment to unused variable `engine`
+
+F841 Local variable `count` is assigned to but never used
+   --> backend\tests\test_concurrency_redis.py:301:9
+    |
+300 |         # Get active count (should be 0 after cleanup)
+301 |         count = await redis_store.get_active_count(key)
+    |         ^^^^^
+302 |         # The acquire should have cleaned expired entries
+303 |         # So when we acquire again, we should succeed immediately
+    |
+help: Remove assignment to unused variable `count`
+
+E402 Module level import not at top of file
+  --> backend\tests\test_forwarded_headers.py:10:1
+   |
+ 8 | pytestmark = pytest.mark.security
+ 9 |
+10 | from backend.config import get_settings
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+11 | from backend.core.middleware import (
+12 |     TRUSTED_PROXY_NETS,
+   |
+
+E402 Module level import not at top of file
+  --> backend\tests\test_forwarded_headers.py:11:1
+   |
+10 |   from backend.config import get_settings
+11 | / from backend.core.middleware import (
+12 | |     TRUSTED_PROXY_NETS,
+13 | |     ForwardedHeadersMiddleware,
+14 | |     _is_trusted_proxy,
+15 | |     get_client_ip,
+16 | | )
+   | |_^
+17 |   from backend.main import create_app
+18 |   from fastapi.testclient import TestClient
+   |
+
+E402 Module level import not at top of file
+  --> backend\tests\test_forwarded_headers.py:17:1
+   |
+15 |     get_client_ip,
+16 | )
+17 | from backend.main import create_app
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+18 | from fastapi.testclient import TestClient
+   |
+
+E402 Module level import not at top of file
+  --> backend\tests\test_forwarded_headers.py:18:1
+   |
+16 | )
+17 | from backend.main import create_app
+18 | from fastapi.testclient import TestClient
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+
+E402 Module level import not at top of file
+ --> backend\tests\test_log_redaction.py:7:1
+  |
+5 | pytestmark = pytest.mark.security
+6 |
+7 | from backend.core.logging import redact_sensitive_data
+  | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |
+
+E402 Module level import not at top of file
+ --> backend\tests\test_production_security.py:7:1
+  |
+5 | pytestmark = [pytest.mark.security, pytest.mark.slow]
+6 |
+7 | from backend.config import get_settings
+  | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |
+
+E402 Module level import not at top of file
+ --> backend\tests\test_settings_cookie_samesite.py:5:1
+  |
+3 | pytestmark = pytest.mark.security
+4 |
+5 | from backend.config import get_settings
+  | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |
+
+W291 Trailing whitespace
+ --> backend\tests\test_stream_limiter.py:5:56
+  |
+3 | These tests verify that stream concurrency slots are properly released:
+4 | - When a client disconnects, the slot should be released
+5 | - When an exception occurs, the slot should be released  
+  |                                                        ^^
+6 | - When timeout terminates, the slot should be released
+7 | - Opening and immediately closing streams should return concurrency to baseline
+  |
+help: Remove trailing whitespace
+
+E402 Module level import not at top of file
+ --> backend\tests\test_v1_csrf.py:5:1
+  |
+3 | pytestmark = [pytest.mark.security, pytest.mark.csrf]
+4 |
+5 | from pathlib import Path
+  | ^^^^^^^^^^^^^^^^^^^^^^^^
+6 |
+7 | from backend.auth.session import create_session
+  |
+
+E402 Module level import not at top of file
+ --> backend\tests\test_v1_csrf.py:7:1
+  |
+5 | from pathlib import Path
+6 |
+7 | from backend.auth.session import create_session
+  | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+8 | from backend.config import get_settings
+9 | from backend.core.middleware import _is_origin_allowed, _parse_origin
+  |
+
+E402 Module level import not at top of file
+  --> backend\tests\test_v1_csrf.py:8:1
+   |
+ 7 | from backend.auth.session import create_session
+ 8 | from backend.config import get_settings
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+ 9 | from backend.core.middleware import _is_origin_allowed, _parse_origin
+10 | from backend.db import Base, dispose_engine
+   |
+
+E402 Module level import not at top of file
+  --> backend\tests\test_v1_csrf.py:9:1
+   |
+ 7 | from backend.auth.session import create_session
+ 8 | from backend.config import get_settings
+ 9 | from backend.core.middleware import _is_origin_allowed, _parse_origin
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+10 | from backend.db import Base, dispose_engine
+11 | from backend.db.database import get_engine
+   |
+
+E402 Module level import not at top of file
+  --> backend\tests\test_v1_csrf.py:10:1
+   |
+ 8 | from backend.config import get_settings
+ 9 | from backend.core.middleware import _is_origin_allowed, _parse_origin
+10 | from backend.db import Base, dispose_engine
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+11 | from backend.db.database import get_engine
+12 | from backend.db.models import User
+   |
+
+E402 Module level import not at top of file
+  --> backend\tests\test_v1_csrf.py:11:1
+   |
+ 9 | from backend.core.middleware import _is_origin_allowed, _parse_origin
+10 | from backend.db import Base, dispose_engine
+11 | from backend.db.database import get_engine
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+12 | from backend.db.models import User
+13 | from backend.main import create_app
+   |
+
+E402 Module level import not at top of file
+  --> backend\tests\test_v1_csrf.py:12:1
+   |
+10 | from backend.db import Base, dispose_engine
+11 | from backend.db.database import get_engine
+12 | from backend.db.models import User
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+13 | from backend.main import create_app
+14 | from fastapi.testclient import TestClient
+   |
+
+E402 Module level import not at top of file
+  --> backend\tests\test_v1_csrf.py:13:1
+   |
+11 | from backend.db.database import get_engine
+12 | from backend.db.models import User
+13 | from backend.main import create_app
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+14 | from fastapi.testclient import TestClient
+15 | from sqlalchemy.orm import sessionmaker
+   |
+
+E402 Module level import not at top of file
+  --> backend\tests\test_v1_csrf.py:14:1
+   |
+12 | from backend.db.models import User
+13 | from backend.main import create_app
+14 | from fastapi.testclient import TestClient
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+15 | from sqlalchemy.orm import sessionmaker
+   |
+
+E402 Module level import not at top of file
+  --> backend\tests\test_v1_csrf.py:15:1
+   |
+13 | from backend.main import create_app
+14 | from fastapi.testclient import TestClient
+15 | from sqlalchemy.orm import sessionmaker
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+
+W293 Blank line contains whitespace
+   --> backend\tests\test_v1_csrf.py:162:1
+    |
+160 |     def test_origin_null_rejected_for_cookie_auth(self, monkeypatch, tmp_path):
+161 |         """Origin: null should be rejected with E2004 for cookie-authenticated requests.
+162 |         
+    | ^^^^^^^^
+163 |         Test A: Default port normalization - Origin: https://example.com:443 
+164 |         should match allowlist: https://example.com
+    |
+help: Remove whitespace from blank line
+
+W291 Trailing whitespace
+   --> backend\tests\test_v1_csrf.py:163:77
+    |
+161 |         """Origin: null should be rejected with E2004 for cookie-authenticated requests.
+162 |         
+163 |         Test A: Default port normalization - Origin: https://example.com:443 
+    |                                                                             ^
+164 |         should match allowlist: https://example.com
+165 |         """
+    |
+help: Remove trailing whitespace
+
+W293 Blank line contains whitespace
+   --> backend\tests\test_v1_csrf.py:204:1
+    |
+202 |     def test_origin_null_rejected_with_e2004(self, monkeypatch, tmp_path):
+203 |         """Test B: Origin: null should be rejected with E2004 for cookie-authenticated POST.
+204 |         
+    | ^^^^^^^^
+205 |         This prevents CSRF via opaque requests that send Origin: null.
+206 |         """
+    |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+   --> backend\tests\test_v1_csrf.py:245:1
+    |
+243 |     def test_authorization_header_bypasses_csrf(self, monkeypatch, tmp_path):
+244 |         """Test C: Requests without session cookie should skip CSRF checks.
+245 |         
+    | ^^^^^^^^
+246 |         CSRF is a cookie problem - requests without session cookies don't need
+247 |         origin/CSRF validation. This simulates token-auth or unauthenticated flows.
+    |
+help: Remove whitespace from blank line
+
+F841 Local variable `engine` is assigned to but never used
+   --> backend\tests\test_v1_csrf.py:249:9
+    |
+247 |         origin/CSRF validation. This simulates token-auth or unauthenticated flows.
+248 |         """
+249 |         engine = _setup_db(tmp_path, monkeypatch)
+    |         ^^^^^^
+250 |         settings = get_settings()
+    |
+help: Remove assignment to unused variable `engine`
+
+F841 Local variable `settings` is assigned to but never used
+   --> backend\tests\test_v1_csrf.py:250:9
+    |
+248 |         """
+249 |         engine = _setup_db(tmp_path, monkeypatch)
+250 |         settings = get_settings()
+    |         ^^^^^^^^
+251 |
+252 |         monkeypatch.setenv("ALLOWED_HOSTS", "localhost,127.0.0.1,testserver")
+    |
+help: Remove assignment to unused variable `settings`
+
+W293 Blank line contains whitespace
+   --> backend\tests\test_v1_csrf.py:316:1
+    |
+314 | class TestSSEGetOriginValidation:
+315 |     """Tests for GET SSE streaming endpoints requiring origin validation.
+316 |     
+    | ^^^^
+317 |     These endpoints return user data (chat events) and need same-origin
+318 |     enforcement even though they are GET requests.
+    |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+   --> backend\tests\test_v1_csrf.py:357:1
+    |
+355 |     def test_v1_chat_stream_rejects_null_origin(self, monkeypatch, tmp_path):
+356 |         """GET /v1/chat/stream with Origin: null should fail.
+357 |         
+    | ^^^^^^^^
+358 |         Origin: null is present but not in the allowlist, so it returns E2003.
+359 |         """
+    |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+   --> backend\tests\test_v1_csrf.py:490:1
+    |
+488 |     def test_sse_get_without_session_cookie_allowed(self, monkeypatch, tmp_path):
+489 |         """GET /v1/chat/stream without session cookie should skip origin check.
+490 |         
+    | ^^^^^^^^
+491 |         Requests without authentication should pass through - they'll fail
+492 |         at the auth layer, not CSRF.
+    |
+help: Remove whitespace from blank line
+
+F841 Local variable `engine` is assigned to but never used
+   --> backend\tests\test_v1_csrf.py:494:9
+    |
+492 |         at the auth layer, not CSRF.
+493 |         """
+494 |         engine = _setup_db(tmp_path, monkeypatch)
+    |         ^^^^^^
+495 |         settings = get_settings()
+    |
+help: Remove assignment to unused variable `engine`
+
+F841 Local variable `settings` is assigned to but never used
+   --> backend\tests\test_v1_csrf.py:495:9
+    |
+493 |         """
+494 |         engine = _setup_db(tmp_path, monkeypatch)
+495 |         settings = get_settings()
+    |         ^^^^^^^^
+496 |
+497 |         monkeypatch.setenv("CORS_ORIGINS", "https://omniplexity.github.io")
+    |
+help: Remove assignment to unused variable `settings`
+
+Found 879 errors (622 fixed, 257 remaining).
+No fixes available (221 hidden fixes can be enabled with the `--unsafe-fixes` option).
+

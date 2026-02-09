@@ -3,14 +3,14 @@
 Handles administrative operations: user management, invites, audit logs, and monitoring.
 """
 
-from typing import List, Optional, Dict, Any
 from dataclasses import dataclass
 from datetime import datetime, timedelta
+from typing import Any, Dict, List, Optional
 
 from sqlalchemy.orm import Session as DBSession
 
-from backend.db.models import User, InviteCode, AuditLog, Session
 from backend.core.logging import get_logger
+from backend.db.models import AuditLog, InviteCode, Session, User
 from backend.services.audit_service import audit_log_event
 
 logger = get_logger(__name__)
@@ -74,7 +74,7 @@ class AdminAgent:
         self.settings = settings or {}
 
     # User Management
-    
+
     def list_users(
         self,
         admin: User,
@@ -98,7 +98,7 @@ class AdminAgent:
             .limit(limit)
             .all()
         )
-        
+
         return [
             UserSummary(
                 id=u.id,
@@ -124,7 +124,7 @@ class AdminAgent:
         user = self.db.query(User).filter(User.id == user_id).first()
         if not user:
             return None
-        
+
         return UserSummary(
             id=user.id,
             email=user.email,
@@ -157,24 +157,27 @@ class AdminAgent:
         user = self.db.query(User).filter(User.id == user_id).first()
         if not user:
             return None
-        
+
         # Prevent admin from demoting themselves
         if user.id == admin.id and is_admin is False:
             raise ValueError("Cannot remove your own admin status")
-        
+
         was_admin = user.is_admin
         if is_active is not None:
             user.is_active = is_active
         if is_admin is not None:
             user.is_admin = is_admin
-        
+
         self.db.commit()
         self.db.refresh(user)
-        
+
         # Session rotation on privilege escalation (non-admin -> admin)
         if is_admin is True and not was_admin:
-            from backend.auth.session import rotate_session, revoke_all_user_sessions, hash_session_token, validate_session
-            
+            from backend.auth.session import (
+                revoke_all_user_sessions,
+                rotate_session,
+            )
+
             # Rotate admin's own session on granting admin rights
             session_token = getattr(http_request, 'cookies', {}).get('omni_session') if http_request else None
             if session_token:
@@ -182,13 +185,13 @@ class AdminAgent:
                 if rotated:
                     logger.info(f"Session rotated for admin privilege escalation: {admin.username}")
                     # Note: The frontend will need to handle the new session cookie
-            
+
             # Revoke all other sessions for the target user (security hardening)
             # This ensures no attacker-persisted sessions survive privilege escalation
             revoked_count = revoke_all_user_sessions(self.db, user_id)
             if revoked_count > 0:
                 logger.info(f"Revoked {revoked_count} sessions for user {user_id} during privilege escalation")
-        
+
         logger.info(f"Admin {admin.username} updated user {user.username}")
         audit_log_event(
             self.db,
@@ -197,7 +200,7 @@ class AdminAgent:
             request=http_request,
             data={"target_user_id": user.id, "is_active": is_active, "is_admin": is_admin},
         )
-        
+
         return UserSummary(
             id=user.id,
             email=user.email,
@@ -219,14 +222,14 @@ class AdminAgent:
         """
         if user_id == admin.id:
             raise ValueError("Cannot delete your own account")
-        
+
         user = self.db.query(User).filter(User.id == user_id).first()
         if not user:
             return False
-        
+
         self.db.delete(user)
         self.db.commit()
-        
+
         logger.info(f"Admin {admin.username} deleted user {user.username}")
         audit_log_event(
             self.db,
@@ -235,11 +238,11 @@ class AdminAgent:
             request=None,
             data={"target_user_id": user.id, "target_username": user.username},
         )
-        
+
         return True
 
     # Invite Management
-    
+
     def create_invite(
         self,
         admin: User,
@@ -255,10 +258,10 @@ class AdminAgent:
             Created InviteSummary
         """
         import secrets
-        
+
         code = secrets.token_urlsafe(16)
         expires_at = datetime.utcnow() + timedelta(days=expires_in_days)
-        
+
         invite = InviteCode(
             code=code,
             created_by=admin.id,
@@ -267,7 +270,7 @@ class AdminAgent:
         self.db.add(invite)
         self.db.commit()
         self.db.refresh(invite)
-        
+
         logger.info(f"Admin {admin.username} created invite code")
         audit_log_event(
             self.db,
@@ -276,7 +279,7 @@ class AdminAgent:
             request=None,
             data={"invite_id": invite.id},
         )
-        
+
         return InviteSummary(
             id=invite.id,
             code=invite.code,
@@ -300,7 +303,7 @@ class AdminAgent:
             .order_by(InviteCode.created_at.desc())
             .all()
         )
-        
+
         return [
             InviteSummary(
                 id=i.id,
@@ -326,10 +329,10 @@ class AdminAgent:
         invite = self.db.query(InviteCode).filter(InviteCode.id == invite_id).first()
         if not invite:
             return False
-        
+
         self.db.delete(invite)
         self.db.commit()
-        
+
         audit_log_event(
             self.db,
             event_type="admin.invite_delete",
@@ -337,11 +340,11 @@ class AdminAgent:
             request=None,
             data={"invite_id": invite_id},
         )
-        
+
         return True
 
     # Session Management
-    
+
     def get_user_sessions(self, admin: User, user_id: str) -> List[Dict[str, Any]]:
         """Get sessions for a user.
         
@@ -355,14 +358,14 @@ class AdminAgent:
         user = self.db.query(User).filter(User.id == user_id).first()
         if not user:
             return []
-        
+
         sessions = (
             self.db.query(Session)
             .filter(Session.user_id == user_id, Session.expires_at > datetime.utcnow())
             .order_by(Session.created_at.desc())
             .all()
         )
-        
+
         return [
             {
                 "id": s.id,
@@ -384,14 +387,14 @@ class AdminAgent:
         """
         if user_id == admin.id:
             raise ValueError("Cannot revoke your own sessions")
-        
+
         count = (
             self.db.query(Session)
             .filter(Session.user_id == user_id)
             .delete()
         )
         self.db.commit()
-        
+
         logger.info(f"Admin {admin.username} revoked {count} sessions for user {user_id}")
         audit_log_event(
             self.db,
@@ -400,11 +403,11 @@ class AdminAgent:
             request=None,
             data={"target_user_id": user_id, "sessions_revoked": count},
         )
-        
+
         return count
 
     # Audit Logs
-    
+
     def get_audit_logs(
         self,
         admin: User,
@@ -428,16 +431,16 @@ class AdminAgent:
             List of AuditEntry objects
         """
         query = self.db.query(AuditLog).order_by(AuditLog.created_at.desc())
-        
+
         if event:
             query = query.filter(AuditLog.event_type == event)
         if from_date:
             query = query.filter(AuditLog.created_at >= from_date)
         if to_date:
             query = query.filter(AuditLog.created_at <= to_date)
-        
+
         entries = query.offset(offset).limit(min(500, max(1, limit))).all()
-        
+
         return [
             AuditEntry(
                 id=e.id,
@@ -453,7 +456,7 @@ class AdminAgent:
         ]
 
     # Statistics
-    
+
     def get_stats(self, admin: User) -> SystemStats:
         """Get system statistics.
         
@@ -471,7 +474,7 @@ class AdminAgent:
             .filter(InviteCode.used_by.is_(None))
             .count()
         )
-        
+
         return SystemStats(
             total_users=total_users,
             active_users=active_users,

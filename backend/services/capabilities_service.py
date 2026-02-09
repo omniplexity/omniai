@@ -5,7 +5,7 @@ Used by both `/capabilities` (health API) and `/v1/meta` to avoid drift.
 
 from __future__ import annotations
 
-from typing import Any, Dict, Optional
+from typing import Any, Dict
 
 from backend.services.tool_capabilities_service import get_tool_capabilities
 

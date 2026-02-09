@@ -8,7 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session as DBSession
 
-from backend.auth.dependencies import get_admin_user, get_current_user
+from backend.auth.dependencies import get_admin_user
 from backend.auth.session import get_user_sessions, revoke_all_user_sessions, revoke_session_by_id
 from backend.core.logging import get_logger
 from backend.core.time import utcnow
@@ -501,23 +501,23 @@ async def list_providers_admin(
 ):
     """List all providers with admin-level details."""
     registry = getattr(request.app.state, "provider_registry", None)
-    
+
     if not registry:
         return {"providers": [], "default": None}
-    
+
     providers = []
     for name in registry.list_providers():
         provider = registry.get_provider(name)
         if not provider:
             continue
-            
+
         # Get health status
         healthy = False
         latency_ms = None
         models_available = None
         capabilities = {}
         endpoint = None
-        
+
         try:
             import time
             start = time.perf_counter()
@@ -525,7 +525,7 @@ async def list_providers_admin(
             latency_ms = round((time.perf_counter() - start) * 1000, 2)
         except Exception:
             pass
-        
+
         # Get capabilities
         try:
             caps = await provider.capabilities()
@@ -540,21 +540,21 @@ async def list_providers_admin(
             }
         except Exception:
             pass
-        
+
         # Get model count
         try:
             models = await provider.list_models()
             models_available = len(models)
         except Exception:
             pass
-        
+
         # Get endpoint
         if hasattr(provider, "base_url"):
             endpoint = provider.base_url
-        
+
         # Get stored config
         config = _provider_configs.get(name, {})
-        
+
         providers.append({
             "name": name,
             "enabled": config.get("enabled", True),
@@ -567,7 +567,7 @@ async def list_providers_admin(
             "notes": config.get("notes"),
             "is_default": name == registry.default_provider,
         })
-    
+
     return {
         "providers": providers,
         "default": registry.default_provider,
@@ -582,23 +582,23 @@ async def get_provider_admin(
 ):
     """Get detailed provider information."""
     registry = getattr(request.app.state, "provider_registry", None)
-    
+
     if not registry:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="No providers configured",
         )
-    
+
     provider = registry.get_provider(provider_name)
     if not provider:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Provider not found: {provider_name}",
         )
-    
+
     # Get full diagnostics
     config = _provider_configs.get(provider_name, {})
-    
+
     return {
         "name": provider_name,
         "config": config,
@@ -615,27 +615,27 @@ async def update_provider_admin(
 ):
     """Update provider configuration."""
     registry = getattr(request.app.state, "provider_registry", None)
-    
+
     if not registry:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="No providers configured",
         )
-    
+
     provider = registry.get_provider(provider_name)
     if not provider:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Provider not found: {provider_name}",
         )
-    
+
     # Update stored config
     if provider_name not in _provider_configs:
         _provider_configs[provider_name] = {}
-    
+
     update_data = request_data.model_dump(exclude_unset=True)
     _provider_configs[provider_name].update(update_data)
-    
+
     logger.info(f"Admin {admin.username} updated provider {provider_name}")
     audit_log_event(
         None,  # No DB needed for in-memory config
@@ -644,7 +644,7 @@ async def update_provider_admin(
         request=http_request,
         data={"provider": provider_name, "updates": list(update_data.keys())},
     )
-    
+
     return {
         "message": "Provider updated",
         "provider": provider_name,
@@ -660,27 +660,27 @@ async def check_provider_health(
 ):
     """Trigger a health check for a provider."""
     registry = getattr(request.app.state, "provider_registry", None)
-    
+
     if not registry:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="No providers configured",
         )
-    
+
     provider = registry.get_provider(provider_name)
     if not provider:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Provider not found: {provider_name}",
         )
-    
+
     import time
     start = time.perf_counter()
-    
+
     try:
         healthy = await provider.healthcheck()
         latency_ms = round((time.perf_counter() - start) * 1000, 2)
-        
+
         return {
             "provider": provider_name,
             "healthy": healthy,
@@ -704,22 +704,22 @@ async def set_default_provider(
 ):
     """Set the default provider."""
     registry = getattr(request.app.state, "provider_registry", None)
-    
+
     if not registry:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="No providers configured",
         )
-    
+
     provider = registry.get_provider(provider_name)
     if not provider:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Provider not found: {provider_name}",
         )
-    
+
     registry.default_provider = provider_name
-    
+
     logger.info(f"Admin {admin.username} set default provider to {provider_name}")
     audit_log_event(
         None,
@@ -728,7 +728,7 @@ async def set_default_provider(
         request=http_request,
         data={"provider": provider_name},
     )
-    
+
     return {"message": f"Default provider set to {provider_name}"}
 
 
@@ -790,8 +790,9 @@ async def list_projects_admin(
     admin: User = Depends(get_admin_user),
 ):
     """List all projects with optional user filter (admin only)."""
-    from backend.db.models import Project, Conversation
     from sqlalchemy import func
+
+    from backend.db.models import Conversation, Project
 
     query = db.query(
         Project,
@@ -952,8 +953,9 @@ async def list_knowledge_admin(
     admin: User = Depends(get_admin_user),
 ):
     """List all knowledge documents with optional user filter (admin only)."""
-    from backend.db.models import KnowledgeDocument, KnowledgeChunk
     from sqlalchemy import func
+
+    from backend.db.models import KnowledgeChunk, KnowledgeDocument
 
     query = db.query(
         KnowledgeDocument,
@@ -1026,8 +1028,8 @@ async def delete_knowledge_admin(
 # Export Wizard Endpoints
 # =============================================================================
 
-import io
 import csv
+import io
 import json
 from typing import Literal
 
@@ -1068,7 +1070,7 @@ def _redact_sensitive_data(data: Dict, redact: bool) -> Dict:
     """Redact PII from data."""
     if not redact:
         return data
-    
+
     redacted = {}
     for key, value in data.items():
         if key in ("email", "password", "api_key", "secret", "token"):
@@ -1086,7 +1088,7 @@ def _format_as_csv(data: List[Dict]) -> str:
     """Convert data to CSV format."""
     if not data:
         return ""
-    
+
     output = io.StringIO()
     writer = csv.DictWriter(output, fieldnames=data[0].keys())
     writer.writeheader()
@@ -1098,19 +1100,19 @@ def _format_as_markdown(data: List[Dict], title: str) -> str:
     """Convert data to Markdown format."""
     if not data:
         return f"# {title}\n\nNo data available."
-    
+
     lines = [f"# {title}", ""]
-    
+
     # Table header
     headers = list(data[0].keys())
     lines.append("| " + " | ".join(headers) + " |")
     lines.append("| " + " | ".join(["---" for _ in headers]) + " |")
-    
+
     # Table rows
     for row in data:
         values = [str(row.get(h, "")) for h in headers]
         lines.append("| " + " | ".join(values) + " |")
-    
+
     return "\n".join(lines)
 
 
@@ -1122,9 +1124,9 @@ async def _collect_export_data(
     request: Request,
 ) -> Dict[str, List[Dict]]:
     """Collect data for export based on types."""
-    from backend.db.models import Project, MemoryEntry, KnowledgeDocument
+    from backend.db.models import KnowledgeDocument, MemoryEntry, Project
     data = {}
-    
+
     for data_type in data_types:
         if data_type == "users":
             users_query = db.query(User)
@@ -1144,7 +1146,7 @@ async def _collect_export_data(
                 }
                 for u in users
             ]
-        
+
         elif data_type == "audit":
             audit_query = db.query(AuditLog)
             if date_from:
@@ -1164,7 +1166,7 @@ async def _collect_export_data(
                 }
                 for log in logs
             ]
-        
+
         elif data_type == "projects":
             projects_query = db.query(Project, User.username).join(User, Project.user_id == User.id)
             if date_from:
@@ -1182,7 +1184,7 @@ async def _collect_export_data(
                 }
                 for p in projects
             ]
-        
+
         elif data_type == "memory":
             memory_query = db.query(MemoryEntry, User.username).join(User, MemoryEntry.user_id == User.id)
             if date_from:
@@ -1200,7 +1202,7 @@ async def _collect_export_data(
                 }
                 for e in entries
             ]
-        
+
         elif data_type == "knowledge":
             knowledge_query = db.query(KnowledgeDocument, User.username).join(User, KnowledgeDocument.user_id == User.id)
             if date_from:
@@ -1218,13 +1220,13 @@ async def _collect_export_data(
                 }
                 for d in docs
             ]
-        
+
         elif data_type == "diagnostics":
             # Get current diagnostics data
             registry = getattr(request.app.state, "provider_registry", None)
             db_check = await check_database(db, get_settings())
             provider_check = await check_providers(registry)
-            
+
             data["diagnostics"] = [
                 {
                     "component": "database",
@@ -1239,7 +1241,7 @@ async def _collect_export_data(
                     "healthy": provider_check["healthy"],
                 },
             ]
-        
+
         elif data_type == "providers":
             registry = getattr(request.app.state, "provider_registry", None)
             if registry:
@@ -1254,7 +1256,7 @@ async def _collect_export_data(
                     }
                     for name, info in provider_check.get("providers", {}).items()
                 ]
-    
+
     return data
 
 
@@ -1267,7 +1269,7 @@ async def create_export(
 ):
     """Create a new export job."""
     job_id = _generate_export_id()
-    
+
     # Parse dates
     date_from = None
     date_to = None
@@ -1275,7 +1277,7 @@ async def create_export(
         date_from = datetime.fromisoformat(request_data.date_from)
     if request_data.date_to:
         date_to = datetime.fromisoformat(request_data.date_to)
-    
+
     # Create job
     job = {
         "job_id": job_id,
@@ -1288,7 +1290,7 @@ async def create_export(
         "error_message": None,
     }
     _export_jobs[job_id] = job
-    
+
     try:
         # Collect data
         raw_data = await _collect_export_data(
@@ -1298,13 +1300,13 @@ async def create_export(
             date_to,
             http_request,
         )
-        
+
         # Redact PII if requested
         if request_data.redact_pii:
             for key in raw_data:
                 if isinstance(raw_data[key], list):
                     raw_data[key] = [_redact_sensitive_data(item, True) for item in raw_data[key]]
-        
+
         # Format data
         if request_data.format == "json":
             content = json.dumps(raw_data, indent=2, default=str)
@@ -1330,14 +1332,14 @@ async def create_export(
             # PDF not implemented - fallback to JSON
             content = json.dumps(raw_data, indent=2, default=str)
             filename = f"omniai-export-{job_id[:8]}.json"
-        
+
         # Store content (in production, write to S3/filesystem)
         job["content"] = content
         job["filename"] = filename
         job["size_bytes"] = len(content.encode("utf-8"))
         job["status"] = "completed"
         job["download_url"] = f"/api/admin/export/{job_id}/download"
-        
+
         logger.info(f"Admin {admin.username} created export {job_id}")
         audit_log_event(
             db,
@@ -1350,12 +1352,12 @@ async def create_export(
                 "data_types": request_data.data_types,
             },
         )
-        
+
     except Exception as e:
         job["status"] = "failed"
         job["error_message"] = str(e)
         logger.error(f"Export job {job_id} failed: {e}")
-    
+
     return ExportJobResponse(**job)
 
 
@@ -1371,7 +1373,7 @@ async def get_export_status(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Export job not found",
         )
-    
+
     # Remove content from response
     response_data = {k: v for k, v in job.items() if k != "content"}
     return ExportJobResponse(**response_data)
@@ -1389,16 +1391,16 @@ async def download_export(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Export job not found",
         )
-    
+
     if job["status"] != "completed":
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Export not ready",
         )
-    
+
     content = job.get("content", "")
     filename = job.get("filename", "export.txt")
-    
+
     # Determine content type
     content_type = "application/octet-stream"
     if filename.endswith(".json"):
@@ -1407,7 +1409,7 @@ async def download_export(
         content_type = "text/csv"
     elif filename.endswith(".md"):
         content_type = "text/markdown"
-    
+
     from fastapi.responses import PlainTextResponse
     return PlainTextResponse(
         content=content,

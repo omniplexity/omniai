@@ -1,6 +1,6 @@
 """v1 models endpoint."""
 
-from typing import Any, List
+from typing import List
 
 from fastapi import APIRouter, Depends, Request
 from pydantic import BaseModel

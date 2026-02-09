@@ -1,9 +1,8 @@
 """Tests for RequestSizeLimitMiddleware."""
 import pytest
+from backend.core.middleware import RequestSizeLimitMiddleware
 from fastapi import FastAPI
 from starlette.testclient import TestClient
-
-from backend.core.middleware import RequestSizeLimitMiddleware
 
 pytestmark = pytest.mark.security
 

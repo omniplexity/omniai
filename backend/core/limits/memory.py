@@ -13,7 +13,6 @@ import secrets
 import time
 from asyncio import Lock
 from collections import deque
-from typing import AsyncGenerator
 
 from backend.core.limits import (
     ConcurrencyStore,

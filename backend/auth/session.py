@@ -2,7 +2,7 @@
 
 import hashlib
 import secrets
-from datetime import datetime, timedelta
+from datetime import timedelta
 from typing import List, Optional, Tuple
 
 from sqlalchemy.orm import Session as DBSession
@@ -140,14 +140,14 @@ def revoke_all_user_sessions(db: DBSession, user_id: str, except_session_id: Opt
         Session.user_id == user_id,
         Session.expires_at > utcnow(),
     )
-    
+
     if except_session_id:
         query = query.filter(Session.id != except_session_id)
-    
+
     count = query.count()
     query.delete(synchronize_session=False)
     db.commit()
-    
+
     return count
 
 

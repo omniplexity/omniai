@@ -1,5 +1,6 @@
 """Core module with logging, middleware, and exception handling."""
 
+from backend.core.exceptions import setup_exception_handlers
 from backend.core.logging import get_logger, setup_logging
 from backend.core.middleware import (
     ChatCSRFMiddleware,
@@ -12,7 +13,6 @@ from backend.core.middleware import (
     TrustedHostMiddleware,
     get_client_ip,
 )
-from backend.core.exceptions import setup_exception_handlers
 
 __all__ = [
     "get_logger",

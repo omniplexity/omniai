@@ -21,7 +21,7 @@ def test_docs_disabled_in_production():
     """Verify docs/openapi/redoc return 404 in production."""
     app = _load_app("production")
     client = TestClient(app, raise_server_exceptions=False)
-    
+
     assert client.get("/docs").status_code == 404
     assert client.get("/openapi.json").status_code == 404
     assert client.get("/redoc").status_code == 404
@@ -31,7 +31,7 @@ def test_docs_disabled_in_staging():
     """Verify docs/openapi/redoc return 404 in staging."""
     app = _load_app("staging")
     client = TestClient(app, raise_server_exceptions=False)
-    
+
     assert client.get("/docs").status_code == 404
     assert client.get("/openapi.json").status_code == 404
     assert client.get("/redoc").status_code == 404
@@ -41,7 +41,7 @@ def test_docs_enabled_in_development():
     """Verify docs/openapi/redoc are accessible in development."""
     app = _load_app("development")
     client = TestClient(app)
-    
+
     # FastAPI redirects /docs -> /docs/ often; accept 200/307
     assert client.get("/docs").status_code in (200, 307)
 
@@ -50,6 +50,6 @@ def test_docs_enabled_in_test():
     """Verify docs/openapi/redoc are accessible in test mode."""
     app = _load_app("test")
     client = TestClient(app)
-    
+
     # Test mode should also enable docs for testing
     assert client.get("/docs").status_code in (200, 307)

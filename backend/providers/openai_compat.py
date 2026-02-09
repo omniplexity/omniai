@@ -1,8 +1,8 @@
 """OpenAI-compatible provider implementation."""
 
+import json
 from collections.abc import AsyncIterator
 from typing import Any, Dict, List
-import json
 
 import httpx
 
@@ -202,7 +202,7 @@ class OpenAICompatProvider(BaseProvider):
             # Note: OpenAI's Whisper API is not streaming, so we simulate it
             # This would need to be implemented based on the specific OpenAI-compatible endpoint
             raise NotImplementedError("Streaming STT not implemented for OpenAI-compatible providers")
-            
+
         except Exception as e:
             raise NotImplementedError(f"Speech-to-text not available: {e}")
 
@@ -216,12 +216,12 @@ class OpenAICompatProvider(BaseProvider):
                 "voice": voice_id or "alloy",
                 "input": text,
             }
-            
+
             response = await self.client.post("/audio/speech", json=payload)
             response.raise_for_status()
-            
+
             return response.content
-            
+
         except httpx.HTTPStatusError as e:
             if e.response.status_code == 404:
                 raise NotImplementedError("TTS not available on this endpoint")
@@ -250,7 +250,7 @@ class OpenAICompatProvider(BaseProvider):
                 {"id": "nova-hd", "name": "Nova HD", "language": "en-US", "gender": "Female"},
                 {"id": "shimmer-hd", "name": "Shimmer HD", "language": "en-US", "gender": "Female"},
             ]
-            
+
         except Exception as e:
             raise NotImplementedError(f"Voice listing not available: {e}")
 

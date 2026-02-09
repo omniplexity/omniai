@@ -1,11 +1,11 @@
 """Chat service for handling conversations and messages."""
 
-from backend.core.time import utcnow
-from typing import AsyncIterator, Dict, List, Optional, Any
+from typing import Any, AsyncIterator, Dict, List, Optional
 
 from sqlalchemy.orm import Session as DBSession
 
 from backend.core.logging import get_logger
+from backend.core.time import utcnow
 from backend.db.models import Conversation, Message, User
 from backend.providers.base import ChatMessage, ChatRequest
 from backend.providers.registry import ProviderRegistry

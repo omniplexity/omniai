@@ -9,11 +9,11 @@ from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session as DBSession
 
+from backend.agents.tool import ToolAgent, ToolType
 from backend.auth.dependencies import get_current_user
 from backend.config import get_settings
 from backend.db import get_db
-from backend.db.models import User, ToolReceipt
-from backend.agents.tool import ToolAgent, ToolType, ToolSettings
+from backend.db.models import ToolReceipt, User
 
 router = APIRouter(prefix="/tools", tags=["v1-tools"])
 
@@ -107,7 +107,7 @@ async def list_tools(
 ) -> List[ToolInfo]:
     """List available tools."""
     agent = _create_tool_agent(db, request)
-    
+
     results = []
     for tool_id, info in TOOLS_REGISTRY.items():
         enabled = agent.is_tool_enabled(current_user, ToolType(tool_id))
@@ -118,7 +118,7 @@ async def list_tools(
             category=info["category"],
             enabled=enabled,
         ))
-    
+
     return results
 
 
@@ -132,7 +132,7 @@ async def get_tool_settings(
     """Get effective tool settings."""
     agent = _create_tool_agent(db, request)
     settings = agent.get_tool_settings(current_user, conversation_id)
-    
+
     return ToolSettingsResponse(
         web_enabled=settings.web_enabled,
         web_depth=settings.web_depth,
@@ -152,7 +152,7 @@ async def update_tool_settings(
 ) -> Dict[str, str]:
     """Update tool settings."""
     agent = _create_tool_agent(db, request)
-    
+
     # Update each setting
     if hasattr(body, "web_enabled"):
         agent.set_tool_enabled(current_user, ToolType.WEB, body.web_enabled, conversation_id)
@@ -162,7 +162,7 @@ async def update_tool_settings(
         agent.set_tool_enabled(current_user, ToolType.CODE, body.code_enabled, conversation_id)
     if hasattr(body, "vision_enabled"):
         agent.set_tool_enabled(current_user, ToolType.VISION, body.vision_enabled, conversation_id)
-    
+
     return {"status": "updated"}
 
 
@@ -176,14 +176,14 @@ async def execute_tool(
 ) -> ToolExecuteResponse:
     """Execute a tool."""
     agent = _create_tool_agent(db, request)
-    
+
     # Validate tool exists
     if body.tool_id not in TOOLS_REGISTRY:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Tool not found: {body.tool_id}",
         )
-    
+
     # Check if tool is enabled
     try:
         tool_type = ToolType(body.tool_id)
@@ -192,13 +192,13 @@ async def execute_tool(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Invalid tool type: {body.tool_id}",
         )
-    
+
     if not agent.is_tool_enabled(current_user, tool_type, conversation_id):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail=f"Tool is disabled: {body.tool_id}",
         )
-    
+
     # Execute tool
     result = agent.execute_tool(
         user=current_user,
@@ -206,7 +206,7 @@ async def execute_tool(
         input_payload=body.input,
         conversation_id=conversation_id,
     )
-    
+
     return ToolExecuteResponse(
         receipt_id="",  # Would need to track receipt
         status="completed" if result.success else "failed",
@@ -224,12 +224,12 @@ async def list_receipts(
 ) -> List[ToolReceiptResponse]:
     """List tool execution receipts."""
     query = db.query(ToolReceipt).filter(ToolReceipt.user_id == current_user.id)
-    
+
     if conversation_id:
         query = query.filter(ToolReceipt.conversation_id == conversation_id)
-    
+
     receipts = query.order_by(ToolReceipt.created_at.desc()).limit(limit).all()
-    
+
     return [
         ToolReceiptResponse(
             id=r.id,
@@ -256,13 +256,13 @@ async def get_receipt(
         .filter(ToolReceipt.id == receipt_id, ToolReceipt.user_id == current_user.id)
         .first()
     )
-    
+
     if not receipt:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Receipt not found",
         )
-    
+
     return ToolReceiptResponse(
         id=receipt.id,
         tool_id=receipt.tool_id,

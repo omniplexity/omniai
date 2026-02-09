@@ -9,10 +9,10 @@ from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session as DBSession
 
+from backend.agents.conversation import ConversationAgent
 from backend.auth.dependencies import get_current_user
 from backend.db import get_db
-from backend.db.models import Conversation, Message, User
-from backend.agents.conversation import ConversationAgent
+from backend.db.models import User
 
 router = APIRouter(prefix="/conversations", tags=["v1-conversations"])
 
@@ -93,7 +93,7 @@ async def list_conversations(
     """List user's conversations."""
     conversation_agent = _create_conversation_agent(db)
     conversations = conversation_agent.list_conversations(current_user, limit, offset)
-    
+
     return [
         ConversationModel(
             id=c.id,
@@ -122,7 +122,7 @@ async def create_conversation(
 ):
     """Create a new conversation."""
     conversation_agent = _create_conversation_agent(db)
-    
+
     conversation = conversation_agent.create_conversation(
         current_user,
         title=body.title,
@@ -159,11 +159,11 @@ async def get_conversation(
 ):
     """Get a conversation by ID."""
     conversation_agent = _create_conversation_agent(db)
-    
+
     conversation = conversation_agent.get_conversation(conversation_id, current_user)
     if not conversation:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Conversation not found")
-    
+
     return ConversationModel(
         id=conversation.id,
         title=conversation.title,
@@ -190,7 +190,7 @@ async def update_conversation(
 ):
     """Update a conversation."""
     conversation_agent = _create_conversation_agent(db)
-    
+
     conversation = conversation_agent.get_conversation(conversation_id, current_user)
     if not conversation:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Conversation not found")
@@ -228,7 +228,7 @@ async def delete_conversation(
 ):
     """Delete a conversation."""
     conversation_agent = _create_conversation_agent(db)
-    
+
     conversation = conversation_agent.get_conversation(conversation_id, current_user)
     if not conversation:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Conversation not found")
@@ -246,13 +246,13 @@ async def list_messages(
 ):
     """Get messages in a conversation."""
     conversation_agent = _create_conversation_agent(db)
-    
+
     conversation = conversation_agent.get_conversation(conversation_id, current_user)
     if not conversation:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Conversation not found")
 
     messages = conversation_agent.get_messages(conversation, limit=500)
-    
+
     return [
         MessageModel(
             id=msg.id,
@@ -281,7 +281,7 @@ async def branch_conversation(
 ):
     """Branch a conversation from a message."""
     conversation_agent = _create_conversation_agent(db)
-    
+
     conversation = conversation_agent.get_conversation(conversation_id, current_user)
     if not conversation:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Conversation not found")

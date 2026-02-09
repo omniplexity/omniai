@@ -6,10 +6,8 @@ These tests verify that exempt paths and methods are not rate limited:
 - /v1/chat/stream GET should not consume RPM auth limits, only concurrency limits
 """
 
-import pytest
-from fastapi.testclient import TestClient
-
 from backend.main import create_app
+from fastapi.testclient import TestClient
 
 
 class TestRateLimiterExemptions:

@@ -1,14 +1,13 @@
 from pathlib import Path
 
-from fastapi.testclient import TestClient
-from sqlalchemy.orm import sessionmaker
-
 from backend.auth.session import create_session
 from backend.config import get_settings
 from backend.db import Base, dispose_engine
 from backend.db.database import get_engine
 from backend.db.models import User
 from backend.main import create_app
+from fastapi.testclient import TestClient
+from sqlalchemy.orm import sessionmaker
 
 
 def _setup_db(tmp_path: Path, monkeypatch):

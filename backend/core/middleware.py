@@ -67,7 +67,7 @@ def get_client_ip(request: Request) -> Tuple[str, bool]:
         the IP was validated from a trusted proxy.
     """
     direct_ip = request.client.host if request.client else None
-    
+
     # Check X-Forwarded-For header
     forwarded_for = request.headers.get("x-forwarded-for", "")
     if forwarded_for:
@@ -83,7 +83,7 @@ def get_client_ip(request: Request) -> Tuple[str, bool]:
                 data={"forwarded_for": forwarded_for, "direct_ip": direct_ip},
             )
             return (direct_ip or first_ip, False)
-    
+
     # No forwarded header, use direct connection IP
     return (direct_ip or "unknown", False)
 
@@ -135,10 +135,10 @@ class ForwardedHeadersMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
         """Validate forwarded headers before processing request."""
         direct_ip = request.client.host if request.client else None
-        
+
         # Check if request comes from trusted proxy
         is_from_trusted_proxy = direct_ip and self._is_trusted(direct_ip)
-        
+
         # Log untrusted forwarded headers
         forwarded_for = request.headers.get("x-forwarded-for", "")
         if forwarded_for and not is_from_trusted_proxy:
@@ -151,7 +151,7 @@ class ForwardedHeadersMiddleware(BaseHTTPMiddleware):
             )
             # Strip the untrusted header to prevent confusion
             request.headers.__dict__.pop("x-forwarded-for", None)
-        
+
         # Also validate X-Forwarded-Proto and X-Forwarded-Host
         forwarded_proto = request.headers.get("x-forwarded-proto", "")
         if forwarded_proto and not is_from_trusted_proxy:
@@ -160,7 +160,7 @@ class ForwardedHeadersMiddleware(BaseHTTPMiddleware):
                 data={"x-forwarded-proto": forwarded_proto, "client_ip": direct_ip},
             )
             request.headers.__dict__.pop("x-forwarded-proto", None)
-        
+
         forwarded_host = request.headers.get("x-forwarded-host", "")
         if forwarded_host and not is_from_trusted_proxy:
             logger.warning(
@@ -245,7 +245,7 @@ class RequestSizeLimitMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
         """Check request size before processing."""
         limit = self._get_limit(request)
-        
+
         # Fast path: check Content-Length header first
         cl = request.headers.get("content-length")
         if cl:
@@ -284,7 +284,7 @@ class RequestSizeLimitMiddleware(BaseHTTPMiddleware):
             return message
 
         request._receive = limited_receive  # type: ignore[attr-defined]
-        
+
         try:
             response = await call_next(request)
             return response
@@ -398,7 +398,7 @@ class HotPathRateLimitMiddleware(BaseHTTPMiddleware):
     # Only GET /v1/chat/stream needs concurrent stream limiting
     # POST /v1/chat creates runs and should use regular rate limits
     STREAM_PATHS = frozenset({"/v1/chat/stream"})
-    
+
     # Exemptions for security and operational reasons (use normalized paths)
     EXEMPT_METHODS = frozenset({"OPTIONS"})  # CORS preflight must not be rate-limited
     EXEMPT_PATHS = frozenset({
@@ -582,8 +582,8 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         # Per-user limit (only if session is valid)
         if self.user_requests_per_minute > 0:
             try:
-                from backend.config import get_settings
                 from backend.auth.session import validate_session
+                from backend.config import get_settings
                 from backend.db.database import get_session_local
 
                 settings = get_settings()
@@ -638,26 +638,26 @@ def _parse_origin(origin: str) -> tuple[str, str, int] | None:
     # Reject explicit null origin (browser sends this for opaque requests)
     if origin.lower() == "null":
         return None
-    
+
     try:
         # Handle origins with implicit ports
         if origin.startswith("//"):
             origin = "https:" + origin
         elif not origin.startswith("http"):
             origin = "https://" + origin
-        
+
         # Parse URL
         from urllib.parse import urlparse
         parsed = urlparse(origin)
-        
+
         scheme = parsed.scheme
         # urlparse strips userinfo automatically - user:pass@host → hostname only
         hostname = parsed.hostname or ""
         port = parsed.port if parsed.port else (443 if scheme == "https" else 80)
-        
+
         if not scheme or not hostname:
             return None
-        
+
         return (scheme, hostname.lower(), port)
     except Exception:
         return None
@@ -674,31 +674,31 @@ def _is_origin_allowed(origin: str, allowed_origins: Set[str]) -> bool:
     """
     if not origin:
         return False
-    
+
     parsed = _parse_origin(origin)
     if not parsed:
         return False
-    
+
     origin_scheme, origin_hostname, origin_port = parsed
-    
+
     for allowed in allowed_origins:
         allowed_parsed = _parse_origin(allowed)
         if not allowed_parsed:
             continue
-        
+
         allowed_scheme, allowed_hostname, allowed_port = allowed_parsed
-        
+
         # Exact match on scheme, hostname, and port
         if origin_scheme == allowed_scheme and origin_port == allowed_port:
             if origin_hostname == allowed_hostname:
                 return True
-            
+
             # Support fnmatch-style wildcards for hostname only
             if "*" in allowed_hostname:
                 from fnmatch import fnmatch
                 if fnmatch(origin_hostname, allowed_hostname):
                     return True
-    
+
     return False
 
 
@@ -706,23 +706,23 @@ def _is_same_site_request(request: Request) -> bool:
     """Check if request is same-site based on Origin/Host headers."""
     origin = request.headers.get("origin")
     host = request.headers.get("host", "")
-    
+
     if not origin or not host:
         return True
-    
+
     # Parse origin
     origin_parsed = _parse_origin(origin)
     if not origin_parsed:
         return False
-    
+
     origin_scheme, origin_hostname, origin_port = origin_parsed
-    
+
     # Check if origin matches host
     # Extract host:port from Host header
     host_port = host.split(":")
     host_hostname = host_port[0].lower()
     host_port_num = host_port[1] if len(host_port) > 1 else ("443" if origin_scheme == "https" else "80")
-    
+
     return (
         origin_hostname == host_hostname
         and origin_port == host_port_num
@@ -773,7 +773,7 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         if origin:
             # Check if this is a cross-site request
             is_cross_site = not _is_same_site_request(request)
-            
+
             if is_cross_site:
                 # Don't expose sensitive headers to cross-site requests
                 for header in self.SENSITIVE_HEADERS:
@@ -796,7 +796,7 @@ class ChatCSRFMiddleware(BaseHTTPMiddleware):
 
     SAFE_METHODS = {"GET", "HEAD", "OPTIONS"}
     EXEMPT_PATHS = {"/health", "/readyz", "/docs", "/redoc", "/openapi.json"}
-    
+
     # GET endpoints that return user data and need origin validation
     # These are read-only but still require same-origin enforcement
     GET_DATA_PATHS = {"/v1/chat/stream", "/api/runs/"}
@@ -873,7 +873,7 @@ class ChatCSRFMiddleware(BaseHTTPMiddleware):
             # when they carry session cookies (defense-in-depth)
             path = request.url.path
             needs_origin_check = (
-                path.startswith("/v1/chat/stream") or 
+                path.startswith("/v1/chat/stream") or
                 path.startswith("/api/runs/")
             )
             if needs_origin_check:

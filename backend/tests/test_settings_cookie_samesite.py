@@ -1,4 +1,5 @@
 import pytest
+
 pytestmark = pytest.mark.security
 
 from backend.config import get_settings

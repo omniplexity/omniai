@@ -3,10 +3,9 @@
 Exposes Provider Agent interfaces for listing providers and models.
 """
 
-from typing import Any, Dict, List
+from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
-from sqlalchemy.orm import Session as DBSession
 
 from backend.agents.provider import ProviderAgent
 from backend.api.models import (
@@ -17,7 +16,6 @@ from backend.api.models import (
 )
 from backend.auth.dependencies import get_current_user
 from backend.config import get_settings
-from backend.db import get_db
 from backend.db.models import User
 
 router = APIRouter(prefix="/providers", tags=["v1-providers"])
@@ -37,17 +35,17 @@ async def list_providers(
 ) -> List[ProviderStatus]:
     """List all available providers and their health status."""
     agent = _create_provider_agent(request)
-    
+
     provider_names = await agent.list_providers()
     results = []
-    
+
     for name in provider_names:
         health = await agent.get_provider_health(name)
         results.append(ProviderStatus(
             name=name,
             healthy=health.get("healthy", False),
         ))
-    
+
     return results
 
 
@@ -59,18 +57,18 @@ async def get_provider_info(
 ) -> ProviderInfo:
     """Get detailed info about a provider including models and capabilities."""
     agent = _create_provider_agent(request)
-    
+
     provider_names = await agent.list_providers()
     if provider_name not in provider_names:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Provider not found: {provider_name}",
         )
-    
+
     health = await agent.get_provider_health(provider_name)
     models = await agent.list_models(provider_name)
     capabilities = await agent.get_capabilities(provider_name)
-    
+
     return ProviderInfo(
         name=provider_name,
         healthy=health.get("healthy", False),
@@ -103,16 +101,16 @@ async def list_provider_models(
 ) -> List[ModelInfo]:
     """List models available from a specific provider."""
     agent = _create_provider_agent(request)
-    
+
     provider_names = await agent.list_providers()
     if provider_name not in provider_names:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Provider not found: {provider_name}",
         )
-    
+
     models = await agent.list_models(provider_name)
-    
+
     return [
         ModelInfo(
             id=m.id,
@@ -132,16 +130,16 @@ async def get_provider_capabilities(
 ) -> ProviderCapabilities:
     """Get capabilities of a specific provider."""
     agent = _create_provider_agent(request)
-    
+
     provider_names = await agent.list_providers()
     if provider_name not in provider_names:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Provider not found: {provider_name}",
         )
-    
+
     capabilities = await agent.get_capabilities(provider_name)
-    
+
     return ProviderCapabilities(
         streaming=capabilities.streaming,
         function_calling=capabilities.function_calling,

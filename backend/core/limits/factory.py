@@ -397,11 +397,11 @@ class _RedisConcurrencyStore(ConcurrencyStore):
         """
         client = await self._get_client()
         zset_key = f"{self._prefix}{key}"
-        
+
         # Get current time
         time_result = await client.time()
         now_ms = (float(time_result[0]) * 1000) + (float(time_result[1]) / 1000)
-        
+
         # Remove expired and count remaining
         await client.zremrangebyscore(zset_key, "-inf", now_ms)
         return await client.zcard(zset_key)

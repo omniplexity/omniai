@@ -1,6 +1,7 @@
 """Tests for log redaction functionality."""
 
 import pytest
+
 pytestmark = pytest.mark.security
 
 from backend.core.logging import redact_sensitive_data

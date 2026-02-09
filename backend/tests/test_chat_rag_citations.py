@@ -1,9 +1,6 @@
-import pytest
 from pathlib import Path
 
-from fastapi.testclient import TestClient
-from sqlalchemy.orm import sessionmaker
-
+import pytest
 from backend.auth.dependencies import get_current_user
 from backend.config import get_settings
 from backend.db import Base, dispose_engine
@@ -11,6 +8,8 @@ from backend.db.database import get_engine
 from backend.db.models import MemoryEntry, User
 from backend.main import create_app
 from backend.providers.base import ChatResponse, ProviderCapabilities
+from fastapi.testclient import TestClient
+from sqlalchemy.orm import sessionmaker
 
 
 def _setup_db(tmp_path: Path, monkeypatch):

@@ -4,18 +4,16 @@ Handles chat operations, streaming responses, and message flow.
 Orchestrates between Provider Agent and Conversation Agent.
 """
 
-import json
-import time
-from typing import AsyncGenerator, Dict, Any, Optional, List
 from dataclasses import dataclass
 from datetime import datetime
+from typing import Any, AsyncGenerator, Dict, List, Optional
 
 from sqlalchemy.orm import Session as DBSession
 
-from backend.db.models import User, Conversation, Message, ChatRun, ChatRunEvent, generate_id
 from backend.agents.conversation import ConversationAgent
-from backend.agents.provider import ProviderAgent, ChatMessage, ChatRequest
+from backend.agents.provider import ChatMessage, ChatRequest, ProviderAgent
 from backend.core.logging import get_logger
+from backend.db.models import ChatRun, Conversation, User, generate_id
 
 logger = get_logger(__name__)
 
@@ -51,7 +49,7 @@ class ChatAgent:
     """Agent for handling chat operations."""
 
     def __init__(
-        self, 
+        self,
         db: DBSession,
         provider_agent: ProviderAgent,
         conversation_agent: ConversationAgent
@@ -112,7 +110,7 @@ class ChatAgent:
         effective_provider = provider_name or conversation.provider
         effective_model = model or conversation.model
         effective_settings = settings or ChatSettings()
-        
+
         # Save user message
         user_message = self.conversation_agent.add_message(
             conversation=conversation,
@@ -122,7 +120,7 @@ class ChatAgent:
             model=effective_model,
             parent_message_id=parent_message_id,
         )
-        
+
         if stream:
             return {
                 "message": {
@@ -132,11 +130,11 @@ class ChatAgent:
                 },
                 "stream": True,
             }
-        
+
         # Non-streaming: get completion
         messages = self._build_messages(conversation)
         messages.append(ChatMessage(role="user", content=content))
-        
+
         chat_request = ChatRequest(
             messages=messages,
             provider=effective_provider,
@@ -147,9 +145,9 @@ class ChatAgent:
             system_prompt=effective_settings.system_prompt,
             stream=False,
         )
-        
+
         response = await self.provider_agent.chat_once(chat_request)
-        
+
         # Save assistant message
         assistant_message = self.conversation_agent.add_message(
             conversation=conversation,
@@ -161,7 +159,7 @@ class ChatAgent:
             tokens_completion=response.tokens_completion,
             parent_message_id=user_message.id,
         )
-        
+
         return {
             "message": {
                 "id": assistant_message.id,
@@ -206,7 +204,7 @@ class ChatAgent:
         effective_provider = provider_name or conversation.provider
         effective_model = model or conversation.model
         effective_settings = settings or ChatSettings()
-        
+
         # Save user message
         user_message = self.conversation_agent.add_message(
             conversation=conversation,
@@ -216,7 +214,7 @@ class ChatAgent:
             model=effective_model,
             parent_message_id=parent_message_id,
         )
-        
+
         # Yield message created event
         yield {
             "event": "message.created",
@@ -226,11 +224,11 @@ class ChatAgent:
                 "content": content,
             }
         }
-        
+
         # Build messages for the request
         messages = self._build_messages(conversation)
         messages.append(ChatMessage(role="user", content=content))
-        
+
         chat_request = ChatRequest(
             messages=messages,
             provider=effective_provider,
@@ -241,17 +239,17 @@ class ChatAgent:
             system_prompt=effective_settings.system_prompt,
             stream=True,
         )
-        
+
         # Start assistant message
         assistant_message_id = generate_id()
         full_response = ""
         last_chunk = {}
-        
+
         async for chunk in self.provider_agent.chat_stream(chat_request):
             if "error" in chunk:
                 yield {"event": "error", "data": {"error": chunk["error"]}}
                 return
-            
+
             # Accumulate content
             if chunk.get("content"):
                 full_response += chunk["content"]
@@ -263,9 +261,9 @@ class ChatAgent:
                         "delta": chunk["content"],
                     }
                 }
-            
+
             last_chunk = chunk
-        
+
         # Save assistant message
         assistant_message = self.conversation_agent.add_message(
             conversation=conversation,
@@ -277,7 +275,7 @@ class ChatAgent:
             tokens_completion=last_chunk.get("tokens_completion"),
             parent_message_id=user_message.id,
         )
-        
+
         # Yield final message event
         yield {
             "event": "message.created",
@@ -293,7 +291,7 @@ class ChatAgent:
         }
 
     # Run management methods
-    
+
     def create_run(
         self,
         conversation: Conversation,
@@ -330,7 +328,7 @@ class ChatAgent:
         self.db.add(run)
         self.db.commit()
         self.db.refresh(run)
-        
+
         return run
 
     def get_run(self, run_id: str, user: User) -> Optional[ChatRun]:
