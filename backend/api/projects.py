@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session as DBSession
 
 from backend.auth.dependencies import get_current_user
 from backend.db import get_db
-from backend.db.models import Project, Conversation, User
+from backend.db.models import Conversation, Project, User
 
 router = APIRouter(prefix="/api/projects", tags=["projects"])
 

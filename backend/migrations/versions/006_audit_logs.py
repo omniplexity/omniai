@@ -5,8 +5,8 @@ Revises: 005_v1_receipts_presets
 Create Date: 2026-02-06
 """
 
-from alembic import op
 import sqlalchemy as sa
+from alembic import op
 
 # revision identifiers, used by Alembic.
 revision = "006_audit_logs"

@@ -1,6 +1,6 @@
 """Exception handlers for FastAPI application."""
 
-from fastapi import FastAPI, Request, status, HTTPException
+from fastapi import FastAPI, HTTPException, Request, status
 from fastapi.responses import JSONResponse
 from pydantic import ValidationError
 

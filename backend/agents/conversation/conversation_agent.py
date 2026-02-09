@@ -4,14 +4,14 @@ Manages conversations, messages, and context blocks.
 Provides CRUD operations for conversations and message persistence.
 """
 
-from typing import List, Optional, Dict, Any
 from dataclasses import dataclass
 from datetime import datetime
+from typing import Any, Dict, List, Optional
 
 from sqlalchemy.orm import Session as DBSession
 
-from backend.db.models import User, Conversation, Message, ContextBlock, generate_id
 from backend.core.logging import get_logger
+from backend.db.models import ContextBlock, Conversation, Message, User, generate_id
 
 logger = get_logger(__name__)
 
@@ -111,7 +111,7 @@ class ConversationAgent:
         self.db.add(conversation)
         self.db.commit()
         self.db.refresh(conversation)
-        
+
         logger.info(f"Created conversation {conversation.id} for user {user.id}")
         return conversation
 
@@ -195,10 +195,10 @@ class ConversationAgent:
             conversation.settings_json = settings_json
         if preset_id is not None:
             conversation.preset_id = preset_id
-            
+
         self.db.commit()
         self.db.refresh(conversation)
-        
+
         return conversation
 
     def delete_conversation(self, conversation: Conversation) -> None:
@@ -236,17 +236,17 @@ class ConversationAgent:
             .order_by(Message.created_at.asc())
             .all()
         )
-        
+
         # Find cutoff index
         cutoff_index = None
         for idx, msg in enumerate(source_messages):
             if msg.id == from_message_id:
                 cutoff_index = idx
                 break
-                
+
         if cutoff_index is None:
             raise ValueError(f"Message not found: {from_message_id}")
-        
+
         # Create new conversation
         new_title = title or f"{conversation.title} (branch)"
         new_convo = self.create_conversation(
@@ -259,12 +259,12 @@ class ConversationAgent:
             settings_json=conversation.settings_json,
             preset_id=conversation.preset_id,
         )
-        
+
         new_convo.parent_conversation_id = conversation.id
         new_convo.branched_from_message_id = from_message_id
         self.db.commit()
         self.db.refresh(new_convo)
-        
+
         # Copy messages up to cutoff
         for msg in source_messages[:cutoff_index + 1]:
             clone = Message(
@@ -280,7 +280,7 @@ class ConversationAgent:
             )
             self.db.add(clone)
         self.db.commit()
-        
+
         logger.info(f"Branched conversation {new_convo.id} from {conversation.id}")
         return new_convo
 
@@ -327,11 +327,11 @@ class ConversationAgent:
         self.db.add(message)
         self.db.commit()
         self.db.refresh(message)
-        
+
         # Update conversation timestamp
         conversation.updated_at = message.created_at
         self.db.commit()
-        
+
         return message
 
     def get_messages(
@@ -382,7 +382,7 @@ class ConversationAgent:
         return message
 
     # Context Block operations
-    
+
     def create_context_block(
         self,
         user: User,
@@ -417,7 +417,7 @@ class ConversationAgent:
         self.db.add(block)
         self.db.commit()
         self.db.refresh(block)
-        
+
         return block
 
     def get_context_blocks(
@@ -442,10 +442,10 @@ class ConversationAgent:
             self.db.query(ContextBlock)
             .filter(ContextBlock.user_id == user.id)
         )
-        
+
         if project_id:
             query = query.filter(
-                (ContextBlock.project_id == project_id) | 
+                (ContextBlock.project_id == project_id) |
                 (ContextBlock.project_id.is_(None))
             )
         if conversation_id:
@@ -455,7 +455,7 @@ class ConversationAgent:
             )
         if enabled_only:
             query = query.filter(ContextBlock.enabled == True)
-            
+
         return query.order_by(ContextBlock.created_at.asc()).all()
 
     def update_context_block(
@@ -482,10 +482,10 @@ class ConversationAgent:
             block.content = content
         if enabled is not None:
             block.enabled = enabled
-            
+
         self.db.commit()
         self.db.refresh(block)
-        
+
         return block
 
     def delete_context_block(self, block: ContextBlock) -> None:

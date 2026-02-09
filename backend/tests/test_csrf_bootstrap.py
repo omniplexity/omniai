@@ -9,15 +9,12 @@ endpoint require authentication.
 """
 
 import pytest
-
-from fastapi.testclient import TestClient
-from sqlalchemy.orm import sessionmaker
-
 from backend.config import get_settings
 from backend.db import Base, dispose_engine
 from backend.db.database import get_engine
 from backend.main import create_app
-
+from fastapi.testclient import TestClient
+from sqlalchemy.orm import sessionmaker
 
 pytestmark = [pytest.mark.security, pytest.mark.csrf]
 
@@ -175,8 +172,8 @@ class TestCSRFAuthenticated:
 
     def test_csrf_allows_valid_session(self, monkeypatch, tmp_path):
         """GET /api/auth/csrf should return 200 with a valid session cookie."""
-        from backend.db.models import User
         from backend.auth.session import create_session
+        from backend.db.models import User
 
         engine = _setup_db(tmp_path, monkeypatch)
         settings = get_settings()
@@ -216,8 +213,8 @@ class TestCSRFEndpointDistinction:
 
     def test_bootstrap_vs_authenticated_behavior(self, monkeypatch, tmp_path):
         """Verify bootstrap works without session, authenticated requires session."""
-        from backend.db.models import User
         from backend.auth.session import create_session
+        from backend.db.models import User
 
         engine = _setup_db(tmp_path, monkeypatch)
         settings = get_settings()

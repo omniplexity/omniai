@@ -4,8 +4,8 @@ Revision ID: 002_tools_media
 Revises: 001_initial_schema
 Create Date: 2026-02-03
 """
-from alembic import op
 import sqlalchemy as sa
+from alembic import op
 
 # revision identifiers, used by Alembic.
 revision = "002_tools_media"

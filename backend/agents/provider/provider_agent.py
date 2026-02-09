@@ -4,11 +4,11 @@ Manages AI model providers (LM Studio, Ollama, OpenAI-compatible endpoints).
 Provides interfaces for listing models, health checks, and chat operations.
 """
 
-from typing import List, Dict, Optional, Any, AsyncGenerator
 from dataclasses import dataclass
+from typing import Any, AsyncGenerator, Dict, List, Optional
 
-from backend.providers import ProviderRegistry
 from backend.config import Settings
+from backend.providers import ProviderRegistry
 
 
 @dataclass
@@ -22,7 +22,7 @@ class ModelInfo:
     capabilities: Dict[str, Any] = None
 
 
-@dataclass  
+@dataclass
 class ProviderCapabilities:
     """Provider capabilities."""
     streaming: bool = True
@@ -105,7 +105,7 @@ class ProviderAgent:
         provider = self.registry.get_provider(provider_name)
         if not provider:
             return {"healthy": False, "error": f"Provider not found: {provider_name}"}
-        
+
         try:
             healthy = await provider.healthcheck()
             return {"healthy": healthy, "provider": provider_name}
@@ -132,7 +132,7 @@ class ProviderAgent:
         provider = self.registry.get_provider(provider_name)
         if not provider:
             return []
-        
+
         try:
             models = await provider.list_models()
             return [
@@ -145,7 +145,7 @@ class ProviderAgent:
                 )
                 for m in models
             ]
-        except Exception as e:
+        except Exception:
             return []
 
     async def get_capabilities(self, provider_name: str) -> ProviderCapabilities:
@@ -160,7 +160,7 @@ class ProviderAgent:
         provider = self.registry.get_provider(provider_name)
         if not provider:
             return ProviderCapabilities()
-        
+
         try:
             caps = await provider.capabilities()
             return ProviderCapabilities(
@@ -187,10 +187,10 @@ class ProviderAgent:
         provider = self.registry.get_provider(request.provider)
         if not provider:
             raise ValueError(f"Provider not found: {request.provider}")
-        
+
         # Convert to provider format
         messages = [{"role": m.role, "content": m.content} for m in request.messages]
-        
+
         try:
             # Provider-specific chat_once call
             response = await provider.chat_once(
@@ -213,7 +213,7 @@ class ProviderAgent:
             raise RuntimeError(f"Chat completion failed: {e}")
 
     async def chat_stream(
-        self, 
+        self,
         request: ChatRequest
     ) -> AsyncGenerator[Dict[str, Any], None]:
         """Perform a streaming chat completion.
@@ -227,10 +227,10 @@ class ProviderAgent:
         provider = self.registry.get_provider(request.provider)
         if not provider:
             raise ValueError(f"Provider not found: {request.provider}")
-        
+
         # Convert to provider format
         messages = [{"role": m.role, "content": m.content} for m in request.messages]
-        
+
         try:
             async for chunk in provider.chat_stream(
                 messages=messages,

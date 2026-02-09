@@ -6,17 +6,17 @@ Agents handle the business logic, routers handle HTTP.
 
 from fastapi import APIRouter
 
-from backend.api.v1.status import router as status_router
-from backend.api.v1.models import router as models_router
-from backend.api.v1.providers import router as providers_router
 from backend.api.v1.chat import router as chat_router
 from backend.api.v1.conversations import router as conversations_router
-from backend.api.v1.voice import router as voice_router
-from backend.api.v1.tools import router as tools_router
 from backend.api.v1.memory import router as memory_router
+from backend.api.v1.meta import router as meta_router
+from backend.api.v1.models import router as models_router
 from backend.api.v1.ops import router as ops_router
 from backend.api.v1.presets import router as presets_router
-from backend.api.v1.meta import router as meta_router
+from backend.api.v1.providers import router as providers_router
+from backend.api.v1.status import router as status_router
+from backend.api.v1.tools import router as tools_router
+from backend.api.v1.voice import router as voice_router
 
 router = APIRouter(prefix="/v1")
 

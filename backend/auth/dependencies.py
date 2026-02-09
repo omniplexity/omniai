@@ -5,12 +5,11 @@ from typing import Optional
 from fastapi import Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session as DBSession
 
+from backend.auth.session import validate_session
 from backend.config import get_settings
-from backend.core.exceptions import AuthenticationError
 from backend.core.logging import get_logger
 from backend.db import get_db
 from backend.db.models import User
-from backend.auth.session import validate_session
 from backend.services.audit_service import audit_log_event
 
 logger = get_logger(__name__)

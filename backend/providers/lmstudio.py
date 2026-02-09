@@ -48,7 +48,7 @@ class LMStudioProvider(BaseProvider):
         """Check if LM Studio is available."""
         import logging
         logger = logging.getLogger(__name__)
-        
+
         try:
             logger.debug(f"Healthcheck: Connecting to LM Studio at {self.base_url}/v1/models")
             response = await self.client.get("/v1/models")
@@ -69,22 +69,22 @@ class LMStudioProvider(BaseProvider):
         """List available models from LM Studio."""
         import logging
         logger = logging.getLogger(__name__)
-        
+
         try:
             logger.info(f"Fetching models from LM Studio at {self.base_url}/v1/models")
             response = await self.client.get("/v1/models")
             response.raise_for_status()
             data = response.json()
-            
+
             logger.debug(f"LM Studio response: {data}")
 
             models = []
             models_data = data.get("data", [])
-            
+
             if not models_data:
                 logger.warning(f"LM Studio returned empty model list. Response: {data}")
                 return []
-            
+
             for model in models_data:
                 model_id = model.get("id")
                 if model_id:
@@ -96,7 +96,7 @@ class LMStudioProvider(BaseProvider):
                     ))
                 else:
                     logger.warning(f"Skipping model with missing id: {model}")
-                    
+
             logger.info(f"Successfully fetched {len(models)} models from LM Studio")
             return models
         except httpx.ConnectError as e:
@@ -156,7 +156,7 @@ class LMStudioProvider(BaseProvider):
         """Stream chat response."""
         import logging
         logger = logging.getLogger(__name__)
-        
+
         messages = [{"role": m.role, "content": m.content} for m in request.messages]
 
         payload = {
@@ -174,7 +174,7 @@ class LMStudioProvider(BaseProvider):
             payload["stop"] = request.stop
 
         logger.info(f"LM Studio chat_stream: connecting to {self.base_url}/v1/chat/completions with model {request.model}")
-        
+
         try:
             async with self.client.stream(
                 "POST",
@@ -182,8 +182,8 @@ class LMStudioProvider(BaseProvider):
                 json=payload,
             ) as response:
                 response.raise_for_status()
-                logger.info(f"LM Studio chat_stream: connection established, streaming response")
-                
+                logger.info("LM Studio chat_stream: connection established, streaming response")
+
                 chunk_count = 0
                 async for line in response.aiter_lines():
                     if not line or not line.startswith("data: "):

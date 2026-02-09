@@ -179,20 +179,20 @@ async def execute_run(
 ) -> None:
     SessionLocal = get_session_local()
     db = SessionLocal()
-    logger.info(f"execute_run started", data={"run_id": run_id, "provider": provider_name, "model": model})
+    logger.info("execute_run started", data={"run_id": run_id, "provider": provider_name, "model": model})
     try:
         run = db.query(ChatRun).filter(ChatRun.id == run_id).first()
         user = db.query(User).filter(User.id == user_id).first()
         conversation = db.query(Conversation).filter(Conversation.id == conversation_id).first()
         if not run or not user or not conversation:
-            logger.error(f"execute_run: missing resources", data={"run": bool(run), "user": bool(user), "conversation": bool(conversation)})
+            logger.error("execute_run: missing resources", data={"run": bool(run), "user": bool(user), "conversation": bool(conversation)})
             return
 
         service = ChatService(db, registry)
 
         provider_name = provider_name or registry.default_provider
         provider = registry.get_provider(provider_name)
-        logger.info(f"execute_run: using provider", data={"provider_name": provider_name, "provider_found": bool(provider)})
+        logger.info("execute_run: using provider", data={"provider_name": provider_name, "provider_found": bool(provider)})
         if not provider:
             run.status = "error"
             run.error_code = "E4040"
@@ -291,9 +291,9 @@ async def execute_run(
                 stop=settings.get("stop"),
                 stream=True,
             )
-            logger.info(f"execute_run: starting chat_stream", data={"model": resolved_model, "message_count": len(messages)})
+            logger.info("execute_run: starting chat_stream", data={"model": resolved_model, "message_count": len(messages)})
             chunk_count = 0
-            
+
             async for chunk in provider.chat_stream(request):
                 chunk_count += 1
                 if load_run_status() == "cancelled":
@@ -329,7 +329,7 @@ async def execute_run(
             run.status = "completed"
             db.commit()
             total_ms = int((time.monotonic() - started_monotonic) * 1000)
-            logger.info(f"execute_run: completed", data={"run_id": run_id, "chunks": chunk_count, "total_ms": total_ms})
+            logger.info("execute_run: completed", data={"run_id": run_id, "chunks": chunk_count, "total_ms": total_ms})
 
             provider_meta = {
                 "request_id": request_id,

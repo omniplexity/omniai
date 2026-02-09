@@ -3,14 +3,14 @@
 Manages knowledge documents and search.
 """
 
-from typing import List, Optional, Dict, Any
 from dataclasses import dataclass
 from datetime import datetime
+from typing import Any, Dict, List, Optional
 
 from sqlalchemy.orm import Session as DBSession
 
-from backend.db.models import User, KnowledgeDocument, KnowledgeChunk
 from backend.core.logging import get_logger
+from backend.db.models import KnowledgeChunk, KnowledgeDocument, User
 
 logger = get_logger(__name__)
 
@@ -74,7 +74,7 @@ class KnowledgeAgent:
         self.db.add(doc)
         self.db.commit()
         self.db.refresh(doc)
-        
+
         logger.info(f"Created document {doc.id} for user {user.id}")
         return doc
 
@@ -156,7 +156,7 @@ class KnowledgeAgent:
         self.db.add(chunk)
         self.db.commit()
         self.db.refresh(chunk)
-        
+
         return chunk
 
     def get_chunks(self, doc_id: str) -> List[KnowledgeChunk]:
@@ -203,7 +203,7 @@ class KnowledgeAgent:
             .limit(limit)
             .all()
         )
-        
+
         return [
             {
                 "chunk_id": chunk.id,

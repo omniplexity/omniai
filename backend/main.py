@@ -14,15 +14,15 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from backend.api import (
     admin_router,
+    artifacts_router,
     auth_router,
+    context_blocks_router,
     diag_router,
     health_router,
-    media_router,
     knowledge_router,
+    media_router,
     plan_router,
     projects_router,
-    context_blocks_router,
-    artifacts_router,
     workflows_router,
 )
 from backend.auth.bootstrap import ensure_bootstrap_admin
@@ -172,7 +172,7 @@ def create_app() -> FastAPI:
     app.add_middleware(ChatCSRFMiddleware)
 
     # 7. CORS (must be configured correctly for GitHub Pages frontend)
-    # Note: Wildcard patterns for tunnel domains are NOT used here - 
+    # Note: Wildcard patterns for tunnel domains are NOT used here -
     # use exact origins in CORS_ORIGINS setting instead
     allow_origin_regex = None
     if not settings.is_production:

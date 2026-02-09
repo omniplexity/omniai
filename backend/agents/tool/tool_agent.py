@@ -4,14 +4,14 @@ Manages tool execution, settings, and policy enforcement.
 Provides interfaces for file operations, code execution, web browsing, etc.
 """
 
-from typing import Dict, Any, Optional, List
 from dataclasses import dataclass
 from enum import Enum
+from typing import Any, Dict, Optional
 
 from sqlalchemy.orm import Session as DBSession
 
-from backend.db.models import User, ToolSetting, ToolReceipt
 from backend.core.logging import get_logger
+from backend.db.models import ToolReceipt, ToolSetting, User
 
 logger = get_logger(__name__)
 
@@ -78,7 +78,7 @@ class ToolAgent:
         global_enabled = self.global_settings.get(f"{tool_type.value}_enabled", True)
         if not global_enabled:
             return False
-        
+
         # Check per-conversation settings
         if conversation_id:
             setting = (
@@ -92,7 +92,7 @@ class ToolAgent:
             )
             if setting:
                 return setting.enabled
-        
+
         # Default to global setting
         return global_enabled
 
@@ -111,7 +111,7 @@ class ToolAgent:
             ToolSettings with effective values
         """
         settings = ToolSettings()
-        
+
         # Get per-conversation overrides
         if conversation_id:
             overrides = (
@@ -131,7 +131,7 @@ class ToolAgent:
                     settings.code_enabled = override.enabled
                 elif override.tool_id == ToolType.VISION.value:
                     settings.vision_enabled = override.enabled
-        
+
         return settings
 
     def set_tool_enabled(
@@ -161,7 +161,7 @@ class ToolAgent:
             )
             .first()
         )
-        
+
         if setting:
             setting.enabled = enabled
         else:
@@ -172,10 +172,10 @@ class ToolAgent:
                 enabled=enabled,
             )
             self.db.add(setting)
-        
+
         self.db.commit()
         self.db.refresh(setting)
-        
+
         return setting
 
     def execute_tool(
@@ -210,7 +210,7 @@ class ToolAgent:
         self.db.add(receipt)
         self.db.commit()
         self.db.refresh(receipt)
-        
+
         try:
             # Execute based on tool type
             if tool_id == ToolType.WEB.value:
@@ -223,20 +223,20 @@ class ToolAgent:
                 result = self._execute_vision_tool(input_payload)
             else:
                 result = ToolResult(success=False, error=f"Unknown tool: {tool_id}")
-            
+
             # Update receipt
             receipt.status = "completed" if result.success else "failed"
             receipt.output_payload = {"output": result.output} if result.success else None
             receipt.error_message = result.error
             self.db.commit()
-            
+
             return result
-            
+
         except Exception as e:
             receipt.status = "failed"
             receipt.error_message = str(e)
             self.db.commit()
-            
+
             logger.error(f"Tool execution failed: {e}")
             return ToolResult(success=False, error=str(e))
 

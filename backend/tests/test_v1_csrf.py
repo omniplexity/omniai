@@ -1,10 +1,8 @@
 import pytest
+
 pytestmark = [pytest.mark.security, pytest.mark.csrf]
 
 from pathlib import Path
-
-from fastapi.testclient import TestClient
-from sqlalchemy.orm import sessionmaker
 
 from backend.auth.session import create_session
 from backend.config import get_settings
@@ -13,6 +11,8 @@ from backend.db import Base, dispose_engine
 from backend.db.database import get_engine
 from backend.db.models import User
 from backend.main import create_app
+from fastapi.testclient import TestClient
+from sqlalchemy.orm import sessionmaker
 
 
 def _setup_db(tmp_path: Path, monkeypatch):
@@ -50,7 +50,7 @@ def test_v1_conversations_require_csrf(monkeypatch, tmp_path):
     # Override TrustedHostMiddleware to allow testserver
     monkeypatch.setenv("ALLOWED_HOSTS", "localhost,127.0.0.1,testserver")
     get_settings.cache_clear()
-    
+
     app = create_app()
     with TestClient(app) as client:
         client.cookies.set(settings.session_cookie_name, session_token)
@@ -165,12 +165,12 @@ class TestCSRFOriginValidation:
         """
         engine = _setup_db(tmp_path, monkeypatch)
         settings = get_settings()
-        
+
         # Set CORS_ORIGINS to allowlist without port
         monkeypatch.setenv("CORS_ORIGINS", "https://omniplexity.github.io")
         monkeypatch.setenv("ALLOWED_HOSTS", "localhost,127.0.0.1,testserver")
         get_settings.cache_clear()
-        
+
         db = _get_session(engine)
         try:
             user = User(email="test@example.com", username="testuser", hashed_password="hashed", is_active=True)
@@ -209,7 +209,7 @@ class TestCSRFOriginValidation:
 
         monkeypatch.setenv("ALLOWED_HOSTS", "localhost,127.0.0.1,testserver")
         get_settings.cache_clear()
-        
+
         db = _get_session(engine)
         try:
             user = User(email="null_test@example.com", username="nulluser", hashed_password="hashed", is_active=True)
@@ -251,7 +251,7 @@ class TestCSRFOriginValidation:
 
         monkeypatch.setenv("ALLOWED_HOSTS", "localhost,127.0.0.1,testserver")
         get_settings.cache_clear()
-        
+
         app = create_app()
         with TestClient(app) as client:
             # No cookies at all - simulates token-auth or API key flow

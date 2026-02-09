@@ -1,12 +1,11 @@
 from pathlib import Path
 
-from sqlalchemy.orm import sessionmaker
-
 from backend.auth.bootstrap import ensure_bootstrap_admin
 from backend.config import get_settings
 from backend.db import Base, dispose_engine
 from backend.db.database import get_engine
 from backend.db.models import User
+from sqlalchemy.orm import sessionmaker
 
 
 def _setup_db(tmp_path: Path, monkeypatch, **env):

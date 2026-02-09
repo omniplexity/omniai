@@ -16,7 +16,7 @@ from sqlalchemy.orm import Session as DBSession
 from backend.core.logging import get_logger
 from backend.core.time import utcnow
 from backend.db.database import get_session_local
-from backend.db.models import WorkflowRun, WorkflowStep, WorkflowTemplate, User
+from backend.db.models import User, WorkflowRun, WorkflowStep
 from backend.providers.base import ChatMessage, ChatRequest
 from backend.providers.registry import ProviderRegistry
 
@@ -284,7 +284,7 @@ async def execute_workflow_run(run_id: str, registry: ProviderRegistry) -> None:
         logger.info(f"Workflow run {run.id} completed", data={"steps": len(steps)})
 
     except Exception as exc:
-        logger.error(f"Workflow execution failed", data={"run_id": run_id, "error": str(exc)})
+        logger.error("Workflow execution failed", data={"run_id": run_id, "error": str(exc)})
         try:
             run = db.query(WorkflowRun).filter(WorkflowRun.id == run_id).first()
             if run and run.status not in ("completed", "cancelled"):

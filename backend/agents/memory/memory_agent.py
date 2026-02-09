@@ -3,14 +3,14 @@
 Manages long-term user memories and semantic search.
 """
 
-from typing import List, Optional, Dict, Any
 from dataclasses import dataclass
 from datetime import datetime
+from typing import List, Optional
 
 from sqlalchemy.orm import Session as DBSession
 
-from backend.db.models import User, MemoryEntry
 from backend.core.logging import get_logger
+from backend.db.models import MemoryEntry, User
 
 logger = get_logger(__name__)
 
@@ -64,7 +64,7 @@ class MemoryAgent:
         self.db.add(entry)
         self.db.commit()
         self.db.refresh(entry)
-        
+
         logger.info(f"Created memory {entry.id} for user {user.id}")
         return entry
 
@@ -133,10 +133,10 @@ class MemoryAgent:
             entry.content = content
         if tags is not None:
             entry.tags = tags
-            
+
         self.db.commit()
         self.db.refresh(entry)
-        
+
         return entry
 
     def delete_memory(self, entry: MemoryEntry) -> None:

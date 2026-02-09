@@ -3,11 +3,22 @@
 import secrets
 from typing import List, Optional
 
-from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Integer, String, Text, JSON, UniqueConstraint, Index
+from sqlalchemy import (
+    JSON,
+    Boolean,
+    Column,
+    DateTime,
+    ForeignKey,
+    Index,
+    Integer,
+    String,
+    Text,
+    UniqueConstraint,
+)
 from sqlalchemy.orm import relationship
 
-from backend.db.database import Base
 from backend.core.time import utcnow
+from backend.db.database import Base
 
 
 def generate_id() -> str:

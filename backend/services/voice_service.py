@@ -6,7 +6,12 @@ from typing import Optional
 
 from backend.config import Settings
 from backend.core.logging import get_logger
-from backend.providers.voice import OpenAICompatVoiceProvider, WhisperVoiceProvider, VoiceProvider, VoiceTranscript
+from backend.providers.voice import (
+    OpenAICompatVoiceProvider,
+    VoiceProvider,
+    VoiceTranscript,
+    WhisperVoiceProvider,
+)
 
 logger = get_logger(__name__)
 

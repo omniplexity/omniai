@@ -1,12 +1,12 @@
 """Structured logging configuration for OmniAI."""
 
+import json
 import logging
 import re
 import sys
 from contextvars import ContextVar
 from datetime import datetime
 from typing import Any, Dict, Optional, Set
-import json
 
 # Context variable for request-scoped data
 request_context: ContextVar[Dict[str, Any]] = ContextVar("request_context", default={})
@@ -57,22 +57,22 @@ def _redact_value(value: str) -> str:
     """
     if not isinstance(value, str):
         return "[REDACTED]"
-    
+
     # Short secrets (<12 chars): fully mask
     if len(value) < 12:
         return "<REDACTED>"
-    
+
     # Token with hash prefix (e.g., "sha256:abcd1234..."): show prefix + first/last
     if ':' in value:
         prefix, rest = value.split(':', 1)
         rest = rest.strip()
         if rest and len(rest) >= 8:
             return f"{prefix}:{rest[:4]}***{rest[-4:]}"
-    
+
     # Standard token: show first/last 3 chars if length permits
     if len(value) >= 12:
         return f"{value[:3]}***{value[-3:]}"
-    
+
     # Very short: fully mask
     return "<REDACTED>"
 

@@ -9,11 +9,10 @@ from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session as DBSession
 
-from backend.auth.dependencies import get_current_user
-from backend.config import get_settings
-from backend.db import get_db
-from backend.db.models import User, MemoryEntry
 from backend.agents.memory import MemoryAgent
+from backend.auth.dependencies import get_current_user
+from backend.db import get_db
+from backend.db.models import User
 
 router = APIRouter(prefix="/memory", tags=["v1-memory"])
 
@@ -73,7 +72,7 @@ async def list_memories(
     """List user's memory entries."""
     agent = _create_memory_agent(db)
     entries = agent.list_memories(current_user, limit, offset)
-    
+
     return [
         MemoryEntryResponse(
             id=entry.id,
@@ -96,14 +95,14 @@ async def create_memory(
 ) -> MemoryEntryResponse:
     """Create a new memory entry."""
     agent = _create_memory_agent(db)
-    
+
     entry = agent.create_memory(
         user=current_user,
         title=body.title,
         content=body.content,
         tags=body.tags,
     )
-    
+
     return MemoryEntryResponse(
         id=entry.id,
         title=entry.title,
@@ -122,14 +121,14 @@ async def get_memory(
 ) -> MemoryEntryResponse:
     """Get a memory entry by ID."""
     agent = _create_memory_agent(db)
-    
+
     entry = agent.get_memory(memory_id, current_user)
     if not entry:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Memory entry not found",
         )
-    
+
     return MemoryEntryResponse(
         id=entry.id,
         title=entry.title,
@@ -149,21 +148,21 @@ async def update_memory(
 ) -> MemoryEntryResponse:
     """Update a memory entry."""
     agent = _create_memory_agent(db)
-    
+
     entry = agent.get_memory(memory_id, current_user)
     if not entry:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Memory entry not found",
         )
-    
+
     entry = agent.update_memory(
         entry,
         title=body.title,
         content=body.content,
         tags=body.tags,
     )
-    
+
     return MemoryEntryResponse(
         id=entry.id,
         title=entry.title,
@@ -182,16 +181,16 @@ async def delete_memory(
 ) -> dict:
     """Delete a memory entry."""
     agent = _create_memory_agent(db)
-    
+
     entry = agent.get_memory(memory_id, current_user)
     if not entry:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Memory entry not found",
         )
-    
+
     agent.delete_memory(entry)
-    
+
     return {"status": "deleted", "id": memory_id}
 
 
@@ -203,13 +202,13 @@ async def search_memories(
 ) -> List[MemorySearchResult]:
     """Search memories by content."""
     agent = _create_memory_agent(db)
-    
+
     entries = agent.search_memories(
         user=current_user,
         query=body.query,
         limit=body.limit,
     )
-    
+
     return [
         MemorySearchResult(
             id=entry.id,

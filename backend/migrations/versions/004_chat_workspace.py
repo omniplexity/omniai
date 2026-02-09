@@ -4,8 +4,8 @@ Revision ID: 004_chat_workspace
 Revises: 003_memory_knowledge
 Create Date: 2026-02-04
 """
-from alembic import op
 import sqlalchemy as sa
+from alembic import op
 
 # revision identifiers, used by Alembic.
 revision = "004_chat_workspace"

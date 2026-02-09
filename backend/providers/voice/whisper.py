@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import tempfile
-from typing import Optional
 
 from backend.core.logging import get_logger
 from backend.providers.voice.base import VoiceProvider, VoiceTranscript

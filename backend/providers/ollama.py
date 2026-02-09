@@ -1,8 +1,8 @@
 """Ollama provider implementation."""
 
+import json
 from collections.abc import AsyncIterator
 from typing import Any, Dict, List
-import json
 
 import httpx
 
@@ -197,14 +197,14 @@ class OllamaProvider(BaseProvider):
             response = await self.client.get("/api/voice/models")
             if response.status_code != 200:
                 raise NotImplementedError("Voice extension not available")
-            
+
             # Start STT stream
             payload = {
                 "language": language,
                 "interim_results": interim_results,
                 "continuous": continuous
             }
-            
+
             async with self.client.stream(
                 "POST",
                 "/api/voice/stt",
@@ -230,7 +230,7 @@ class OllamaProvider(BaseProvider):
                         }
                     except json.JSONDecodeError:
                         continue
-                        
+
         except httpx.HTTPStatusError as e:
             if e.response.status_code == 404:
                 raise NotImplementedError("Voice extension not installed on Ollama server")
@@ -250,12 +250,12 @@ class OllamaProvider(BaseProvider):
                 "pitch": pitch,
                 "volume": volume
             }
-            
+
             response = await self.client.post("/api/voice/tts", json=payload)
             response.raise_for_status()
-            
+
             return response.content
-            
+
         except httpx.HTTPStatusError as e:
             if e.response.status_code == 404:
                 raise NotImplementedError("Voice extension not installed on Ollama server")
@@ -270,10 +270,10 @@ class OllamaProvider(BaseProvider):
         try:
             response = await self.client.get("/api/voice/voices")
             response.raise_for_status()
-            
+
             data = response.json()
             return data.get("voices", [])
-            
+
         except httpx.HTTPStatusError as e:
             if e.response.status_code == 404:
                 raise NotImplementedError("Voice extension not installed on Ollama server")

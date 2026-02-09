@@ -1,7 +1,6 @@
-from fastapi.testclient import TestClient
-
 from backend.auth.dependencies import get_current_user
 from backend.main import create_app
+from fastapi.testclient import TestClient
 
 
 def test_providers_paths_do_not_redirect_and_include_cors_headers():

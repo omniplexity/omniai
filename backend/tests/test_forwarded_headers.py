@@ -4,18 +4,18 @@ import ipaddress
 from unittest.mock import MagicMock
 
 import pytest
-pytestmark = pytest.mark.security
 
-from fastapi.testclient import TestClient
+pytestmark = pytest.mark.security
 
 from backend.config import get_settings
 from backend.core.middleware import (
-    ForwardedHeadersMiddleware,
     TRUSTED_PROXY_NETS,
+    ForwardedHeadersMiddleware,
     _is_trusted_proxy,
     get_client_ip,
 )
 from backend.main import create_app
+from fastapi.testclient import TestClient
 
 
 class TestIsTrustedProxy:
@@ -52,7 +52,7 @@ class TestForwardedHeadersMiddleware:
         """X-Forwarded-For from trusted proxy should be accepted."""
         monkeypatch.setenv("ALLOWED_HOSTS", "localhost,127.0.0.1,testserver")
         get_settings.cache_clear()
-        
+
         app = create_app()
 
         with TestClient(app) as client:
@@ -67,7 +67,7 @@ class TestForwardedHeadersMiddleware:
         """X-Forwarded-For from untrusted source should be stripped."""
         monkeypatch.setenv("ALLOWED_HOSTS", "localhost,127.0.0.1,testserver")
         get_settings.cache_clear()
-        
+
         app = create_app()
 
         with TestClient(app) as client:
@@ -83,7 +83,7 @@ class TestForwardedHeadersMiddleware:
         """X-Forwarded-Proto from untrusted source should be stripped."""
         monkeypatch.setenv("ALLOWED_HOSTS", "localhost,127.0.0.1,testserver")
         get_settings.cache_clear()
-        
+
         app = create_app()
 
         with TestClient(app) as client:
@@ -97,7 +97,7 @@ class TestForwardedHeadersMiddleware:
         """X-Forwarded-Host from untrusted source should be stripped."""
         monkeypatch.setenv("ALLOWED_HOSTS", "localhost,127.0.0.1,testserver")
         get_settings.cache_clear()
-        
+
         app = create_app()
 
         with TestClient(app) as client:
@@ -179,8 +179,6 @@ class TestForwardedHeadersMiddlewareCustomConfig:
     def test_custom_trusted_proxies(self, monkeypatch):
         """Middleware should respect custom trusted proxy configuration."""
         from fastapi import FastAPI
-        from starlette.requests import Request
-        from starlette.responses import Response
 
         app = FastAPI()
 

@@ -4,8 +4,8 @@ Revision ID: 005_v1_receipts_presets
 Revises: 004_chat_workspace
 Create Date: 2026-02-04
 """
-from alembic import op
 import sqlalchemy as sa
+from alembic import op
 
 # revision identifiers, used by Alembic.
 revision = "005_v1_receipts_presets"

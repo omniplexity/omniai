@@ -11,11 +11,10 @@ from __future__ import annotations
 import argparse
 import sys
 
-from sqlalchemy.orm import sessionmaker
-
 from backend.auth.password import hash_password, validate_password_complexity
 from backend.db.database import get_engine
 from backend.db.models import User
+from sqlalchemy.orm import sessionmaker
 
 
 def main() -> None:

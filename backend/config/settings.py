@@ -40,7 +40,7 @@ class Settings(BaseSettings):
     host: str = Field(default="127.0.0.1")
     port: int = Field(default=8000)
     debug: bool = Field(default=False)
-    
+
     # Trusted hosts for Host header validation
     # Required for tunnel deployments (ngrok/cloudflared) which forward original Host
     # Format: comma-separated list of allowed hostnames
@@ -221,7 +221,7 @@ class Settings(BaseSettings):
         if vv not in {"development", "staging", "production", "test"}:
             raise ValueError("ENVIRONMENT must be one of: development, staging, production, test")
         return vv
-    
+
     @property
     def is_test(self) -> bool:
         """Check if running in test mode."""
@@ -269,7 +269,7 @@ class Settings(BaseSettings):
         # SameSite=None requires Secure=true.
         if self.cookie_samesite == "none" and not self.cookie_secure:
             raise ValueError("COOKIE_SECURE must be true when COOKIE_SAMESITE=none")
-        
+
         # Wildcard hosts not allowed in production
         if self.is_production:
             for host in self.allowed_hosts_list:

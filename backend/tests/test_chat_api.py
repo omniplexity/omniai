@@ -2,15 +2,14 @@
 
 from pathlib import Path
 
-from fastapi.testclient import TestClient
-from sqlalchemy.orm import sessionmaker
-
 from backend.auth.session import create_session
 from backend.config import get_settings
 from backend.db import Base, dispose_engine
 from backend.db.database import get_engine
-from backend.db.models import User, Conversation
+from backend.db.models import Conversation, User
 from backend.main import create_app
+from fastapi.testclient import TestClient
+from sqlalchemy.orm import sessionmaker
 
 
 def _setup_db(tmp_path: Path, monkeypatch):
@@ -52,7 +51,6 @@ def _create_test_user(db):
 
 def _create_mock_provider_registry(app):
     """Create a mock provider registry for testing."""
-    from backend.providers.base import ChatChunk
 
     class MockProvider:
         async def healthcheck(self):

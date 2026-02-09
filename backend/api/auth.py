@@ -1,7 +1,7 @@
 """Authentication API endpoints."""
 
-from datetime import datetime
 import secrets
+from datetime import datetime
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
@@ -10,11 +10,20 @@ from sqlalchemy.orm import Session as DBSession
 
 from backend.auth.dependencies import get_current_user, get_optional_user
 from backend.auth.login_limiter import get_ip_limiter, get_username_limiter
-from backend.auth.password import hash_password, validate_password_complexity, verify_password_with_upgrade
-from backend.auth.session import create_session, invalidate_session, rotate_session, validate_session
+from backend.auth.password import (
+    hash_password,
+    validate_password_complexity,
+    verify_password_with_upgrade,
+)
+from backend.auth.session import (
+    create_session,
+    invalidate_session,
+    rotate_session,
+    validate_session,
+)
 from backend.config import get_settings
-from backend.core.time import utcnow
 from backend.core.logging import get_logger
+from backend.core.time import utcnow
 from backend.db import get_db
 from backend.db.models import (
     Artifact,
@@ -100,7 +109,7 @@ async def register(
 ):
     """Register a new user account."""
     settings = get_settings()
-    
+
     # Prevent caching of auth responses
     response.headers["Cache-Control"] = _AUTH_CACHE_CONTROL
     response.headers["Pragma"] = _AUTH_PRAGMA
@@ -219,7 +228,7 @@ async def login(
 ):
     """Log in with username and password."""
     settings = get_settings()
-    
+
     # Prevent caching of auth responses
     response.headers["Cache-Control"] = _AUTH_CACHE_CONTROL
     response.headers["Pragma"] = _AUTH_PRAGMA
@@ -340,7 +349,7 @@ async def logout(
 ):
     """Log out and invalidate session."""
     settings = get_settings()
-    
+
     # Prevent caching of auth responses
     response.headers["Cache-Control"] = _AUTH_CACHE_CONTROL
     response.headers["Pragma"] = _AUTH_PRAGMA
@@ -378,7 +387,7 @@ async def refresh_session(
 ):
     """Rotate session + CSRF token for an authenticated user."""
     settings = get_settings()
-    
+
     # Prevent caching of auth responses
     response.headers["Cache-Control"] = _AUTH_CACHE_CONTROL
     response.headers["Pragma"] = _AUTH_PRAGMA
@@ -724,7 +733,7 @@ async def delete_my_account(
     # Prevent caching of auth responses
     response.headers["Cache-Control"] = _AUTH_CACHE_CONTROL
     response.headers["Pragma"] = _AUTH_PRAGMA
-    
+
     verify = verify_password_with_upgrade(payload.password, current_user.hashed_password)
     if not verify.ok:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid password")
@@ -759,8 +768,8 @@ async def list_my_sessions(
     current_user: User = Depends(get_current_user),
 ):
     """List active sessions for the current user (no secrets)."""
-    from backend.db.models import Session as SessionRow
     from backend.auth.session import hash_session_token
+    from backend.db.models import Session as SessionRow
 
     settings = get_settings()
     session_token = request.cookies.get(settings.session_cookie_name) or ""
@@ -792,8 +801,8 @@ async def revoke_session(
     current_user: User = Depends(get_current_user),
 ):
     """Revoke one session by id (current user only)."""
-    from backend.db.models import Session as SessionRow
     from backend.auth.session import hash_session_token
+    from backend.db.models import Session as SessionRow
 
     settings = get_settings()
     row = (
@@ -835,8 +844,8 @@ async def revoke_all_sessions_except_current(
     current_user: User = Depends(get_current_user),
 ):
     """Revoke all sessions for the current user except the current session."""
-    from backend.db.models import Session as SessionRow
     from backend.auth.session import hash_session_token
+    from backend.db.models import Session as SessionRow
 
     settings = get_settings()
     session_token = request.cookies.get(settings.session_cookie_name) or ""

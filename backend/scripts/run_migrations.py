@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Run database migrations with proper path setup."""
 
-import sys
 import os
+import sys
 
 # Add project root to path
 project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -13,8 +13,8 @@ if project_root not in sys.path:
 backend_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 os.chdir(backend_dir)
 
-from alembic.config import Config
 from alembic import command
+from alembic.config import Config
 
 
 def upgrade():

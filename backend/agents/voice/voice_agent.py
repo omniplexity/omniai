@@ -3,11 +3,11 @@
 Handles speech-to-text (transcription) and text-to-speech (synthesis).
 """
 
-from typing import Optional, Dict, Any
 from dataclasses import dataclass
+from typing import Optional
 
-from backend.services.voice_service import VoiceService
 from backend.config import Settings
+from backend.services.voice_service import VoiceService
 
 
 @dataclass
