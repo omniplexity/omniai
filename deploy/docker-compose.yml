@@ -4,16 +4,17 @@
 # This is the SINGLE SOURCE OF TRUTH for backend deployment.
 #
 # Usage:
-#   Full stack:           docker compose up -d
-#   With ngrok tunnel:    docker compose --profile tunnel up -d
-#   Stop all:             docker compose down
-#   View logs:            docker compose logs -f
+#   Full stack (Cloudflare):   docker compose up -d
+#   Full stack (no tunnel):    docker compose up -d
+#   Stop all:                  docker compose down
+#   View logs:                 docker compose logs -f
 #
 # Services:
-#   - backend:  FastAPI application (port 8000 internal)
-#   - postgres: PostgreSQL 16 database
-#   - redis:    Redis 7 cache/sessions
-#   - ngrok:    Public tunnel (optional, use --profile tunnel)
+#   - backend:     FastAPI application (port 8000 internal)
+#   - postgres:    PostgreSQL 16 database
+#   - redis:       Redis 7 cache/sessions
+#   - cloudflared: Cloudflare Tunnel (recommended for external access)
+#   - ngrok:       ngrok tunnel (DEPRECATED - use Cloudflare instead)
 # =============================================================================
 
 services:
@@ -87,8 +88,8 @@ services:
       - backend_logs:/app/logs
     # Bind to 127.0.0.1 only to prevent LAN exposure
     # Use "8000:8000" without prefix for all-interfaces binding (containers only)
-    ports:
-      - "127.0.0.1:8000:8000"
+    # No ports exposed - backend is internal only
+    # Access via Cloudflare Tunnel (cloudflared service) or localhost only
     depends_on:
       postgres:
         condition: service_healthy
@@ -107,8 +108,30 @@ services:
     user: root
 
   # ===========================================================================
-  # Ngrok Tunnel (for external access)
+  # Cloudflare Tunnel (recommended for external access)
   # ===========================================================================
+  # See docs/CLOUDFLARE_TUNNEL.md for setup instructions
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    container_name: omniai-cloudflared
+    restart: unless-stopped
+    command: tunnel run omniai
+    volumes:
+      - ./cloudflared/config.yml:/etc/cloudflared/config.yml:ro
+      - ./cloudflared/credentials.json:/etc/cloudflared/credentials.json:ro
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - omniai_internal
+    profiles:
+      - tunnel
+
+  # ===========================================================================
+  # Ngrok Tunnel (DEPRECATED - use Cloudflare instead)
+  # ===========================================================================
+  # ngrok free tier strips Set-Cookie headers, breaking cross-site authentication
+  # See docs/CLOUDFLARE_TUNNEL.md for migration to Cloudflare Tunnel
   ngrok:
     image: ngrok/ngrok:latest
     container_name: omniai-ngrok
