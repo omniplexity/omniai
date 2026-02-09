@@ -1,4 +1,5 @@
 {
-  "BACKEND_BASE_URL": "https://api.yourdomain.com",
-  "_note": "Example only. In the GitHub Pages repo, commit runtime-config.json with the actual backend URL. Locally, use runtime-config.local.json (gitignored)."
+  "BACKEND_BASE_URL": "https://rossie-chargeful-plentifully.ngrok-free.dev",
+  "_note": "Example only. In the GitHub Pages repo, commit runtime-config.json with the actual backend URL. Locally, use runtime-config.local.json (gitignored).",
+  "_tunnel_note": "OmniAI uses ngrok for SSE streaming support. The domain is configured in docker-compose.yml via NGROK_DOMAIN."
 }

@@ -68,12 +68,12 @@ services:
   # ===========================================================================
   backend:
     build:
-      context: ./backend
+      context: ../backend
       dockerfile: Dockerfile
     container_name: omniai-backend
     restart: unless-stopped
     env_file:
-      - ./backend/.env
+      - ../.env
     environment:
       HOST: "0.0.0.0"
       PORT: "8000"
@@ -113,7 +113,7 @@ services:
     image: ngrok/ngrok:latest
     container_name: omniai-ngrok
     restart: unless-stopped
-    command: >
+    command: >-
       http backend:8000
       --log=stdout
       --domain=${NGROK_DOMAIN:-rossie-chargeful-plentifully.ngrok-free.dev}
@@ -126,22 +126,6 @@ services:
       - omniai_internal
     profiles:
       - tunnel
-
-  # ===========================================================================
-  # Cloudflare Tunnel (alternative to ngrok)
-  # ===========================================================================
-  cloudflared:
-    image: cloudflare/cloudflared:latest
-    container_name: omniai-cloudflared
-    restart: unless-stopped
-    command: tunnel --no-autoupdate run --token ${CLOUDFLARE_TUNNEL_TOKEN}
-    depends_on:
-      backend:
-        condition: service_healthy
-    networks:
-      - omniai_internal
-    profiles:
-      - cloudflare
 
 # =============================================================================
 # Volumes (persistent data)

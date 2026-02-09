@@ -18,10 +18,9 @@ build/
 *.sqlite
 *.sqlite3
 
-# Environment
+# Environment (consolidated into single .env file at project root)
 .env
-backend/.env
-deploy/.env.*
+.env.local
 
 # IDE
 .vscode/

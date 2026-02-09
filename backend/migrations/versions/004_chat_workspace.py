@@ -48,7 +48,7 @@ def upgrade() -> None:
             sa.Column("conversation_id", sa.String(length=32), sa.ForeignKey("conversations.id", ondelete="CASCADE"), nullable=True),
             sa.Column("title", sa.String(length=255), nullable=False),
             sa.Column("content", sa.Text(), nullable=False),
-            sa.Column("enabled", sa.Boolean(), nullable=False, server_default=sa.text("1")),
+            sa.Column("enabled", sa.Boolean(), nullable=False, server_default=sa.text("true")),
             sa.Column("created_at", sa.DateTime(), nullable=False),
             sa.Column("updated_at", sa.DateTime(), nullable=False),
         )

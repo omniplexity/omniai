@@ -45,7 +45,7 @@ class Settings(BaseSettings):
     # Required for tunnel deployments (ngrok/cloudflared) which forward original Host
     # Format: comma-separated list of allowed hostnames
     allowed_hosts: str = Field(
-        default="localhost,127.0.0.1",
+        default="localhost,127.0.0.1,rossie-chargeful-plentifully.ngrok-free.dev",
         description="Comma-separated allowed Host headers. Include tunnel domains when using ngrok/cloudflared.",
     )
     log_level: str = Field(default="INFO")
@@ -53,7 +53,7 @@ class Settings(BaseSettings):
 
     # Security
     secret_key: str = Field(default_factory=lambda: secrets.token_urlsafe(64))
-    cors_origins: str = Field(default="http://localhost:3000,https://omniplexity.github.io")
+    cors_origins: str = Field(default="https://omniplexity.github.io")
     required_frontend_origins: str = Field(
         default="",
         description="Comma-separated frontend origins required for CORS. Overrides default GH Pages origin. Leave empty to use default.",
@@ -74,7 +74,7 @@ class Settings(BaseSettings):
     session_cookie_name: str = Field(default="omni_session")
     session_ttl_seconds: int = Field(default=604800)
     cookie_secure: bool = Field(default=True)
-    cookie_samesite: str = Field(default="lax")
+    cookie_samesite: str = Field(default="none")
     cookie_domain: str = Field(default="")
     csrf_header_name: str = Field(default="X-CSRF-Token")
     csrf_cookie_name: str = Field(default="omni_csrf")
