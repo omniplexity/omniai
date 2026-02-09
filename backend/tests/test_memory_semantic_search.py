@@ -77,12 +77,12 @@ def test_memory_semantic_search_prefers_embeddings(monkeypatch, tmp_path):
     app.dependency_overrides[get_current_user] = override_get_current_user
 
     with TestClient(app) as client:
-        a = client.post("/api/memory", json={"title": "Cats", "content": "cat facts"})
-        b = client.post("/api/memory", json={"title": "Dogs", "content": "dog facts"})
+        a = client.post("/v1/memory", json={"title": "Cats", "content": "cat facts"})
+        b = client.post("/v1/memory", json={"title": "Dogs", "content": "dog facts"})
         assert a.status_code == 201
         assert b.status_code == 201
 
-        res = client.post("/api/memory/search", json={"query": "cat", "limit": 5})
+        res = client.post("/v1/memory/search", json={"query": "cat", "limit": 5})
         assert res.status_code == 200
         items = res.json()
         assert len(items) >= 1

@@ -47,24 +47,24 @@ def test_memory_crud(monkeypatch, tmp_path):
     app.dependency_overrides[get_current_user] = override_get_current_user
 
     with TestClient(app) as client:
-        created = client.post("/api/memory", json={"title": "Fact", "content": "Remember this", "tags": ["core"]})
+        created = client.post("/v1/memory", json={"title": "Fact", "content": "Remember this", "tags": ["core"]})
         assert created.status_code == 201
         body = created.json()
         assert body["title"] == "Fact"
 
-        listed = client.get("/api/memory")
+        listed = client.get("/v1/memory")
         assert listed.status_code == 200
         assert len(listed.json()) == 1
 
-        updated = client.patch(f"/api/memory/{body['id']}", json={"content": "Updated"})
+        updated = client.patch(f"/v1/memory/{body['id']}", json={"content": "Updated"})
         assert updated.status_code == 200
         assert updated.json()["content"] == "Updated"
 
-        deleted = client.delete(f"/api/memory/{body['id']}")
+        deleted = client.delete(f"/v1/memory/{body['id']}")
         assert deleted.status_code == 200
-        assert deleted.json()["message"] == "Memory entry deleted"
+        assert deleted.json()["status"] == "deleted"
 
-        listed2 = client.get("/api/memory")
+        listed2 = client.get("/v1/memory")
         assert listed2.status_code == 200
         assert listed2.json() == []
 

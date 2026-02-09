@@ -56,5 +56,14 @@ Thumbs.db
 htmlcov/
 .pytest_cache/
 
+# Claude Code local settings (machine-specific permissions)
+.claude/settings.local.json
+
+# Tunnel credentials (secrets)
+deploy/cloudflared/credentials.json
+
+# Test env files
+backend/.env.example.test
+
 # Node (if any backend tooling uses it)
 node_modules/
