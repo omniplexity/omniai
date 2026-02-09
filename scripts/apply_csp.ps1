@@ -12,7 +12,7 @@
     DO NOT RUN until frontend exists at specified path.
 
 .PARAMETER FrontendPath
-    Path to the frontend repository (default: ../OmniAI-frontend)
+    Path to the frontend repository (default: ../../omniplexity.github.io)
 
 .PARAMETER Mode
     CSP mode: 'development' (allows https:) or 'production' (specific domain)
@@ -28,7 +28,7 @@
 #>
 
 param(
-    [string]$FrontendPath = "../OmniAI-frontend",
+    [string]$FrontendPath = "../../omniplexity.github.io",
     [ValidateSet('development', 'production')]
     [string]$Mode = "development",
     [string]$ApiDomain = ""

@@ -45,7 +45,7 @@ class Settings(BaseSettings):
     # Required for tunnel deployments (ngrok/cloudflared) which forward original Host
     # Format: comma-separated list of allowed hostnames
     allowed_hosts: str = Field(
-        default="localhost,127.0.0.1,rossie-chargeful-plentifully.ngrok-free.dev",
+        default="localhost,127.0.0.1,omniplexity.duckdns.org,rossie-chargeful-plentifully.ngrok-free.dev",
         description="Comma-separated allowed Host headers. Include tunnel domains when using ngrok/cloudflared.",
     )
     log_level: str = Field(default="INFO")
@@ -142,27 +142,12 @@ class Settings(BaseSettings):
     sse_max_tokens_per_stream: int = Field(default=32768)
     sse_idle_timeout_seconds: int = Field(default=60)
 
-    # Legacy API deprecation
-    # Set to false to disable legacy /api/* endpoints entirely
-    # Defaults to false in production for security
-    legacy_api_enabled: bool = Field(default=True)
-
     @property
     def allowed_hosts_list(self) -> List[str]:
         """Parse allowed hosts from comma-separated string."""
         if not self.allowed_hosts:
             return []
         return [h.strip() for h in self.allowed_hosts.split(",") if h.strip()]
-
-    @field_validator("legacy_api_enabled", mode="before")
-    @classmethod
-    def validate_legacy_api_default(cls, v, info):
-        """Default legacy_api_enabled to False in production."""
-        env = (info.data.get("environment") or "").strip().lower()
-        # Only apply default if not explicitly set
-        if v is True and env == "production":
-            return False
-        return v
 
     @property
     def cors_origins_list(self) -> List[str]:

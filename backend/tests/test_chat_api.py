@@ -116,7 +116,7 @@ class TestConversationsAPI:
             client.headers[settings.csrf_header_name] = csrf_token
             client.headers["Origin"] = "http://localhost:3000"
 
-            response = client.get("/api/chat/conversations")
+            response = client.get("/v1/conversations")
             assert response.status_code == 200
             data = response.json()
             assert isinstance(data, list)
@@ -146,7 +146,7 @@ class TestConversationsAPI:
             client.headers["Origin"] = "http://localhost:3000"
 
             response = client.post(
-                "/api/chat/conversations",
+                "/v1/conversations",
                 json={"title": "Test Conversation", "provider": "lmstudio", "model": "test-model"}
             )
             assert response.status_code == 200
@@ -184,7 +184,7 @@ class TestConversationsAPI:
             client.cookies.set(settings.session_cookie_name, session_token)
             client.headers[settings.csrf_header_name] = csrf_token
 
-            response = client.get(f"/api/chat/conversations/{conversation_id}")
+            response = client.get(f"/v1/conversations/{conversation_id}")
             assert response.status_code == 200
             data = response.json()
             assert data["id"] == conversation_id
@@ -211,7 +211,7 @@ class TestConversationsAPI:
             client.cookies.set(settings.session_cookie_name, session_token)
             client.headers[settings.csrf_header_name] = csrf_token
 
-            response = client.get("/api/chat/conversations/nonexistent-id")
+            response = client.get("/v1/conversations/nonexistent-id")
             assert response.status_code == 404
 
         dispose_engine()
@@ -244,7 +244,7 @@ class TestConversationsAPI:
             client.headers["Origin"] = "http://localhost:3000"
 
             response = client.patch(
-                f"/api/chat/conversations/{conversation_id}",
+                f"/v1/conversations/{conversation_id}",
                 json={"title": "New Title"}
             )
             assert response.status_code == 200
@@ -280,11 +280,11 @@ class TestConversationsAPI:
             client.headers[settings.csrf_header_name] = csrf_token
             client.headers["Origin"] = "http://localhost:3000"
 
-            response = client.delete(f"/api/chat/conversations/{conversation_id}")
+            response = client.delete(f"/v1/conversations/{conversation_id}")
             assert response.status_code == 200
 
             # Verify it's deleted
-            get_response = client.get(f"/api/chat/conversations/{conversation_id}")
+            get_response = client.get(f"/v1/conversations/{conversation_id}")
             assert get_response.status_code == 404
 
         dispose_engine()
@@ -648,7 +648,7 @@ class TestChatAuthorization:
         _create_mock_provider_registry(app)
 
         with TestClient(app) as client:
-            response = client.get("/api/chat/conversations")
+            response = client.get("/v1/conversations")
             assert response.status_code == 401
 
         dispose_engine()
@@ -663,7 +663,7 @@ class TestChatAuthorization:
 
         with TestClient(app) as client:
             response = client.post(
-                "/api/chat/conversations",
+                "/v1/conversations",
                 json={"title": "Test"}
             )
             assert response.status_code == 401
@@ -716,7 +716,7 @@ class TestChatAuthorization:
             client.headers[settings.csrf_header_name] = csrf_token
 
             # Try to access user2's conversation as user1
-            response = client.get(f"/api/chat/conversations/{conversation_id}")
+            response = client.get(f"/v1/conversations/{conversation_id}")
             assert response.status_code == 404
 
         dispose_engine()

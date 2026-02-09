@@ -16,12 +16,12 @@ def test_providers_paths_do_not_redirect_and_include_cors_headers():
     headers = {"Origin": origin}
 
     with TestClient(app) as client:
-        res = client.get("/api/providers", headers=headers, follow_redirects=False)
+        res = client.get("/v1/providers", headers=headers, follow_redirects=False)
         assert res.status_code not in (307, 308)
         assert res.headers.get("location") is None
         assert res.headers.get("access-control-allow-origin") == origin
 
-        res2 = client.get("/api/providers/", headers=headers, follow_redirects=False)
+        res2 = client.get("/v1/providers/", headers=headers, follow_redirects=False)
         assert res2.status_code not in (307, 308)
         assert res2.headers.get("location") is None
         assert res2.headers.get("access-control-allow-origin") == origin

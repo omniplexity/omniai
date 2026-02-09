@@ -206,36 +206,6 @@ class RequestContextMiddleware(BaseHTTPMiddleware):
             request_context.reset(token)
 
 
-class RequestSizeLimitMiddleware(BaseHTTPMiddleware):
-    """Middleware to limit request body size."""
-
-    def __init__(self, app, max_bytes: int = 1048576, voice_max_bytes: int | None = None):
-        """Initialize with max size in bytes."""
-        super().__init__(app)
-        self.max_bytes = max_bytes
-        self.voice_max_bytes = voice_max_bytes or max_bytes
-
-    async def dispatch(self, request: Request, call_next: Callable) -> Response:
-        """Check request size before processing."""
-        content_length = request.headers.get("content-length")
-        limit = self.max_bytes
-        if request.url.path.startswith("/v1/voice") or request.url.path.startswith("/api/voice"):
-            limit = self.voice_max_bytes
-
-        if content_length and int(content_length) > limit:
-            logger.warning(
-                f"Request too large: {content_length} bytes",
-                data={"max_bytes": limit},
-            )
-            return Response(
-                content='{"detail": "Request body too large", "error": {"code": "E4130", "message": "Request body too large"}}',
-                status_code=413,
-                media_type="application/json",
-            )
-
-        return await call_next(request)
-
-
 class RequestSizeLimitExceeded(Exception):
     """Raised when request body exceeds configured size limit."""
 
@@ -245,28 +215,49 @@ class RequestSizeLimitExceeded(Exception):
         super().__init__(f"Request body exceeds {max_bytes} bytes (received {received_bytes})")
 
 
-class MaxRequestSizeMiddleware(BaseHTTPMiddleware):
+class RequestSizeLimitMiddleware(BaseHTTPMiddleware):
     """Enforces a maximum request body size for all requests.
     
-    - If Content-Length is present and exceeds max_bytes → 413.
-    - If chunked/unknown length → wraps receive() and enforces a byte counter.
-    - Returns clean 413 JSON instead of generic disconnect.
+    Features:
+    - Voice path awareness: uses separate limit for /v1/voice endpoints
+    - Chunked body handling: wraps receive() for unknown-length requests
+    - Clean 413 responses instead of generic disconnects
     """
 
-    def __init__(self, app, max_bytes: int) -> None:
+    def __init__(self, app, max_bytes: int = 1048576, voice_max_bytes: int | None = None):
+        """Initialize with max size in bytes.
+        
+        Args:
+            app: The ASGI application
+            max_bytes: Default max request body size in bytes
+            voice_max_bytes: Max size for voice endpoints (larger files)
+        """
         super().__init__(app)
         self.max_bytes = int(max_bytes)
+        self.voice_max_bytes = voice_max_bytes or max_bytes
+
+    def _get_limit(self, request: Request) -> int:
+        """Get the size limit for this request."""
+        if request.url.path.startswith("/v1/voice"):
+            return self.voice_max_bytes
+        return self.max_bytes
 
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
         """Check request size before processing."""
+        limit = self._get_limit(request)
+        
         # Fast path: check Content-Length header first
         cl = request.headers.get("content-length")
         if cl:
             try:
                 content_length = int(cl)
-                if content_length > self.max_bytes:
+                if content_length > limit:
+                    logger.warning(
+                        f"Request too large: {content_length} bytes (limit: {limit})",
+                        data={"path": request.url.path},
+                    )
                     return Response(
-                        content='{"error": {"code": "E1413", "message": "Request body too large"}}',
+                        content='{"detail": "Request body too large", "error": {"code": "E4130", "message": "Request body too large"}}',
                         status_code=413,
                         media_type="application/json",
                     )
@@ -288,9 +279,8 @@ class MaxRequestSizeMiddleware(BaseHTTPMiddleware):
             if message["type"] == "http.request":
                 body = message.get("body", b"") or b""
                 received += len(body)
-                if received > self.max_bytes:
-                    # Raise custom exception for clean error handling
-                    raise RequestSizeLimitExceeded(self.max_bytes, received)
+                if received > limit:
+                    raise RequestSizeLimitExceeded(limit, received)
             return message
 
         request._receive = limited_receive  # type: ignore[attr-defined]
@@ -300,8 +290,12 @@ class MaxRequestSizeMiddleware(BaseHTTPMiddleware):
             return response
         except RequestSizeLimitExceeded:
             # Return clean 413 instead of generic disconnect
+            logger.warning(
+                "Chunked request exceeded size limit",
+                data={"path": request.url.path, "limit": limit},
+            )
             return Response(
-                content='{"error": {"code": "E1413", "message": "Request body too large"}}',
+                content='{"detail": "Request body too large", "error": {"code": "E4130", "message": "Request body too large"}}',
                 status_code=413,
                 media_type="application/json",
             )

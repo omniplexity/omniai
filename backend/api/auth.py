@@ -436,6 +436,34 @@ async def refresh_session(
     return AuthResponse(user=UserResponse.model_validate(user), csrf_token=new_csrf_token)
 
 
+@router.get("/csrf/bootstrap")
+async def csrf_bootstrap(request: Request, response: Response):
+    """
+    Public CSRF bootstrap endpoint. Used by login page before authentication.
+    Generates and returns a CSRF token without requiring a session.
+    """
+    settings = get_settings()
+
+    # Reuse existing CSRF cookie if present, otherwise generate new token
+    csrf_token = request.cookies.get(settings.csrf_cookie_name)
+    if not csrf_token:
+        csrf_token = secrets.token_urlsafe(32)
+
+    # Set CSRF cookie with same attributes as authenticated endpoint
+    response.set_cookie(
+        key=settings.csrf_cookie_name,
+        value=csrf_token,
+        httponly=False,
+        secure=settings.cookie_secure,
+        samesite=settings.cookie_samesite_header,
+        domain=settings.cookie_domain or None,
+        path="/",
+        max_age=settings.session_ttl_seconds,
+    )
+    response.headers["Cache-Control"] = "no-store"
+    return {"csrf_token": csrf_token}
+
+
 @router.get("/csrf", response_model=CsrfResponse)
 async def get_csrf_token(
     request: Request,

@@ -1,9 +1,9 @@
-"""Tests for MaxRequestSizeMiddleware."""
+"""Tests for RequestSizeLimitMiddleware."""
 import pytest
 from fastapi import FastAPI
 from starlette.testclient import TestClient
 
-from backend.core.middleware import MaxRequestSizeMiddleware
+from backend.core.middleware import RequestSizeLimitMiddleware
 
 pytestmark = pytest.mark.security
 
@@ -11,7 +11,7 @@ pytestmark = pytest.mark.security
 def test_rejects_large_body_by_content_length():
     """Test that requests with Content-Length exceeding limit are rejected."""
     app = FastAPI()
-    app.add_middleware(MaxRequestSizeMiddleware, max_bytes=100)
+    app.add_middleware(RequestSizeLimitMiddleware, max_bytes=100)
 
     @app.post("/x")
     async def x(payload: dict):
@@ -21,13 +21,13 @@ def test_rejects_large_body_by_content_length():
     big = {"data": "a" * 500}
     response = client.post("/x", json=big)
     assert response.status_code == 413
-    assert response.json()["error"]["code"] == "E1413"
+    assert response.json()["error"]["code"] == "E4130"
 
 
 def test_allows_small_body():
     """Test that requests within limit are allowed."""
     app = FastAPI()
-    app.add_middleware(MaxRequestSizeMiddleware, max_bytes=10_000)
+    app.add_middleware(RequestSizeLimitMiddleware, max_bytes=10_000)
 
     @app.post("/x")
     async def x(payload: dict):
@@ -41,7 +41,7 @@ def test_allows_small_body():
 def test_rejects_invalid_content_length():
     """Test that invalid Content-Length header returns 400."""
     app = FastAPI()
-    app.add_middleware(MaxRequestSizeMiddleware, max_bytes=1000)
+    app.add_middleware(RequestSizeLimitMiddleware, max_bytes=1000)
 
     @app.post("/x")
     async def x(payload: dict):

@@ -3,7 +3,6 @@
 These endpoints use the Chat Agent for chat operations.
 """
 
-import json
 import time
 from typing import Any, Dict, Optional
 
@@ -20,6 +19,7 @@ from backend.db.models import ChatRun, ChatRunEvent, Conversation, User
 from backend.agents.chat import ChatAgent
 from backend.agents.provider import ProviderAgent
 from backend.agents.conversation import ConversationAgent
+from backend.streaming.sse import format_sse_event
 
 logger = get_logger(__name__)
 router = APIRouter(prefix="/chat", tags=["v1-chat"])
@@ -48,11 +48,6 @@ class ChatRetryRequest(BaseModel):
 class ChatCancelRequest(BaseModel):
     """Cancel chat request."""
     run_id: str
-
-
-def _format_sse_event(seq: int, event_type: str, payload: Dict[str, Any]) -> str:
-    """Format an SSE event."""
-    return f"id: {seq}\nevent: {event_type}\ndata: {json.dumps(payload)}\n\n"
 
 
 def _create_chat_agent(db: DBSession, request: Request) -> ChatAgent:
@@ -237,7 +232,7 @@ async def stream_chat_run(
                 for evt in events:
                     last_event_id = evt.seq
                     payload = evt.payload_json or {}
-                    yield _format_sse_event(evt.seq, evt.type, payload)
+                    yield format_sse_event(evt.seq, evt.type, payload)
                     last_activity = time.monotonic()
 
                 if await request.is_disconnected():

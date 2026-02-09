@@ -17,10 +17,7 @@ from backend.api import (
     auth_router,
     diag_router,
     health_router,
-    voice_router,
-    tools_router,
     media_router,
-    memory_router,
     knowledge_router,
     plan_router,
     projects_router,
@@ -196,22 +193,15 @@ def create_app() -> FastAPI:
     app.include_router(auth_router)
     app.include_router(diag_router)
     app.include_router(admin_router)
-    app.include_router(voice_router)
-    app.include_router(tools_router)
     app.include_router(media_router)
-    app.include_router(memory_router)
     app.include_router(knowledge_router)
     app.include_router(plan_router)
     app.include_router(projects_router)
     app.include_router(context_blocks_router)
     app.include_router(artifacts_router)
     app.include_router(workflows_router)
-    from backend.api.chat import router as chat_router
-    from backend.api.providers import router as providers_router
     from backend.api.v1 import router as v1_router
 
-    app.include_router(providers_router)
-    app.include_router(chat_router)
     app.include_router(v1_router)
 
     return app
