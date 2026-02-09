@@ -1,0 +1,4 @@
+{
+  "BACKEND_BASE_URL": "https://api.yourdomain.com",
+  "_note": "Example only. In the GitHub Pages repo, commit runtime-config.json with the actual backend URL. Locally, use runtime-config.local.json (gitignored)."
+}

@@ -37,6 +37,10 @@ logs/
 # Frontend (separate repository)
 OmniAI-frontend/
 
+# Runtime config should never be committed in backend/API repo
+runtime-config.json
+runtime-config.local.json
+
 # OS
 .DS_Store
 Thumbs.db
