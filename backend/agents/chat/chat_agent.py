@@ -13,7 +13,7 @@ from sqlalchemy.orm import Session as DBSession
 from backend.agents.conversation import ConversationAgent
 from backend.agents.provider import ChatMessage, ChatRequest, ProviderAgent
 from backend.core.logging import get_logger
-from backend.db.models import ChatRun, Conversation, User, generate_id
+from backend.db.models import ChatRun, ChatRunEvent, Conversation, User, generate_id
 
 logger = get_logger(__name__)
 
@@ -64,6 +64,24 @@ class ChatAgent:
         self.db = db
         self.provider_agent = provider_agent
         self.conversation_agent = conversation_agent
+        self._event_seq = 0
+
+    def _emit_event(self, run_id: str, event_type: str, payload: Dict[str, Any]) -> None:
+        """Emit and persist a chat run event.
+        
+        Args:
+            run_id: The run ID
+            event_type: Event type (e.g., 'message.delta', 'message.created')
+            payload: Event payload dict
+        """
+        self._event_seq += 1
+        event = ChatRunEvent(
+            run_id=run_id,
+            seq=self._event_seq,
+            type=event_type,
+            payload_json=payload,
+        )
+        self.db.add(event)
 
     def _build_messages(self, conversation: Conversation) -> List[ChatMessage]:
         """Build message list from conversation history.

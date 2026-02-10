@@ -1,0 +1,10 @@
+{
+  "BACKEND_BASE_URL": "https://omniplexity.run.place",
+  "FEATURE_FLAGS": {
+    "memoryPanel": false,
+    "knowledgePanel": false,
+    "voice": false,
+    "tools": false,
+    "adminOps": false
+  }
+}

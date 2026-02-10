@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>OmniAI</title>
+
+    <!-- Static-host CSP baseline (backend should send real headers).
+         Allow http: for local dev (vite is http). On HTTPS Pages, mixed-content blocks http anyway. -->
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self';
+               connect-src 'self' https: http:;
+               img-src 'self' data: blob:;
+               style-src 'self' 'unsafe-inline';
+               script-src 'self';
+               base-uri 'self';
+               form-action 'self';
+               object-src 'none'"
+    />
+  </head>
+  <body>
+    <div id="app"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
