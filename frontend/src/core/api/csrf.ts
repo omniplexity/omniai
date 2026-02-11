@@ -35,8 +35,14 @@ export async function ensureCsrfToken(): Promise<void> {
   try {
     const json = JSON.parse(text);
     if (typeof json?.csrf_token === "string") _csrfToken = json.csrf_token;
+    if (typeof json?.csrfToken === "string") _csrfToken = json.csrfToken;
+    if (typeof json?.csrf === "string") _csrfToken = json.csrf;
     if (typeof json?.token === "string") _csrfToken = json.token;
   } catch {
     // non-JSON is fine
+  }
+
+  if (!_csrfToken) {
+    throw new Error("CSRF bootstrap succeeded but no csrf token was returned");
   }
 }

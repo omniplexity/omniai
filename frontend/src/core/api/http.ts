@@ -18,7 +18,11 @@ export async function fetchWithTimeout(
   }
 
   try {
-    const res = await fetch(url, { ...init, signal });
+    const res = await fetch(url, {
+      credentials: init.credentials ?? "include",
+      ...init,
+      signal
+    });
     return res;
   } catch (e: any) {
     if (e?.name === "AbortError") throw new ApiError("timeout", "Request timed out");
