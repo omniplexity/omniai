@@ -3,7 +3,7 @@ import { test, expect } from '@playwright/test';
 // OmniAI v1 End-to-End Tests
 // Run with: npx playwright install chromium && npx playwright test tests/e2e/chat.spec.ts
 
-const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:8000';
+const BACKEND_URL = process.env.BACKEND_BASE_URL || process.env.BACKEND_URL || 'http://localhost:8000';
 const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5173';
 
 test.describe('OmniAI v1 Smoke Tests', () => {

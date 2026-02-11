@@ -18,8 +18,9 @@ function normalizeMeta(meta: authApi.MetaResponse): { authenticated: boolean; us
   const authenticated =
     Boolean(meta?.authenticated ?? meta?.auth?.authenticated ?? meta?.user);
 
-  const user = meta?.user ?? meta?.auth?.user ?? (authenticated ? meta : undefined);
-  const role = meta?.role ?? meta?.user?.role ?? meta?.auth?.role ?? user?.role;
+  const user = meta?.user ?? meta?.auth?.user;
+  const roleFromBool = user?.is_admin === true ? "admin" : undefined;
+  const role = meta?.role ?? meta?.user?.role ?? meta?.auth?.role ?? user?.role ?? roleFromBool;
   return { authenticated, user, role };
 }
 

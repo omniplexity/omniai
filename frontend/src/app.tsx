@@ -1,7 +1,7 @@
 import { useEffect, useState } from "preact/hooks";
 import type { RuntimeConfig } from "./core/config/runtimeConfig";
 import { setRuntimeConfig } from "./core/config/runtimeConfig";
-import { getFlags, setFlagsFromRuntime } from "./core/config/featureFlags";
+import { setFlagsFromRuntime } from "./core/config/featureFlags";
 import { useHashLocation, Link } from "./core/router/hashRouter";
 import { Layout } from "./components/Layout";
 import { ErrorScreen } from "./components/ErrorScreen";
@@ -17,7 +17,7 @@ import { authStore, hydrateAuth } from "./core/auth/authStore";
 import { ConversationSidebar } from "./components/ConversationSidebar";
 
 function parseRoute(path: string): { name: string; threadId?: string } {
-  const clean = path.split("?")[0].split("#")[0];
+  const clean = (path.split("?")[0] ?? "").split("#")[0] ?? "";
   if (clean === "/" || clean === "") return { name: "login" };
   if (clean === "/login") return { name: "login" };
   if (clean === "/settings") return { name: "settings" };
@@ -37,7 +37,6 @@ function routeRequiresAuth(name: string): boolean {
 export function App(props: { runtimeConfig: RuntimeConfig }) {
   setRuntimeConfig(props.runtimeConfig);
   setFlagsFromRuntime(props.runtimeConfig);
-  const flags = getFlags();
 
   const [path] = useHashLocation();
   const r = parseRoute(path);
@@ -87,8 +86,8 @@ export function App(props: { runtimeConfig: RuntimeConfig }) {
           <Link class="navItem" to="/login">Login</Link>
           <Link class="navItem" to="/chat">Chat</Link>
           <Link class="navItem" to="/settings">Settings</Link>
-          <Link class="navItem" to="/admin">Admin</Link>
-          {flags.adminOps ? <Link class="navItem" to="/ops">Ops</Link> : null}
+          {isAdmin ? <Link class="navItem" to="/admin">Admin</Link> : null}
+          {isAdmin ? <Link class="navItem" to="/ops">Ops</Link> : null}
         </div>
       }
       sidebar={
@@ -106,8 +105,7 @@ export function App(props: { runtimeConfig: RuntimeConfig }) {
       ) : null}
 
       {r.name === "ops" && auth.status === "authenticated" ? (
-        flags.adminOps ? (isAdmin ? <OpsRoute /> : <ErrorScreen title="Forbidden" detail="Admin role required." />)
-                      : <ErrorScreen title="Not enabled" detail="Ops is disabled by feature flag." />
+        isAdmin ? <OpsRoute /> : <ErrorScreen title="Forbidden" detail="Admin role required." />
       ) : null}
     </Layout>
   );

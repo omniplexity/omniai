@@ -37,6 +37,9 @@ def audit_log_event(
 
     This should never fail the request path; failures should be treated as best-effort.
     """
+    if db is None:
+        return
+
     try:
         ip = _client_ip_from_request(request) if request is not None else None
         user_agent = request.headers.get("user-agent") if request is not None else None
@@ -57,4 +60,3 @@ def audit_log_event(
     except Exception:
         # Best-effort only: do not raise.
         db.rollback()
-

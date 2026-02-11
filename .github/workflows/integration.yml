@@ -124,9 +124,11 @@ jobs:
             sleep 1
           done
           
-          # Run OpenAPI validation if schema exists
           if [ -f contracts/openapi.yaml ]; then
-            echo "OpenAPI schema found - would run contract tests here"
+            schemathesis run --url http://localhost:8000 contracts/openapi.yaml
+          else
+            echo "contracts/openapi.yaml not found"
+            exit 1
           fi
 
       - name: Cleanup

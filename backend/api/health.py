@@ -5,6 +5,7 @@ Provides liveness and readiness probes for monitoring.
 """
 
 from datetime import UTC, datetime
+import os
 from typing import Any
 
 from fastapi import APIRouter, Request, status
@@ -12,9 +13,37 @@ from fastapi.responses import JSONResponse
 
 from backend.config import get_settings
 from backend.db import verify_database_connection
+from backend.db.database import get_session_local
+from backend.db.models import DuckDnsUpdateEvent
 from backend.services.capabilities_service import compute_service_capabilities
 
 router = APIRouter(tags=["health"])
+
+
+def _duckdns_scheduler_stale() -> bool:
+    settings = get_settings()
+    if not settings.ops_scheduler_enabled:
+        return False
+
+    db = None
+    try:
+        session_local = get_session_local()
+        db = session_local()
+        last = (
+            db.query(DuckDnsUpdateEvent)
+            .order_by(DuckDnsUpdateEvent.created_at.desc())
+            .first()
+        )
+        if not last or not last.created_at:
+            return True
+        age_seconds = int(datetime.now(UTC).timestamp() - last.created_at.timestamp())
+        return age_seconds > (10 * 60)
+    except Exception:
+        # Conservative health signal: if scheduler state can't be read, mark stale.
+        return True
+    finally:
+        if db is not None:
+            db.close()
 
 
 @router.get("/health")
@@ -33,6 +62,8 @@ async def healthcheck() -> dict[str, Any]:
         "version": "0.1.0",
         "timestamp": datetime.now(UTC).isoformat(),
         "debug": settings.debug,
+        "duckdns_token_present": bool((os.getenv("DUCKDNS_TOKEN") or settings.duckdns_token or "").strip()),
+        "duckdns_scheduler_stale": _duckdns_scheduler_stale(),
     }
 
 

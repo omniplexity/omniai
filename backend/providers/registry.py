@@ -1,5 +1,6 @@
 """Provider registry for managing AI backends."""
 
+import os
 from typing import Dict, List, Optional
 
 from backend.config import Settings
@@ -23,6 +24,14 @@ class ProviderRegistry:
 
     def _init_providers(self) -> None:
         """Initialize configured providers."""
+        if os.environ.get("PROVIDER_MODE", "").strip().lower() == "mock":
+            from backend.providers.mock import MockProvider
+
+            self.providers = {"mock": MockProvider()}
+            self.default_provider = "mock"
+            logger.info("Initialized deterministic mock provider (PROVIDER_MODE=mock)")
+            return
+
         enabled = self.settings.providers_enabled_list
 
         for provider_name in enabled:

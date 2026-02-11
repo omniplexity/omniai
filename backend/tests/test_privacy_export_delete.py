@@ -73,7 +73,10 @@ def test_export_excludes_secrets_and_delete_removes_user(monkeypatch, tmp_path):
         deleted = client.post(
             "/api/auth/delete",
             json={"password": "password123"},
-            headers={settings.csrf_header_name: csrf},
+            headers={
+                settings.csrf_header_name: csrf,
+                "Origin": "http://localhost:3000",
+            },
         )
         assert deleted.status_code == 200
 

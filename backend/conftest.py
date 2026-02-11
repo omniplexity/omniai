@@ -6,6 +6,7 @@ that settings are properly configured for the test context.
 
 import os
 import sys
+import pytest
 
 # Ensure backend is in path for imports
 _backend_path = os.path.join(os.path.dirname(__file__))
@@ -46,9 +47,26 @@ def pytest_configure(config):
 
     # Set CORS origins for test requests (localhost:3000 is common in tests)
     cors_origins = os.environ.get("CORS_ORIGINS", "")
-    if "localhost:3000" not in cors_origins:
-        cors_origins = f"{cors_origins},http://localhost:3000" if cors_origins else "http://localhost:3000"
-        os.environ["CORS_ORIGINS"] = cors_origins
+    required_origins = ["http://localhost:3000", "https://omniplexity.github.io"]
+    for origin in required_origins:
+        if origin not in cors_origins:
+            cors_origins = f"{cors_origins},{origin}" if cors_origins else origin
+    os.environ["CORS_ORIGINS"] = cors_origins
 
     # Disable bootstrap admin during tests
     os.environ.setdefault("BOOTSTRAP_ADMIN_ENABLED", "false")
+
+    # Keep tests self-contained and avoid requiring redis package/runtime by default.
+    # Individual tests can still override this explicitly when needed.
+    os.environ["LIMITS_BACKEND"] = "memory"
+    os.environ["REDIS_URL"] = ""
+
+
+@pytest.fixture(autouse=True)
+def _clear_settings_cache_per_test():
+    """Ensure env var mutations in tests are reflected in Settings."""
+    from backend.config import get_settings
+
+    get_settings.cache_clear()
+    yield
+    get_settings.cache_clear()

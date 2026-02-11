@@ -50,6 +50,7 @@ class Settings(BaseSettings):
     )
     log_level: str = Field(default="INFO")
     log_file: Optional[str] = Field(default=None)
+    public_base_url: str = Field(default="")
 
     # Security
     secret_key: str = Field(default_factory=lambda: secrets.token_urlsafe(64))
@@ -79,6 +80,12 @@ class Settings(BaseSettings):
     csrf_header_name: str = Field(default="X-CSRF-Token")
     csrf_cookie_name: str = Field(default="omni_csrf")
     invite_required: bool = Field(default=True)
+    diag_token: Optional[str] = Field(default=None)
+    # None means "environment-based default":
+    # - false in production/staging
+    # - true in development/test
+    diag_enabled: Optional[bool] = Field(default=None)
+    diag_rate_limit_rpm: int = Field(default=10)
 
     # Bootstrap admin (startup-only, env-driven)
     bootstrap_admin_enabled: bool = Field(default=False)
@@ -141,6 +148,14 @@ class Settings(BaseSettings):
     sse_max_duration_seconds: int = Field(default=1800)  # 30 minutes
     sse_max_tokens_per_stream: int = Field(default=32768)
     sse_idle_timeout_seconds: int = Field(default=60)
+
+    # DuckDNS Ops (admin-only observability + controls)
+    duckdns_subdomain: str = Field(default="omniplexity")
+    duckdns_token: str = Field(default="")
+    duckdns_timeout_seconds: int = Field(default=15)
+    duckdns_events_limit: int = Field(default=500)
+    ops_scheduler_enabled: bool = Field(default=False)
+    ops_scheduler_interval_minutes: int = Field(default=5)
 
     @property
     def allowed_hosts_list(self) -> List[str]:
@@ -278,6 +293,8 @@ class Settings(BaseSettings):
                         f"Wildcard hosts (*.{host[2:]}) are not allowed in production. "
                         "Use exact hostnames or configure origin-locking."
                     )
+        if self.diag_enabled is None:
+            self.diag_enabled = not self.is_prod_like
         return self
 
 

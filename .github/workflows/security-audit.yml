@@ -8,6 +8,15 @@ on:
     - cron: "0 12 * * 1"  # weekly
 
 jobs:
+  secret-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Gitleaks scan
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
   backend-audit:
     runs-on: ubuntu-latest
     steps:

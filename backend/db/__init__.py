@@ -15,6 +15,7 @@ from backend.db.models import (
     ChatRunEvent,
     ContextBlock,
     Conversation,
+    DuckDnsUpdateEvent,
     InviteCode,
     KnowledgeChunk,
     KnowledgeDocument,
@@ -63,4 +64,5 @@ __all__ = [
     "Project",
     "ContextBlock",
     "Artifact",
+    "DuckDnsUpdateEvent",
 ]

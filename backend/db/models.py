@@ -437,6 +437,32 @@ class AuditLog(Base):
         return f"<AuditLog {self.event_type} {self.id[:8]}...>"
 
 
+class DuckDnsUpdateEvent(Base):
+    """DuckDNS update/test event for ops observability."""
+
+    __tablename__ = "duckdns_update_events"
+    __table_args__ = (
+        Index("ix_duckdns_events_created_at", "created_at"),
+        Index("ix_duckdns_events_success", "success"),
+        Index("ix_duckdns_events_source", "source"),
+    )
+
+    id = Column(String(32), primary_key=True, default=generate_id)
+    created_at = Column(DateTime, default=utcnow, nullable=False)
+    subdomain = Column(String(128), nullable=False)
+    ip = Column(String(64), nullable=True)
+    response = Column(String(32), nullable=True)  # OK / KO / ERROR
+    success = Column(Boolean, default=False, nullable=False)
+    error_code = Column(String(64), nullable=True)
+    error_message = Column(Text, nullable=True)
+    latency_ms = Column(Integer, nullable=True)
+    actor_user_id = Column(String(32), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    source = Column(String(32), nullable=False, default="scheduler")  # scheduler/manual/test
+
+    def __repr__(self) -> str:
+        return f"<DuckDnsUpdateEvent {self.subdomain} {self.response} {self.id[:8]}...>"
+
+
 class WorkflowTemplate(Base):
     """Workflow template definition (built-in or user-created)."""
 

@@ -1,6 +1,17 @@
 import { describe, it, expect } from 'vitest';
 import { parseSseResponse } from '../sse';
 
+async function collectSse(
+  res: Response,
+  signal: AbortSignal
+): Promise<any[]> {
+  const frames: any[] = [];
+  for await (const frame of parseSseResponse(res, signal)) {
+    frames.push(frame);
+  }
+  return frames;
+}
+
 describe('SSE Parser', () => {
   describe('parseSseResponse', () => {
     it('should parse single message event', async () => {
@@ -139,7 +150,7 @@ describe('SSE Parser', () => {
       const res = new Response(body, { status: 500, statusText: 'Server Error' });
       const signal = new AbortController().signal;
 
-      await expect(parseSseResponse(res, signal)).rejects.toThrow('SSE HTTP 500');
+      await expect(collectSse(res, signal)).rejects.toThrow('SSE HTTP 500');
     });
 
     it('should throw on abort', async () => {
@@ -155,7 +166,7 @@ describe('SSE Parser', () => {
       
       setTimeout(() => abortController.abort(), 100);
 
-      await expect(parseSseResponse(res, abortController.signal)).rejects.toThrow('AbortError');
+      await expect(collectSse(res, abortController.signal)).rejects.toThrow('Aborted');
     });
 
     it('should handle chunked input correctly', async () => {

@@ -4,6 +4,7 @@ export const endpoints = {
   // Authentication
   meta: ["/v1/meta"],
   csrfBootstrap: ["/v1/auth/csrf/bootstrap"],
+  me: ["/v1/auth/me"],
   login: ["/v1/auth/login"],
   logout: ["/v1/auth/logout"],
 
@@ -32,6 +33,12 @@ export const endpoints = {
   // Tools
   tools: ["/v1/tools"],
   toolsExecute: ["/v1/tools/execute"],
+
+  // Ops (admin-only)
+  opsDuckdnsStatus: ["/v1/ops/duckdns/status"],
+  opsDuckdnsLogs: ["/v1/ops/duckdns/logs"],
+  opsDuckdnsUpdate: ["/v1/ops/duckdns/update"],
+  opsDuckdnsTest: ["/v1/ops/duckdns/test"],
 };
 
 export function conversationEndpoint(id: string): string[] {

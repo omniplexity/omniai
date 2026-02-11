@@ -59,7 +59,10 @@ def test_list_and_revoke_sessions(monkeypatch, tmp_path):
         target = [s for s in sessions if not s["is_current"]][0]
         del_res = client.delete(
             f"/api/auth/sessions/{target['id']}",
-            headers={settings.csrf_header_name: csrf1},
+            headers={
+                settings.csrf_header_name: csrf1,
+                "Origin": "http://localhost:3000",
+            },
         )
         assert del_res.status_code == 200
 
@@ -70,7 +73,10 @@ def test_list_and_revoke_sessions(monkeypatch, tmp_path):
         # Revoke all except current should delete 0 now.
         res3 = client.post(
             "/api/auth/sessions/revoke_all",
-            headers={settings.csrf_header_name: csrf1},
+            headers={
+                settings.csrf_header_name: csrf1,
+                "Origin": "http://localhost:3000",
+            },
         )
         assert res3.status_code == 200
         assert res3.json()["deleted"] == 0

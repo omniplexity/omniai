@@ -26,6 +26,7 @@ from backend.api import (
     workflows_router,
 )
 from backend.auth.bootstrap import ensure_bootstrap_admin
+from backend.agents.ops.duckdns_service import DuckDnsOpsScheduler
 from backend.config import get_settings
 from backend.core import (
     ChatCSRFMiddleware,
@@ -107,11 +108,18 @@ async def lifespan(_app: FastAPI) -> AsyncGenerator[None, None]:
     if not settings.is_production:
         logger.warning("Running with default secret key - NOT FOR PRODUCTION")
 
+    # Optional internal DuckDNS scheduler (admin ops support).
+    duckdns_scheduler = DuckDnsOpsScheduler(settings=settings)
+    await duckdns_scheduler.start()
+    _app.state.duckdns_scheduler = duckdns_scheduler
+
     yield
 
     # Shutdown
     logger.info("Shutting down OmniAI backend")
     dispose_engine()
+    if hasattr(_app.state, "duckdns_scheduler"):
+        await _app.state.duckdns_scheduler.stop()
     if registry_created:
         await _app.state.provider_registry.aclose()
 

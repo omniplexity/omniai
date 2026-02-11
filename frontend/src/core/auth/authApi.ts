@@ -5,8 +5,13 @@ import { classifyHttpError, fetchWithTimeout, readErrorBody, tryPaths } from "..
 
 export type MetaResponse = {
   authenticated?: boolean;
-  user?: { id: string; username: string; role?: string };
+  user?: { id: string; username: string; role?: string; is_admin?: boolean };
   role?: string;
+  auth?: {
+    authenticated?: boolean;
+    role?: string;
+    user?: { id: string; username: string; role?: string; is_admin?: boolean };
+  };
 };
 
 export async function getMeta(): Promise<MetaResponse> {

@@ -734,6 +734,99 @@ paths:
               schema:
                 $ref: '#/components/schemas/RateLimits'
 
+  /ops/duckdns/status:
+    get:
+      tags: [Ops]
+      summary: Get DuckDNS operational status (admin only)
+      responses:
+        '200':
+          description: DuckDNS status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DuckDnsStatus'
+        '401':
+          description: Not authenticated
+        '403':
+          description: Admin required
+
+  /ops/duckdns/logs:
+    get:
+      tags: [Ops]
+      summary: Get DuckDNS update/test logs (admin only)
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 500
+            default: 200
+      responses:
+        '200':
+          description: DuckDNS logs
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  logs:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/DuckDnsLogEntry'
+        '401':
+          description: Not authenticated
+        '403':
+          description: Admin required
+
+  /ops/duckdns/update:
+    post:
+      tags: [Ops]
+      summary: Force/update DuckDNS now (admin only)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DuckDnsUpdateRequest'
+      responses:
+        '200':
+          description: Update result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DuckDnsActionResult'
+        '502':
+          description: DuckDNS returned KO or parse failure
+        '503':
+          description: Missing DuckDNS token
+        '504':
+          description: Network failure reaching DuckDNS
+
+  /ops/duckdns/test:
+    post:
+      tags: [Ops]
+      summary: Run DuckDNS test action (admin only)
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DuckDnsTestRequest'
+      responses:
+        '200':
+          description: Test result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DuckDnsActionResult'
+        '502':
+          description: DuckDNS returned KO or parse failure
+        '503':
+          description: Missing DuckDNS token
+        '504':
+          description: Network failure reaching DuckDNS
+
   # Status Endpoint
   /status:
     get:
@@ -822,6 +915,104 @@ components:
         csrf_token:
           type: string
 
+    DuckDnsUpdateRequest:
+      type: object
+      properties:
+        force:
+          type: boolean
+          default: false
+
+    DuckDnsTestRequest:
+      type: object
+      properties:
+        ip:
+          type: string
+          nullable: true
+
+    DuckDnsLogEntry:
+      type: object
+      properties:
+        id:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+          nullable: true
+        subdomain:
+          type: string
+        ip:
+          type: string
+          nullable: true
+        response:
+          type: string
+          nullable: true
+        success:
+          type: boolean
+        error_code:
+          type: string
+          nullable: true
+        error_message:
+          type: string
+          nullable: true
+        latency_ms:
+          type: integer
+          nullable: true
+        actor_user_id:
+          type: string
+          nullable: true
+        source:
+          type: string
+
+    DuckDnsStatus:
+      type: object
+      properties:
+        token_present:
+          type: boolean
+        subdomain:
+          type: string
+        scheduler_enabled:
+          type: boolean
+        scheduler_interval_minutes:
+          type: integer
+        scheduler_last_run_unix:
+          type: integer
+          nullable: true
+        scheduler_stale:
+          type: boolean
+        scheduler_stale_threshold_minutes:
+          type: integer
+        next_scheduled_run_unix:
+          type: integer
+          nullable: true
+        last_update:
+          allOf:
+            - $ref: '#/components/schemas/DuckDnsLogEntry'
+          nullable: true
+
+    DuckDnsActionResult:
+      type: object
+      properties:
+        success:
+          type: boolean
+        subdomain:
+          type: string
+        ip:
+          type: string
+          nullable: true
+        response:
+          type: string
+          nullable: true
+        latency_ms:
+          type: integer
+          nullable: true
+        event_id:
+          type: string
+          nullable: true
+        mode:
+          type: string
+        source:
+          type: string
+
     # Provider Schemas
     ProviderStatus:
       type: object
@@ -833,4 +1024,4 @@ components:
 
     ProviderInfo:
       type: object
-      properties
+      properties: {}

@@ -55,6 +55,15 @@ Thumbs.db
 .coverage
 htmlcov/
 .pytest_cache/
+.hypothesis/
+
+# Frontend test artifacts
+frontend/playwright-report/
+frontend/test-results/
+
+# Local DuckDNS runtime artifacts
+deploy/duckdns/_tmp_state.json
+deploy/duckdns/duckdns_state.json
 
 # Claude Code local settings (machine-specific permissions)
 .claude/settings.local.json

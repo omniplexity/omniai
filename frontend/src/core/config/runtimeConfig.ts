@@ -17,11 +17,15 @@ export function getRuntimeConfig(): RuntimeConfig {
   return _cfg;
 }
 
-function normalizeBaseUrl(u: string): string {
+export function normalizeBaseUrl(u: string): string {
   const trimmed = (u ?? "").trim();
   if (!trimmed) throw new Error("BACKEND_BASE_URL is empty");
   // remove trailing slash
   return trimmed.endsWith("/") ? trimmed.slice(0, -1) : trimmed;
+}
+
+export function __resetRuntimeConfigForTest(): void {
+  _cfg = null;
 }
 
 export async function loadRuntimeConfig(): Promise<RuntimeConfig> {

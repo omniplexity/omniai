@@ -13,6 +13,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session as DBSession
+from sqlalchemy.orm import sessionmaker
 
 from backend.agents.chat import ChatAgent
 from backend.agents.conversation import ConversationAgent
@@ -21,7 +22,8 @@ from backend.auth.dependencies import get_current_user
 from backend.config import get_settings
 from backend.core.logging import get_logger
 from backend.db import get_db
-from backend.db.models import ChatRun, ChatRunEvent, Conversation, User
+from backend.db.database import get_engine
+from backend.db.models import ChatRun, ChatRunEvent, Conversation, Message, User
 from backend.streaming.sse import format_sse_event
 
 logger = get_logger(__name__)
@@ -32,6 +34,7 @@ _CANONICAL_EVENT_MESSAGE = "message"
 _CANONICAL_EVENT_DONE = "done"
 _CANONICAL_EVENT_ERROR = "error"
 _CANONICAL_EVENT_STOPPED = "stopped"
+_RUN_TASKS: dict[str, asyncio.Task] = {}
 
 
 def _map_event_to_canonical(evt: ChatRunEvent) -> Optional[tuple[str, Dict[str, Any]]]:
@@ -102,7 +105,7 @@ def _map_event_to_canonical(evt: ChatRunEvent) -> Optional[tuple[str, Dict[str, 
     if evt.type == "error":
         return (
             _CANONICAL_EVENT_ERROR,
-            {"error": payload.get("message", payload.get("error", "Unknown error")), "code": payload.get("code", "")}
+            {"error": payload.get("message", payload.get("error", "Unknown error")), "code": payload.get("code", "E5000")}
         )
     
     # run.status=completed -> done
@@ -163,6 +166,83 @@ def _create_chat_agent(db: DBSession, request: Request) -> ChatAgent:
     return ChatAgent(db, provider_agent, conversation_agent)
 
 
+def _register_run_task(run_id: str, task: asyncio.Task) -> None:
+    """Track run task so cancel endpoint can request best-effort task cancellation."""
+    _RUN_TASKS[run_id] = task
+
+    def _cleanup(_task: asyncio.Task) -> None:
+        _RUN_TASKS.pop(run_id, None)
+
+    task.add_done_callback(_cleanup)
+
+
+def _schedule_run_generation(
+    request: Request,
+    run_id: str,
+    conversation_id: str,
+    user_id: str,
+    content: str,
+) -> None:
+    """Start background event generation for a run using an isolated DB session."""
+
+    async def start_streaming() -> None:
+        session_local = sessionmaker(bind=get_engine())
+        bg_db = session_local()
+        try:
+            run = bg_db.query(ChatRun).filter(ChatRun.id == run_id).first()
+            if not run:
+                return
+
+            # Run may have been cancelled before generator startup.
+            if run.status == "cancelled":
+                max_seq = (
+                    bg_db.query(ChatRunEvent.seq)
+                    .filter(ChatRunEvent.run_id == run_id)
+                    .order_by(ChatRunEvent.seq.desc())
+                    .first()
+                )
+                next_seq = (max_seq[0] if max_seq else 0) + 1
+                bg_db.add(
+                    ChatRunEvent(
+                        run_id=run_id,
+                        seq=next_seq,
+                        type="run.status",
+                        payload_json={"status": "cancelled", "run_id": run_id},
+                    )
+                )
+                bg_db.commit()
+                return
+
+            conversation = bg_db.query(Conversation).filter(Conversation.id == conversation_id).first()
+            user = bg_db.query(User).filter(User.id == user_id).first()
+            if not conversation or not user:
+                return
+
+            agent = _create_chat_agent(bg_db, request)
+            await _run_and_emit_events(bg_db, agent, run, conversation, user, content)
+        finally:
+            bg_db.close()
+
+    task = asyncio.create_task(start_streaming())
+    _register_run_task(run_id, task)
+
+
+def _message_content_for_retry(db: DBSession, conversation: Conversation, message_id: str) -> str:
+    """Resolve message content for retry generation."""
+    msg = (
+        db.query(Message)
+        .filter(
+            Message.id == message_id,
+            Message.conversation_id == conversation.id,
+            Message.role == "user",
+        )
+        .first()
+    )
+    if not msg:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Message not found")
+    return msg.content
+
+
 @router.post("")
 async def create_chat_run(
     body: ChatRequest,
@@ -196,29 +276,15 @@ async def create_chat_run(
             model=body.model,
             retry_from_message_id=body.retry_from_message_id,
         )
-        
-        # Start event generation in background
-        # Use request.state to get event loop or create new task
-        async def start_streaming():
-            # Create a new session for the background task
-            from backend.db import get_db
-            from backend.db.database import engine
-            from sqlalchemy.orm import sessionmaker
-            
-            SessionLocal = sessionmaker(bind=engine)
-            db = SessionLocal()
-            try:
-                agent = _create_chat_agent(db, request)
-                # Re-fetch conversation with new session
-                convo = db.query(Conversation).filter(Conversation.id == conversation.id).first()
-                if convo:
-                    await _run_and_emit_events(db, agent, run, convo, current_user, body.input or "")
-            finally:
-                db.close()
-        
-        # Schedule the background task
-        asyncio.create_task(start_streaming())
-        
+
+        _schedule_run_generation(
+            request=request,
+            run_id=run.id,
+            conversation_id=conversation.id,
+            user_id=current_user.id,
+            content=body.input or "",
+        )
+
         return {"run_id": run.id, "status": run.status}
 
     if not body.input:
@@ -268,6 +334,16 @@ async def retry_chat_run(
         provider_name=body.provider,
         model=body.model,
     )
+
+    retry_content = _message_content_for_retry(db, conversation, body.message_id)
+    _schedule_run_generation(
+        request=request,
+        run_id=run.id,
+        conversation_id=conversation.id,
+        user_id=current_user.id,
+        content=retry_content,
+    )
+
     return {"run_id": run.id, "status": run.status}
 
 
@@ -285,7 +361,32 @@ async def cancel_chat_run(
     if not run:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Run not found")
 
+    already_cancelled = run.status == "cancelled"
     chat_agent.cancel_run(run)
+
+    if not already_cancelled:
+        max_seq = (
+            db.query(ChatRunEvent.seq)
+            .filter(ChatRunEvent.run_id == run.id)
+            .order_by(ChatRunEvent.seq.desc())
+            .first()
+        )
+        next_seq = (max_seq[0] if max_seq else 0) + 1
+        db.add(
+            ChatRunEvent(
+                run_id=run.id,
+                seq=next_seq,
+                type="run.status",
+                payload_json={"status": "cancelled", "run_id": run.id},
+            )
+        )
+        db.commit()
+
+    # Optional best-effort in-process cancellation for single-worker deployments.
+    task = _RUN_TASKS.get(run.id)
+    if task and not task.done():
+        task.cancel()
+
     return {"status": "cancelled", "run_id": run.id}
 
 
@@ -381,7 +482,24 @@ async def stream_chat_run(
                     if not terminal_event_emitted and refreshed.status == "completed":
                         # Emit done event
                         last_event_id += 1
-                        yield format_sse_event(last_event_id, _CANONICAL_EVENT_DONE, {"status": "completed", "run_id": run.id})
+                        last_full = (
+                            db.query(ChatRunEvent)
+                            .filter(ChatRunEvent.run_id == run.id, ChatRunEvent.type == "message.created")
+                            .order_by(ChatRunEvent.seq.desc())
+                            .first()
+                        )
+                        message_id = ""
+                        if last_full and last_full.payload_json:
+                            message_id = (
+                                last_full.payload_json.get("message_id")
+                                or last_full.payload_json.get("id")
+                                or ""
+                            )
+                        yield format_sse_event(
+                            last_event_id,
+                            _CANONICAL_EVENT_DONE,
+                            {"status": "completed", "run_id": run.id, "message_id": message_id},
+                        )
                     elif not terminal_event_emitted and refreshed.status == "cancelled":
                         # Emit stopped event
                         last_event_id += 1
@@ -390,7 +508,11 @@ async def stream_chat_run(
                         # Emit error event
                         last_event_id += 1
                         error_msg = refreshed.error_message or "Unknown error"
-                        yield format_sse_event(last_event_id, _CANONICAL_EVENT_ERROR, {"error": error_msg})
+                        yield format_sse_event(
+                            last_event_id,
+                            _CANONICAL_EVENT_ERROR,
+                            {"error": error_msg, "code": "E5000"},
+                        )
                     break
 
                 if await request.is_disconnected():
@@ -441,8 +563,15 @@ async def _run_and_emit_events(
     chat_agent._event_seq = 0
     
     try:
+        db.refresh(run)
+        if run.status == "cancelled":
+            chat_agent._emit_event(run.id, "run.status", {"status": "cancelled", "run_id": run.id})
+            db.commit()
+            return
+
         # Emit run started event
         chat_agent._emit_event(run.id, "run.started", {"status": "running"})
+        db.commit()
         
         async for event in chat_agent.stream_message(
             conversation=conversation,
@@ -450,7 +579,14 @@ async def _run_and_emit_events(
             content=content,
             provider_name=run.provider,
             model=run.model,
+            run_id=run.id,
         ):
+            db.refresh(run)
+            if run.status == "cancelled":
+                chat_agent._emit_event(run.id, "run.status", {"status": "cancelled", "run_id": run.id})
+                db.commit()
+                return
+
             # Persist each event
             chat_agent._emit_event(run.id, event["event"], event.get("data", {}))
             db.commit()
@@ -479,12 +615,12 @@ async def _run_and_emit_events(
         # Run was cancelled
         run.status = "cancelled"
         run.cancelled_at = datetime.utcnow()
-        chat_agent._emit_event(run.id, "run.status", {"status": "cancelled"})
+        chat_agent._emit_event(run.id, "run.status", {"status": "cancelled", "run_id": run.id})
         db.commit()
         raise
     except Exception as exc:
         logger.error("Error in run event generation", data={"run_id": run.id, "error": str(exc)})
         run.status = "error"
         run.error_message = str(exc)
-        chat_agent._emit_event(run.id, "error", {"message": str(exc)})
+        chat_agent._emit_event(run.id, "error", {"message": str(exc), "code": "E5000"})
         db.commit()

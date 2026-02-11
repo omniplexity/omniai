@@ -5,7 +5,8 @@ import {
   conversationStore,
   loadConversations,
   createNewConversation,
-  renameCurrentConversation
+  renameCurrentConversation,
+  setCurrentConversation
 } from "../core/conversation/conversationStore";
 
 export function ConversationSidebar() {
@@ -43,7 +44,7 @@ export function ConversationSidebar() {
   }
 
   async function onSelect(id: string) {
-    conversationStore.setCurrentConversation(id);
+    setCurrentConversation(id);
     navigate(`/chat/${id}`);
   }
 

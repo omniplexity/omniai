@@ -1,5 +1,23 @@
 export type SseFrame = { event: string; data: string };
 
+async function readChunkWithAbort(
+  reader: ReadableStreamDefaultReader<Uint8Array>,
+  signal: AbortSignal
+): Promise<ReadableStreamReadResult<Uint8Array>> {
+  if (signal.aborted) throw new DOMException("Aborted", "AbortError");
+
+  return await Promise.race([
+    reader.read(),
+    new Promise<never>((_, reject) => {
+      const onAbort = () => {
+        signal.removeEventListener("abort", onAbort);
+        reject(new DOMException("Aborted", "AbortError"));
+      };
+      signal.addEventListener("abort", onAbort, { once: true });
+    }),
+  ]);
+}
+
 export async function* parseSseResponse(
   res: Response,
   signal: AbortSignal
@@ -27,7 +45,7 @@ export async function* parseSseResponse(
   while (true) {
     if (signal.aborted) throw new DOMException("Aborted", "AbortError");
 
-    const { value, done } = await reader.read();
+    const { value, done } = await readChunkWithAbort(reader, signal);
     if (done) break;
 
     buf += decoder.decode(value, { stream: true });

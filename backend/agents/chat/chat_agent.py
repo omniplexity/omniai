@@ -204,6 +204,7 @@ class ChatAgent:
         model: Optional[str] = None,
         settings: Optional[ChatSettings] = None,
         parent_message_id: Optional[str] = None,
+        run_id: Optional[str] = None,
     ) -> AsyncGenerator[Dict[str, Any], None]:
         """Stream a chat response.
         
@@ -264,6 +265,15 @@ class ChatAgent:
         last_chunk = {}
 
         async for chunk in self.provider_agent.chat_stream(chat_request):
+            if run_id:
+                run_state = (
+                    self.db.query(ChatRun)
+                    .filter(ChatRun.id == run_id)
+                    .first()
+                )
+                if run_state and run_state.status == "cancelled":
+                    return
+
             if "error" in chunk:
                 yield {"event": "error", "data": {"error": chunk["error"]}}
                 return

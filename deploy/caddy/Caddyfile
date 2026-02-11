@@ -11,6 +11,10 @@ omniplexity.duckdns.org {
     # Enable compression
     encode zstd gzip
 
+    # SPA ops route convenience redirects
+    redir /ops /#/ops 302
+    redir /ops/ /#/ops 302
+
     # Security headers
     header {
         X-Frame-Options "SAMEORIGIN"
@@ -43,6 +47,17 @@ omniplexity.duckdns.org {
         }
     }
 
+    # v1 SSE streaming endpoint - disable buffering for real-time
+    handle /v1/chat/stream* {
+        reverse_proxy backend:8000 {
+            header_up Host {host}
+            header_up X-Real-IP {remote}
+            header_up X-Forwarded-For {remote}
+            header_up X-Forwarded-Proto {scheme}
+            flush_interval -1
+        }
+    }
+
     # Auth endpoints
     handle /api/auth/* {
         reverse_proxy backend:8000 {
@@ -54,7 +69,20 @@ omniplexity.duckdns.org {
     }
 
     # API v1 endpoints
-    handle /api/v1/* {
+    handle /v1/ops/* {
+        reverse_proxy backend:8000 {
+            header_up Host {host}
+            header_up X-Real-IP {remote}
+            header_up X-Forwarded-For {remote}
+            header_up X-Forwarded-Proto {scheme}
+            flush_interval -1
+        }
+        header Cache-Control "no-store, no-cache, must-revalidate"
+        header Pragma "no-cache"
+    }
+
+    # API v1 endpoints
+    handle /v1/* {
         reverse_proxy backend:8000 {
             header_up Host {host}
             header_up X-Real-IP {remote}

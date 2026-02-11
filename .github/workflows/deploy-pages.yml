@@ -25,16 +25,20 @@ jobs:
       - name: Install and Build Frontend
         run: |
           cd frontend
-          npm install
+          npm ci
           npm run build
 
       - name: Deploy to Pages Repo
-        uses: cpina/github-action-push-to-another-repository@main
-        env:
-          API_TOKEN_GITHUB: ${{ secrets.PAGES_DEPLOY_TOKEN }}
+        uses: JamesIves/github-pages-deploy-action@v4
         with:
-          source-directory: 'frontend/dist'
-          destination-github-username: 'omniplexity'
-          destination-repository-name: 'omniplexity.github.io'
-          user-email: 'actions@github.com'
-          commit-message: "Deploy frontend updates from OmniAI"
+          token: ${{ secrets.PAGES_DEPLOY_TOKEN }}
+          repository-name: omniplexity/omniplexity.github.io
+          branch: main
+          folder: frontend/dist
+          clean: true
+          clean-exclude: |
+            runtime-config.json
+            icons/**
+            CNAME
+            .nojekyll
+          commit-message: "Deploy frontend dist from OmniAI"
