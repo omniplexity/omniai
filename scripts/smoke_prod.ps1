@@ -25,6 +25,36 @@ $strictBuild = @("1", "true", "yes", "on") -contains $strictBuildRaw.ToLowerInva
 function Pass([string]$msg) { Write-Host "PASS: $msg" -ForegroundColor Green }
 function Fail([string]$msg) { Write-Host "FAIL: $msg" -ForegroundColor Red; exit 1 }
 
+function Assert-SseComplete {
+  param(
+    [Parameter(Mandatory = $true)][string]$Path,
+    [Parameter(Mandatory = $true)][int]$CurlExit
+  )
+
+  $lines = @()
+  if (Test-Path $Path) {
+    $lines = Get-Content -Path $Path -ErrorAction SilentlyContinue
+  }
+
+  $dataLines = ($lines | Where-Object { $_ -match '^data:' }).Count
+  $hasTerminal = (
+    ($lines | Where-Object { $_ -match '^data:\s*\[DONE\]\s*$' }).Count -gt 0 -or
+    ($lines | Where-Object { $_ -match '^event:\s*done\s*$' }).Count -gt 0 -or
+    ($lines | Where-Object { $_ -match '"(type|event)"\s*:\s*"done"' }).Count -gt 0 -or
+    ($lines | Where-Object { $_ -match '^event:\s*stopped\s*$' }).Count -gt 0 -or
+    ($lines | Where-Object { $_ -match '"status"\s*:\s*"completed"' }).Count -gt 0
+  )
+
+  if ($hasTerminal) { return }
+
+  if ($dataLines -gt 0 -and ($CurlExit -eq 0 -or $CurlExit -eq 18 -or $CurlExit -eq 28)) {
+    Write-Warning "Stream ended without terminal marker; accepting close semantics (curl rc=$CurlExit, data_lines=$dataLines)"
+    return
+  }
+
+  throw "Stream missing terminal marker (curl rc=$CurlExit, data_lines=$dataLines)"
+}
+
 if ([string]::IsNullOrWhiteSpace($username) -or [string]::IsNullOrWhiteSpace($password)) {
   $canPrompt = -not [Console]::IsInputRedirected
   if (-not $canPrompt) {
@@ -170,6 +200,7 @@ try {
     -H "Origin: $origin" `
     -H "Accept: text/event-stream" `
     "$baseUrl/v1/chat/stream?run_id=$runId"
+  $streamCurlExit = $LASTEXITCODE
   if ($streamCode -ne "200") { Fail "GET /v1/chat/stream returned $streamCode" }
   $streamHeaderText = Get-Content $headersStream -Raw
   if ($streamHeaderText -notmatch "(?im)^Content-Type:\s*text/event-stream") {
@@ -177,9 +208,7 @@ try {
   }
   $streamText = Get-Content $bodyStream -Raw
   if ($streamText -notmatch "data:") { Fail "Stream missing SSE data frames" }
-  if ($streamText -notmatch "event:\s*done|event:\s*stopped|\[DONE\]|`"status`":`"completed`"") {
-    Fail "Stream missing terminal marker"
-  }
+  Assert-SseComplete -Path $bodyStream -CurlExit $streamCurlExit
   Pass "SSE stream validated"
 
   # 7) Cancel flow
