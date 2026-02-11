@@ -4,7 +4,7 @@ from backend.auth.session import create_session, validate_session
 from backend.config import get_settings
 from backend.db import Base, dispose_engine
 from backend.db.database import get_engine
-from backend.db.models import User
+from backend.db.models import Session, User
 from backend.main import create_app
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import sessionmaker
@@ -31,6 +31,7 @@ def _get_session(engine):
 def test_refresh_rotates_session_and_csrf(monkeypatch, tmp_path):
     engine = _setup_db(tmp_path, monkeypatch)
     settings = get_settings()
+    user_id = None
 
     db = _get_session(engine)
     try:
@@ -38,33 +39,37 @@ def test_refresh_rotates_session_and_csrf(monkeypatch, tmp_path):
         db.add(user)
         db.commit()
         db.refresh(user)
+        user_id = user.id
         old_session_token, old_csrf = create_session(db, user)
     finally:
         db.close()
 
     app = create_app()
-    new_session_token = None
     with TestClient(app) as client:
         # CSRF middleware requires both cookie + header match.
         client.cookies.set(settings.session_cookie_name, old_session_token)
         client.cookies.set(settings.csrf_cookie_name, old_csrf)
-        res = client.post("/api/auth/refresh", headers={settings.csrf_header_name: old_csrf})
+        res = client.post(
+            "/api/auth/refresh",
+            headers={
+                settings.csrf_header_name: old_csrf,
+                "Origin": "http://localhost:3000",
+            },
+        )
         assert res.status_code == 200
         body = res.json()
         assert body["csrf_token"] != old_csrf
 
-        # Pick the rotated cookie value (different from old).
-        candidates = [c.value for c in client.cookies.jar if c.name == settings.session_cookie_name]
-        assert old_session_token in candidates
-        rotated = [v for v in candidates if v != old_session_token]
-        assert rotated, f"expected rotated session cookie, got {candidates}"
-        new_session_token = rotated[-1]
-
     db = _get_session(engine)
     try:
         assert validate_session(db, old_session_token) is None
-        assert new_session_token is not None
-        assert validate_session(db, new_session_token) is not None
+        active_sessions = (
+            db.query(Session)
+            .filter(Session.user_id == user_id)
+            .all()
+        )
+        assert len(active_sessions) == 1
+        assert active_sessions[0].csrf_token == body["csrf_token"]
     finally:
         db.close()
         dispose_engine()

@@ -29,6 +29,7 @@ def _create_provider_agent(request: Request) -> ProviderAgent:
 
 
 @router.get("", response_model=List[ProviderStatus])
+@router.get("/", response_model=List[ProviderStatus], include_in_schema=False)
 async def list_providers(
     request: Request,
     current_user: User = Depends(get_current_user),

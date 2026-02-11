@@ -12,6 +12,10 @@ def _load_app(env: str):
     """Load app with specified environment."""
     os.environ["ENVIRONMENT"] = env
     os.environ["ALLOWED_HOSTS"] = "localhost,127.0.0.1,testserver"
+    if env in {"production", "staging"}:
+        os.environ["CORS_ORIGINS"] = "https://omniplexity.github.io"
+    else:
+        os.environ["CORS_ORIGINS"] = "http://localhost:3000,https://omniplexity.github.io"
     import backend.main as main
     importlib.reload(main)
     return main.app
