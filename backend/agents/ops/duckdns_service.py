@@ -292,8 +292,15 @@ class DuckDnsOpsService:
             .order_by(DuckDnsUpdateEvent.created_at.desc())
             .first()
         )
+        last_ok = (
+            self.db.query(DuckDnsUpdateEvent)
+            .filter(DuckDnsUpdateEvent.success.is_(True))
+            .order_by(DuckDnsUpdateEvent.created_at.desc())
+            .first()
+        )
         now_unix = int(datetime.now(UTC).timestamp())
         scheduler_last_run_unix = int(last.created_at.timestamp()) if (last and last.created_at) else None
+        scheduler_last_ok_unix = int(last_ok.created_at.timestamp()) if (last_ok and last_ok.created_at) else None
         scheduler_stale_threshold_minutes = 10
         scheduler_stale_threshold_seconds = scheduler_stale_threshold_minutes * 60
 
@@ -304,10 +311,10 @@ class DuckDnsOpsService:
             )
         scheduler_stale = False
         if self.settings.ops_scheduler_enabled:
-            if scheduler_last_run_unix is None:
+            if scheduler_last_ok_unix is None:
                 scheduler_stale = True
             else:
-                scheduler_stale = (now_unix - scheduler_last_run_unix) > scheduler_stale_threshold_seconds
+                scheduler_stale = (now_unix - scheduler_last_ok_unix) > scheduler_stale_threshold_seconds
 
         status = {
             "token_present": self.token_present(),
@@ -315,6 +322,7 @@ class DuckDnsOpsService:
             "scheduler_enabled": bool(self.settings.ops_scheduler_enabled),
             "scheduler_interval_minutes": scheduler_interval_minutes,
             "scheduler_last_run_unix": scheduler_last_run_unix,
+            "scheduler_last_ok_unix": scheduler_last_ok_unix,
             "scheduler_stale": scheduler_stale,
             "scheduler_stale_threshold_minutes": scheduler_stale_threshold_minutes,
             "next_scheduled_run_unix": int(next_scheduled_run) if next_scheduled_run else None,

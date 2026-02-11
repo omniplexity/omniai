@@ -20,6 +20,7 @@ describe("opsDuckdnsApi", () => {
           scheduler_enabled: false,
           scheduler_interval_minutes: 5,
           scheduler_last_run_unix: null,
+          scheduler_last_ok_unix: null,
           scheduler_stale: false,
           scheduler_stale_threshold_minutes: 10,
           next_scheduled_run_unix: null,

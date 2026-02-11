@@ -977,6 +977,9 @@ components:
         scheduler_last_run_unix:
           type: integer
           nullable: true
+        scheduler_last_ok_unix:
+          type: integer
+          nullable: true
         scheduler_stale:
           type: boolean
         scheduler_stale_threshold_minutes:

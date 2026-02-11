@@ -56,6 +56,7 @@ test.describe("Ops Console", () => {
             scheduler_enabled: true,
             scheduler_interval_minutes: 5,
             scheduler_last_run_unix: Math.floor(Date.now() / 1000) - 120,
+            scheduler_last_ok_unix: Math.floor(Date.now() / 1000) - 120,
             scheduler_stale: false,
             scheduler_stale_threshold_minutes: 10,
             next_scheduled_run_unix: Math.floor(Date.now() / 1000) + 300,

@@ -139,14 +139,23 @@ export function OpsRoute() {
         <div class="card wide" aria-label="DuckDNS status card">
           <h2 class="h2">DuckDNS Status</h2>
           {status.scheduler_enabled && status.scheduler_stale ? (
-            <p role="alert" aria-live="assertive" style="color:#b45309; font-weight:600;">
-              Scheduler health warning: last run is older than {status.scheduler_stale_threshold_minutes} minutes.
-            </p>
+            <div role="alert" aria-live="assertive" style="border:1px solid #f59e0b; background:#fffbeb; padding:10px; border-radius:8px; margin-bottom:10px;">
+              <p style="color:#92400e; font-weight:600; margin:0 0 8px 0;">
+                Scheduler stale: last successful DuckDNS update is older than {status.scheduler_stale_threshold_minutes} minutes.
+              </p>
+              <p style="margin:0;"><strong>Remediation:</strong></p>
+              <ul style="margin:6px 0 0 20px;">
+                <li>Check Scheduled Task health and last run result.</li>
+                <li>Check machine-scope <code>DUCKDNS_TOKEN</code> availability.</li>
+                <li>Check outbound connectivity from server to DuckDNS/IP endpoints.</li>
+              </ul>
+            </div>
           ) : null}
           <p><strong>Token present:</strong> {status.token_present ? "Yes" : "No"}</p>
           <p><strong>Subdomain:</strong> {status.subdomain}</p>
           <p><strong>Scheduler enabled:</strong> {status.scheduler_enabled ? "Yes" : "No"}</p>
           <p><strong>Scheduler last run:</strong> {fmtUnix(status.scheduler_last_run_unix)}</p>
+          <p><strong>Scheduler last OK:</strong> {fmtUnix(status.scheduler_last_ok_unix)}</p>
           <p><strong>Scheduler stale:</strong> {status.scheduler_stale ? "Yes" : "No"}</p>
           <p><strong>Last update:</strong> {fmtIso(status.last_update?.created_at)}</p>
           <p><strong>Last IP:</strong> {status.last_update?.ip || "n/a"}</p>

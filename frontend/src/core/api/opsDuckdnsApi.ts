@@ -9,6 +9,7 @@ export type DuckDnsStatus = {
   scheduler_enabled: boolean;
   scheduler_interval_minutes: number;
   scheduler_last_run_unix: number | null;
+  scheduler_last_ok_unix: number | null;
   scheduler_stale: boolean;
   scheduler_stale_threshold_minutes: number;
   next_scheduled_run_unix: number | null;

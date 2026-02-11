@@ -198,6 +198,7 @@ def test_duckdns_status_scheduler_health(monkeypatch, tmp_path):
         assert status_empty["scheduler_enabled"] is True
         assert status_empty["scheduler_stale"] is True
         assert status_empty["scheduler_last_run_unix"] is None
+        assert status_empty["scheduler_last_ok_unix"] is None
         assert status_empty["scheduler_stale_threshold_minutes"] == 10
 
         now = datetime.now(UTC)
@@ -219,6 +220,7 @@ def test_duckdns_status_scheduler_health(monkeypatch, tmp_path):
         status_fresh = service.get_status(scheduler_interval_minutes=5)
         assert status_fresh["scheduler_stale"] is False
         assert status_fresh["scheduler_last_run_unix"] is not None
+        assert status_fresh["scheduler_last_ok_unix"] is not None
 
     finally:
         db.close()
