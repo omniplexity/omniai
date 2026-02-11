@@ -74,8 +74,9 @@ class Settings(BaseSettings):
     # Authentication
     session_cookie_name: str = Field(default="omni_session")
     session_ttl_seconds: int = Field(default=604800)
-    cookie_secure: bool = Field(default=True)
-    cookie_samesite: str = Field(default="none")
+    # Local/test-safe defaults. Production must explicitly set secure cross-site values.
+    cookie_secure: bool = Field(default=False)
+    cookie_samesite: str = Field(default="lax")
     cookie_domain: str = Field(default="")
     csrf_header_name: str = Field(default="X-CSRF-Token")
     csrf_cookie_name: str = Field(default="omni_csrf")
