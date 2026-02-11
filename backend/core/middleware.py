@@ -779,6 +779,30 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
                     if header in response.headers:
                         del response.headers[header]
 
+                # If origin is not allowed, do not emit ACAC either.
+                # This avoids ambiguous CORS responses where credentials are
+                # advertised without a matching Allow-Origin.
+                if "access-control-allow-origin" not in response.headers:
+                    if "access-control-allow-credentials" in response.headers:
+                        del response.headers["access-control-allow-credentials"]
+
+        return response
+
+
+class CORSHeaderSanitizerMiddleware(BaseHTTPMiddleware):
+    """Ensure CORS credential headers are coherent on all responses.
+
+    If a response does not include `Access-Control-Allow-Origin`, it must not
+    include `Access-Control-Allow-Credentials`.
+    """
+
+    async def dispatch(self, request: Request, call_next: Callable) -> Response:
+        response = await call_next(request)
+        if (
+            "access-control-allow-origin" not in response.headers
+            and "access-control-allow-credentials" in response.headers
+        ):
+            del response.headers["access-control-allow-credentials"]
         return response
 
 

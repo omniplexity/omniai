@@ -145,6 +145,24 @@ DuckDNS ops APIs:
 
 ## Post-deploy checks
 
+### Redeploy checklist (backend)
+1. Pull latest code on host.
+2. Rebuild/restart backend container.
+3. Verify health endpoint.
+4. Run executable smoke suite.
+
+```powershell
+cd deploy
+git pull
+docker compose up -d --build backend
+curl -i https://omniplexity.duckdns.org/health
+$env:SMOKE_USERNAME="<admin_username>"
+$env:SMOKE_PASSWORD="<admin_password>"
+powershell -ExecutionPolicy Bypass -File ..\scripts\smoke_prod.ps1
+```
+
+Expected result: smoke script exits `0` and prints `Smoke PASS`.
+
 ### Frontend
 ```bash
 cd frontend
@@ -169,3 +187,22 @@ pytest -q
 curl -i https://omniplexity.duckdns.org/v1/ops/duckdns/status
 curl -i https://omniplexity.duckdns.org/v1/ops/duckdns/logs?limit=20
 ```
+
+### Executable production smoke
+Use one of:
+
+```bash
+SMOKE_USERNAME="<admin_username>" SMOKE_PASSWORD="<admin_password>" ./scripts/smoke_prod.sh
+```
+
+```powershell
+$env:SMOKE_USERNAME="<admin_username>"
+$env:SMOKE_PASSWORD="<admin_password>"
+powershell -ExecutionPolicy Bypass -File scripts\smoke_prod.ps1
+```
+
+Checks performed:
+1. `GET /health` returns `200`
+2. `OPTIONS /v1/auth/login` emits strict CORS headers for Pages origin
+3. `POST /v1/auth/login` emits both `omni_session` and `omni_csrf` cookies
+4. `GET /v1/auth/me` succeeds with the generated cookie jar

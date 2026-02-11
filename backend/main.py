@@ -30,6 +30,7 @@ from backend.auth.e2e_seed import ensure_e2e_seed_user
 from backend.agents.ops.duckdns_service import DuckDnsOpsScheduler
 from backend.config import get_settings
 from backend.core import (
+    CORSHeaderSanitizerMiddleware,
     ChatCSRFMiddleware,
     ForwardedHeadersMiddleware,
     HotPathRateLimitMiddleware,
@@ -197,6 +198,8 @@ def create_app() -> FastAPI:
         expose_headers=["X-Request-ID"],
         allow_origin_regex=allow_origin_regex,
     )
+    # 8. CORS header sanitizer (ensures ACAC is absent when ACAO is absent)
+    app.add_middleware(CORSHeaderSanitizerMiddleware)
 
     # Register routers
     app.include_router(health_router)
