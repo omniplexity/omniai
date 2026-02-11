@@ -754,7 +754,6 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
 
     # Headers that should NOT be exposed to cross-site requests
     SENSITIVE_HEADERS = {
-        "Set-Cookie",
         "Authorization",
         "X-CSRF-Token",
     }
