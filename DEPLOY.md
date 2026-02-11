@@ -43,6 +43,10 @@
 
 Do not commit secrets into `runtime-config.json`.
 
+Operational rule (prevent config drift):
+- Whenever the backend public origin changes, update `runtime-config.json` in the Pages repo **in the same release**.
+- The value must always be the externally reachable API origin (for current production: `https://omniplexity.duckdns.org`).
+
 ## Backend Deployment
 
 ### Security baseline
@@ -76,6 +80,11 @@ DuckDNS domain behavior:
 - `/health`, `/readyz`
 - `/api/auth/*`
 - `/v1/*`
+
+Endpoint policy (canonical vs compatibility):
+- Canonical application API surface is `/v1/*`.
+- Frontend should call `/v1/*` by default for auth/chat/providers/ops.
+- `/api/auth/*` remains compatibility-only during migration and should not be used for new frontend paths.
 
 Notes:
 - Do not use same-host hash redirects like `/ops -> /#/ops`; URL fragments are client-side only and can cause redirect loops at the proxy.
