@@ -819,6 +819,14 @@ class ChatCSRFMiddleware(BaseHTTPMiddleware):
 
     SAFE_METHODS = {"GET", "HEAD", "OPTIONS"}
     EXEMPT_PATHS = {"/health", "/readyz", "/docs", "/redoc", "/openapi.json"}
+    AUTH_CSRF_EXEMPT_PATHS = {
+        "/v1/auth/login",
+        "/api/auth/login",
+        "/v1/auth/register",
+        "/api/auth/register",
+        "/v1/auth/logout",
+        "/api/auth/logout",
+    }
 
     # GET endpoints that return user data and need origin validation
     # These are read-only but still require same-origin enforcement
@@ -889,12 +897,13 @@ class ChatCSRFMiddleware(BaseHTTPMiddleware):
         from backend.config import get_settings
 
         settings = get_settings()
+        normalized_path = _normalize_path(request.url.path)
 
         # Check if this is a GET request to a data endpoint that needs origin validation
         if request.method in self.SAFE_METHODS:
             # Even GET requests to streaming endpoints require origin validation
             # when they carry session cookies (defense-in-depth)
-            path = request.url.path
+            path = normalized_path
             needs_origin_check = (
                 path.startswith("/v1/chat/stream") or
                 path.startswith("/api/runs/")
@@ -908,11 +917,11 @@ class ChatCSRFMiddleware(BaseHTTPMiddleware):
                         return origin_response
             return await call_next(request)
 
-        if request.url.path in self.EXEMPT_PATHS:
+        if normalized_path in self.EXEMPT_PATHS:
             return await call_next(request)
 
         # For API endpoints, check CSRF header matches cookie when session cookie is present
-        if request.url.path.startswith(("/api/", "/v1/")):
+        if normalized_path.startswith(("/api/", "/v1/")):
             session_cookie = request.cookies.get(settings.session_cookie_name)
             if not session_cookie:
                 return await call_next(request)
@@ -954,10 +963,15 @@ class ChatCSRFMiddleware(BaseHTTPMiddleware):
                         data={"origin": origin, "referer": referer, "path": request.url.path},
                     )
                     return Response(
-                        content='{"detail": "Origin not allowed", "error": {"code": "E2003", "message": "Origin validation failed"}}',
-                        status_code=403,
-                        media_type="application/json",
-                    )
+                    content='{"detail": "Origin not allowed", "error": {"code": "E2003", "message": "Origin validation failed"}}',
+                    status_code=403,
+                    media_type="application/json",
+                )
+
+            # Auth endpoints are CSRF-exempt (for stale/cross-site cookie recovery),
+            # but still require strict origin validation above.
+            if normalized_path in self.AUTH_CSRF_EXEMPT_PATHS:
+                return await call_next(request)
 
             # Validate session before enforcing CSRF
             session = None

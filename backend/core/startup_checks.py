@@ -5,6 +5,7 @@ Run at application startup when ENVIRONMENT=production.
 """
 
 import logging
+from urllib.parse import urlparse
 from typing import List
 
 from backend.config import Settings
@@ -15,6 +16,24 @@ logger = logging.getLogger(__name__)
 class ProductionConfigError(Exception):
     """Raised when production configuration fails validation."""
     pass
+
+
+def _origin_hostname(origin: str) -> str | None:
+    """Return hostname from an origin-like URL, or None if invalid."""
+    if not origin:
+        return None
+    value = origin.strip()
+    if not value:
+        return None
+    if not value.startswith(("http://", "https://")):
+        value = f"https://{value}"
+    try:
+        parsed = urlparse(value)
+        if not parsed.scheme or not parsed.hostname:
+            return None
+        return parsed.hostname.lower()
+    except Exception:
+        return None
 
 
 def validate_production_settings(settings: Settings) -> List[str]:
@@ -77,6 +96,26 @@ def validate_production_settings(settings: Settings) -> List[str]:
                 f"CORS_ORIGINS must be https-only in production; "
                 f"found insecure origin: '{origin}'"
             )
+
+    # 7. Cross-site deployments must use Partitioned cookies (CHIPS).
+    # Determine whether frontend origins differ from backend host.
+    backend_host = _origin_hostname(settings.public_base_url)
+    cross_site_required = False
+    if not backend_host:
+        # Fail closed to the default architecture (Pages -> API cross-site).
+        cross_site_required = True
+    else:
+        for frontend_origin in required_origins:
+            frontend_host = _origin_hostname(frontend_origin)
+            if not frontend_host or frontend_host != backend_host:
+                cross_site_required = True
+                break
+
+    if cross_site_required and not settings.cookie_partitioned:
+        errors.append(
+            "COOKIE_PARTITIONED must be true for cross-site cookie deployments "
+            "(CHIPS required for Pages -> API architecture)"
+        )
 
     return errors
 

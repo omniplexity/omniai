@@ -75,6 +75,10 @@ def test_v1_meta_unauthenticated(monkeypatch, tmp_path):
         assert body["auth"]["session_cookie_name"] == settings.session_cookie_name
         assert body["auth"]["csrf"]["cookie_name"] == settings.csrf_cookie_name
         assert body["auth"]["csrf"]["header_name"] == settings.csrf_header_name
+        assert body["auth"]["cookie_policy"]["secure"] == settings.cookie_secure
+        assert body["auth"]["cookie_policy"]["samesite"] == settings.cookie_samesite_header
+        assert body["auth"]["cookie_policy"]["partitioned_configured"] == settings.cookie_partitioned
+        assert body["auth"]["cookie_policy"]["partitioned_enabled"] == settings.cookie_partitioned_enabled
 
         for feature_id in SERVER_BACKED_FEATURES:
             assert feature_id in body["features"]

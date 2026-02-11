@@ -154,8 +154,13 @@ async def get_meta(
                 "cookie_name": settings.csrf_cookie_name,
                 "header_name": settings.csrf_header_name,
             },
+            "cookie_policy": {
+                "secure": bool(settings.cookie_secure),
+                "samesite": settings.cookie_samesite_header,
+                "partitioned_configured": bool(settings.cookie_partitioned),
+                "partitioned_enabled": bool(settings.cookie_partitioned_enabled),
+            },
         },
         "capabilities": capabilities,
         "features": features,
     }
-

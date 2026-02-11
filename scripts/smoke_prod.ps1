@@ -2,7 +2,7 @@
 .SYNOPSIS
   Production smoke checks for OmniAI public API.
 .DESCRIPTION
-  Validates health, CORS preflight, cross-site auth cookies, and session readback.
+  Validates health, CHIPS cookies (Partitioned), login, chat run creation, SSE stream, and cancel.
   Required env vars (or interactive prompt):
     SMOKE_USERNAME
     SMOKE_PASSWORD
@@ -52,10 +52,18 @@ if ([string]::IsNullOrWhiteSpace($username) -or [string]::IsNullOrWhiteSpace($pa
 $tmp = Join-Path $env:TEMP ("omniai-smoke-" + [guid]::NewGuid().ToString("N"))
 New-Item -ItemType Directory -Path $tmp | Out-Null
 $cookieJar = Join-Path $tmp "cookies.txt"
-$headersOpts = Join-Path $tmp "opts.headers.txt"
+$headersBoot = Join-Path $tmp "boot.headers.txt"
 $headersLogin = Join-Path $tmp "login.headers.txt"
+$headersStream = Join-Path $tmp "stream.headers.txt"
 $bodyHealth = Join-Path $tmp "health.body.json"
-$loginPayloadFile = Join-Path $tmp "login.payload.json"
+$bodyBoot = Join-Path $tmp "boot.body.json"
+$bodyLogin = Join-Path $tmp "login.body.json"
+$bodyConv = Join-Path $tmp "conv.body.json"
+$bodyRun = Join-Path $tmp "run.body.json"
+$bodyStream = Join-Path $tmp "stream.body.txt"
+$bodyRun2 = Join-Path $tmp "run2.body.json"
+$bodyCancel = Join-Path $tmp "cancel.body.json"
+$payloadFile = Join-Path $tmp "login.payload.json"
 
 try {
   Write-Host "== Smoke: $baseUrl ==" -ForegroundColor Cyan
@@ -64,15 +72,14 @@ try {
   $healthCode = curl.exe -sS -o $bodyHealth -w "%{http_code}" "$baseUrl/health"
   if ($healthCode -ne "200") { Fail "GET /health returned $healthCode" }
   Pass "GET /health -> 200"
+
   if ($strictBuild) {
     try {
       $health = Get-Content $bodyHealth -Raw | ConvertFrom-Json
       $isProd = ($health.environment -eq "production")
       $sha = if ($null -eq $health.build_sha) { "" } else { [string]$health.build_sha }
       $time = if ($null -eq $health.build_time) { "" } else { [string]$health.build_time }
-      $shaUnknown = ($sha -eq "unknown")
-      $timeUnknown = ($time -eq "unknown")
-      if ($isProd -and ($shaUnknown -or $timeUnknown)) {
+      if ($isProd -and (($sha -eq "unknown") -or ($time -eq "unknown"))) {
         Fail "Strict build check failed: /health reports unknown build metadata in production"
       }
       Pass "Strict build metadata check passed"
@@ -81,46 +88,124 @@ try {
     }
   }
 
-  # 2) OPTIONS /v1/auth/login
-  $optsCode = curl.exe -sS -D $headersOpts -o NUL -w "%{http_code}" `
-    -X OPTIONS "$baseUrl/v1/auth/login" `
+  # 2) GET /v1/auth/csrf/bootstrap
+  $bootCode = curl.exe -sS -D $headersBoot -o $bodyBoot -w "%{http_code}" `
+    -c $cookieJar -b $cookieJar `
     -H "Origin: $origin" `
-    -H "Access-Control-Request-Method: POST" `
-    -H "Access-Control-Request-Headers: content-type,x-csrf-token"
-  if ($optsCode -ne "200") { Fail "OPTIONS /v1/auth/login returned $optsCode" }
+    "$baseUrl/v1/auth/csrf/bootstrap"
+  if ($bootCode -ne "200") { Fail "GET /v1/auth/csrf/bootstrap returned $bootCode" }
 
-  $optsHeaderText = Get-Content $headersOpts -Raw
-  if ($optsHeaderText -notmatch "(?im)^Access-Control-Allow-Origin:\s*$([regex]::Escape($origin))\s*$") { Fail "Missing/invalid Access-Control-Allow-Origin" }
-  if ($optsHeaderText -notmatch "(?im)^Access-Control-Allow-Credentials:\s*true\s*$") { Fail "Missing Access-Control-Allow-Credentials: true" }
-  if ($optsHeaderText -notmatch "(?im)^Vary:\s*.*Origin") { Fail "Missing Vary: Origin" }
-  if ($optsHeaderText -notmatch "(?im)^Access-Control-Allow-Methods:\s*.*POST.*OPTIONS") { Fail "Allow-Methods missing POST/OPTIONS" }
-  if ($optsHeaderText -notmatch "(?im)^Access-Control-Allow-Headers:\s*.*content-type") { Fail "Allow-Headers missing content-type" }
-  if ($optsHeaderText -notmatch "(?im)^Access-Control-Allow-Headers:\s*.*x-csrf-token") { Fail "Allow-Headers missing x-csrf-token" }
-  Pass "OPTIONS /v1/auth/login headers validated"
+  $bootJson = Get-Content $bodyBoot -Raw | ConvertFrom-Json
+  $csrf = [string]$bootJson.csrf_token
+  if ([string]::IsNullOrWhiteSpace($csrf)) { Fail "csrf_token missing in bootstrap response" }
+
+  $bootHeaderText = Get-Content $headersBoot -Raw
+  if ($bootHeaderText -notmatch "(?im)^Set-Cookie:\s*omni_csrf=.*SameSite=None;.*Secure;.*Partitioned\s*$") {
+    Fail "Bootstrap omni_csrf cookie missing SameSite=None; Secure; Partitioned"
+  }
+  Pass "Bootstrap sets partitioned omni_csrf cookie"
 
   # 3) POST /v1/auth/login
   $payload = (@{ username = $username; password = $password } | ConvertTo-Json -Compress)
-  Set-Content -Path $loginPayloadFile -Value $payload -Encoding UTF8
-  $loginCode = curl.exe -sS -D $headersLogin -o NUL -w "%{http_code}" `
-    -c $cookieJar `
+  Set-Content -Path $payloadFile -Value $payload -Encoding UTF8
+  $loginCode = curl.exe -sS -D $headersLogin -o $bodyLogin -w "%{http_code}" `
+    -c $cookieJar -b $cookieJar `
     -X POST "$baseUrl/v1/auth/login" `
     -H "Origin: $origin" `
+    -H "X-CSRF-Token: $csrf" `
     -H "Content-Type: application/json" `
-    --data-binary "@$loginPayloadFile"
+    --data-binary "@$payloadFile"
   if ($loginCode -ne "200") { Fail "POST /v1/auth/login returned $loginCode" }
 
   $loginHeaderText = Get-Content $headersLogin -Raw
-  if ($loginHeaderText -notmatch "(?im)^Set-Cookie:\s*omni_session=.*HttpOnly;.*SameSite=None;\s*Secure") { Fail "Missing/invalid omni_session Set-Cookie" }
-  if ($loginHeaderText -notmatch "(?im)^Set-Cookie:\s*omni_csrf=.*SameSite=None;\s*Secure") { Fail "Missing/invalid omni_csrf Set-Cookie" }
-  Pass "POST /v1/auth/login emitted both cookies"
+  if ($loginHeaderText -notmatch "(?im)^Set-Cookie:\s*omni_session=.*HttpOnly;.*SameSite=None;.*Secure;.*Partitioned\s*$") {
+    Fail "Login omni_session cookie missing SameSite=None; Secure; Partitioned"
+  }
+  if ($loginHeaderText -notmatch "(?im)^Set-Cookie:\s*omni_csrf=.*SameSite=None;.*Secure;.*Partitioned\s*$") {
+    Fail "Login omni_csrf cookie missing SameSite=None; Secure; Partitioned"
+  }
+  Pass "Login emits partitioned omni_session + omni_csrf cookies"
 
-  # 4) GET /v1/auth/me with cookie jar
-  $meCode = curl.exe -sS -o NUL -w "%{http_code}" `
-    -b $cookieJar `
+  try {
+    $loginJson = Get-Content $bodyLogin -Raw | ConvertFrom-Json
+    if ($loginJson.csrf_token) {
+      $csrf = [string]$loginJson.csrf_token
+    }
+  } catch {
+    # Keep bootstrap token if response is not JSON for any reason.
+  }
+
+  # 4) POST /v1/conversations
+  $convCode = curl.exe -sS -o $bodyConv -w "%{http_code}" `
+    -c $cookieJar -b $cookieJar `
+    -X POST "$baseUrl/v1/conversations" `
     -H "Origin: $origin" `
-    "$baseUrl/v1/auth/me"
-  if ($meCode -ne "200") { Fail "GET /v1/auth/me returned $meCode" }
-  Pass "GET /v1/auth/me with cookie jar -> 200"
+    -H "X-CSRF-Token: $csrf" `
+    -H "Content-Type: application/json" `
+    -d '{"title":"Smoke Conversation"}'
+  if (@("200", "201") -notcontains $convCode) { Fail "POST /v1/conversations returned $convCode" }
+  $convJson = Get-Content $bodyConv -Raw | ConvertFrom-Json
+  $convId = [string]($convJson.id ?? $convJson.conversation_id)
+  if ([string]::IsNullOrWhiteSpace($convId)) { Fail "conversation id missing" }
+  Pass "Conversation created"
+
+  # 5) POST /v1/chat
+  $runBody = @{ conversation_id = $convId; input = "smoke test"; stream = $true } | ConvertTo-Json -Compress
+  $runCode = curl.exe -sS -o $bodyRun -w "%{http_code}" `
+    -c $cookieJar -b $cookieJar `
+    -X POST "$baseUrl/v1/chat" `
+    -H "Origin: $origin" `
+    -H "X-CSRF-Token: $csrf" `
+    -H "Content-Type: application/json" `
+    --data-binary $runBody
+  if ($runCode -ne "200") { Fail "POST /v1/chat returned $runCode" }
+  $runJson = Get-Content $bodyRun -Raw | ConvertFrom-Json
+  $runId = [string]$runJson.run_id
+  if ([string]::IsNullOrWhiteSpace($runId)) { Fail "run_id missing" }
+  Pass "Chat run created"
+
+  # 6) GET /v1/chat/stream
+  $streamCode = curl.exe -sS -N -D $headersStream -o $bodyStream -w "%{http_code}" `
+    -c $cookieJar -b $cookieJar `
+    -H "Origin: $origin" `
+    -H "Accept: text/event-stream" `
+    "$baseUrl/v1/chat/stream?run_id=$runId"
+  if ($streamCode -ne "200") { Fail "GET /v1/chat/stream returned $streamCode" }
+  $streamHeaderText = Get-Content $headersStream -Raw
+  if ($streamHeaderText -notmatch "(?im)^Content-Type:\s*text/event-stream") {
+    Fail "Stream content-type is not text/event-stream"
+  }
+  $streamText = Get-Content $bodyStream -Raw
+  if ($streamText -notmatch "data:") { Fail "Stream missing SSE data frames" }
+  if ($streamText -notmatch "event:\s*done|event:\s*stopped|\[DONE\]|`"status`":`"completed`"") {
+    Fail "Stream missing terminal marker"
+  }
+  Pass "SSE stream validated"
+
+  # 7) Cancel flow
+  $run2Body = @{ conversation_id = $convId; input = "please stream a long answer"; stream = $true } | ConvertTo-Json -Compress
+  $run2Code = curl.exe -sS -o $bodyRun2 -w "%{http_code}" `
+    -c $cookieJar -b $cookieJar `
+    -X POST "$baseUrl/v1/chat" `
+    -H "Origin: $origin" `
+    -H "X-CSRF-Token: $csrf" `
+    -H "Content-Type: application/json" `
+    --data-binary $run2Body
+  if ($run2Code -ne "200") { Fail "POST /v1/chat (cancel path) returned $run2Code" }
+  $run2Json = Get-Content $bodyRun2 -Raw | ConvertFrom-Json
+  $run2Id = [string]$run2Json.run_id
+  if ([string]::IsNullOrWhiteSpace($run2Id)) { Fail "run_id missing for cancel path" }
+
+  $cancelBody = @{ run_id = $run2Id } | ConvertTo-Json -Compress
+  $cancelCode = curl.exe -sS -o $bodyCancel -w "%{http_code}" `
+    -c $cookieJar -b $cookieJar `
+    -X POST "$baseUrl/v1/chat/cancel" `
+    -H "Origin: $origin" `
+    -H "X-CSRF-Token: $csrf" `
+    -H "Content-Type: application/json" `
+    --data-binary $cancelBody
+  if ($cancelCode -ne "200") { Fail "POST /v1/chat/cancel returned $cancelCode" }
+  Pass "Cancel endpoint validated"
 
   Write-Host "Smoke PASS" -ForegroundColor Green
 }

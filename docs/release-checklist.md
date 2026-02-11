@@ -21,6 +21,14 @@ See `docs/v1.0-launch-execution.md` for the full gate execution runbook and
 5. Validate CI E2E passes with no-secrets deterministic test user.
 6. If telemetry is enabled, validate `/v1/client-events` ingest path and rate limit behavior.
 7. Verify telemetry sampling response fields (`accepted_count`, `dropped_count`, `effective_sample_rate`) align with configured max/force rates.
+8. Verify backend auto-deploy workflow can run unattended:
+   - `.github/workflows/deploy-backend-duckdns.yml`
+   - Required repository secrets:
+     - `DUCKDNS_SSH_HOST`
+     - `DUCKDNS_SSH_USER`
+     - `DUCKDNS_SSH_KEY`
+     - `SMOKE_USERNAME`
+     - `SMOKE_PASSWORD`
 
 ## Runtime/Config Validation
 
@@ -39,6 +47,10 @@ See `docs/v1.0-launch-execution.md` for the full gate execution runbook and
    - `Origin`/`Referer` policy
    - CSRF token header on state-changing requests
 2. Confirm stream endpoint (`/v1/chat/stream`) rejects disallowed origins.
+3. Confirm cross-site auth cookies from `/v1/auth/csrf/bootstrap` and `/v1/auth/login` include:
+   - `Secure`
+   - `SameSite=None`
+   - `Partitioned`
 
 ## Sign-off
 

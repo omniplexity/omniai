@@ -1,0 +1,89 @@
+name: Deploy Backend DuckDNS
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "backend/**"
+      - "deploy/docker-compose.yml"
+      - "scripts/smoke_prod.sh"
+      - "scripts/smoke_prod.ps1"
+      - ".github/workflows/deploy-backend-duckdns.yml"
+  workflow_dispatch:
+
+jobs:
+  deploy-and-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate required secrets
+        env:
+          SSH_HOST: ${{ secrets.DUCKDNS_SSH_HOST }}
+          SSH_USER: ${{ secrets.DUCKDNS_SSH_USER }}
+          SSH_KEY: ${{ secrets.DUCKDNS_SSH_KEY }}
+          SMOKE_USERNAME: ${{ secrets.SMOKE_USERNAME }}
+          SMOKE_PASSWORD: ${{ secrets.SMOKE_PASSWORD }}
+        run: |
+          missing=0
+          for key in SSH_HOST SSH_USER SSH_KEY SMOKE_USERNAME SMOKE_PASSWORD; do
+            if [ -z "${!key}" ]; then
+              echo "::error::Missing secret for ${key}"
+              missing=1
+            fi
+          done
+          if [ "$missing" -ne 0 ]; then
+            exit 1
+          fi
+
+      - name: Configure SSH
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.DUCKDNS_SSH_KEY }}
+
+      - name: Add remote host to known_hosts
+        env:
+          SSH_HOST: ${{ secrets.DUCKDNS_SSH_HOST }}
+        run: |
+          mkdir -p ~/.ssh
+          ssh-keyscan -H "$SSH_HOST" >> ~/.ssh/known_hosts
+
+      - name: Deploy backend on DuckDNS host
+        env:
+          SSH_HOST: ${{ secrets.DUCKDNS_SSH_HOST }}
+          SSH_USER: ${{ secrets.DUCKDNS_SSH_USER }}
+          DEPLOY_PATH: ${{ secrets.DUCKDNS_DEPLOY_PATH }}
+        run: |
+          ssh -o StrictHostKeyChecking=yes "${SSH_USER}@${SSH_HOST}" \
+            "set -euo pipefail; \
+             REMOTE_DIR=\"${DEPLOY_PATH:-\$HOME/OmniAI}\"; \
+             if [ ! -d \"\$REMOTE_DIR/.git\" ]; then \
+               echo \"Missing git repository at \$REMOTE_DIR\" >&2; \
+               exit 1; \
+             fi; \
+             cd \"\$REMOTE_DIR\"; \
+             git fetch origin main; \
+             git checkout main; \
+             git reset --hard origin/main; \
+             docker compose -f deploy/docker-compose.yml up -d --build backend caddy; \
+             docker compose -f deploy/docker-compose.yml ps"
+
+      - name: Run post-deploy smoke checks
+        env:
+          SMOKE_BASE_URL: https://omniplexity.duckdns.org
+          SMOKE_ORIGIN: https://omniplexity.github.io
+          SMOKE_USERNAME: ${{ secrets.SMOKE_USERNAME }}
+          SMOKE_PASSWORD: ${{ secrets.SMOKE_PASSWORD }}
+          SMOKE_STRICT_BUILD: "1"
+        run: |
+          bash scripts/smoke_prod.sh | tee smoke_prod.log
+
+      - name: Upload smoke logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: duckdns-smoke-log
+          path: smoke_prod.log
+          retention-days: 14

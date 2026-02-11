@@ -131,6 +131,33 @@ def test_cross_origin_login_sets_partitioned_cookie_when_enabled(monkeypatch, tm
         get_settings.cache_clear()
 
 
+def test_cross_origin_csrf_bootstrap_sets_partitioned_cookie_when_enabled(monkeypatch, tmp_path):
+    _setup_db(
+        tmp_path,
+        monkeypatch,
+        ENVIRONMENT="test",
+        COOKIE_SECURE="true",
+        COOKIE_SAMESITE="none",
+        COOKIE_PARTITIONED="true",
+        CORS_ORIGINS="http://localhost:5173",
+    )
+
+    from backend.main import create_app
+
+    app = create_app()
+    client = TestClient(app)
+    try:
+        origin = "http://localhost:5173"
+        boot = client.get("/v1/auth/csrf/bootstrap", headers={"Origin": origin})
+        assert boot.status_code == 200
+        set_cookie = boot.headers.get("set-cookie", "")
+        assert "omni_csrf=" in set_cookie
+        assert "Partitioned" in set_cookie
+    finally:
+        dispose_engine()
+        get_settings.cache_clear()
+
+
 def test_cross_origin_logout_clears_partitioned_cookies_when_enabled(monkeypatch, tmp_path):
     engine = _setup_db(
         tmp_path,
