@@ -1,4 +1,4 @@
-import { test, expect, type BrowserContext, type Page, type TestInfo } from '@playwright/test';
+import { test, expect, type BrowserContext, type Locator, type Page, type TestInfo } from '@playwright/test';
 
 // OmniAI v1 End-to-End Tests
 // Run with: npx playwright install chromium && npx playwright test tests/e2e/chat.spec.ts
@@ -7,6 +7,7 @@ const BACKEND_URL = process.env.BACKEND_BASE_URL || process.env.BACKEND_URL || '
 const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5173';
 const E2E_USERNAME = process.env.E2E_USERNAME;
 const E2E_PASSWORD = process.env.E2E_PASSWORD;
+const E2E_DEBUG = process.env.E2E_DEBUG === '1';
 
 async function safeClearStorage(page: any) {
   await page.evaluate(() => {
@@ -60,6 +61,73 @@ async function waitForLoginResponse(page: Page) {
       /login|session|signin/i.test(resp.url())
     );
   }, { timeout: 15_000 });
+}
+
+async function recordLoginAttempt(page: Page, fn: () => Promise<void>) {
+  const requests: { method: string; url: string; type: string }[] = [];
+  const consoles: { type: string; text: string }[] = [];
+  const pageErrors: string[] = [];
+
+  const onReq = (req: any) => requests.push({ method: req.method(), url: req.url(), type: req.resourceType() });
+  const onConsole = (msg: any) => consoles.push({ type: msg.type(), text: msg.text() });
+  const onPageError = (err: any) => pageErrors.push(String(err?.message ?? err));
+
+  page.on('request', onReq);
+  page.on('console', onConsole);
+  page.on('pageerror', onPageError);
+
+  try {
+    await fn();
+    await page.waitForTimeout(750);
+  } finally {
+    page.off('request', onReq);
+    page.off('console', onConsole);
+    page.off('pageerror', onPageError);
+  }
+
+  return { requests, consoles, pageErrors };
+}
+
+async function captureBrowserCsrfBootstrap(page: Page, backendUrl: string, testInfo: TestInfo) {
+  const resp = await page.waitForResponse((r) => {
+    return (
+      r.request().method() === 'GET' &&
+      /\/v1\/auth\/csrf\/bootstrap|\/api\/auth\/csrf\/bootstrap/i.test(r.url())
+    );
+  }, { timeout: 10_000 });
+
+  const headers = resp.headers();
+  const body = await resp.text().catch(() => '');
+  if (E2E_DEBUG) {
+    await testInfo.attach('csrf_bootstrap_browser_response', {
+      body: JSON.stringify(
+        {
+          url: resp.url(),
+          status: resp.status(),
+          set_cookie: headers['set-cookie'] ?? null,
+          body: body.slice(0, 2000),
+        },
+        null,
+        2
+      ),
+      contentType: 'application/json',
+    });
+  }
+
+  const cookieScope = (() => {
+    try {
+      return new URL(resp.url()).origin;
+    } catch {
+      return backendUrl;
+    }
+  })();
+  const cookies = await page.context().cookies(cookieScope);
+  if (E2E_DEBUG) {
+    await testInfo.attach('csrf_cookie_jar_after_bootstrap', {
+      body: JSON.stringify(cookies, null, 2),
+      contentType: 'application/json',
+    });
+  }
 }
 
 async function assertLoginSucceeded(page: Page, testInfo: TestInfo) {
@@ -146,24 +214,40 @@ async function gotoLogin(page: Page) {
 }
 
 function loginLocators(page: Page) {
-  const username = page
+  const form = authFormLocator(page);
+  const username = form
     .getByRole('textbox', { name: /username|email/i })
-    .or(page.locator('input[name="username"], input[name="email"], input[autocomplete="username"], input[type="text"]'))
+    .or(form.locator('input[name="username"], input[name="email"], input[autocomplete="username"], input[type="text"]'))
     .first();
 
-  const password = page
+  const password = form
     .getByRole('textbox', { name: /password/i })
-    .or(page.locator('input[name="password"], input[autocomplete="current-password"], input[type="password"]'))
+    .or(form.locator('input[name="password"], input[autocomplete="current-password"], input[type="password"]'))
     .first();
 
-  const submit = page
+  const submit = form
     .getByRole('button', { name: /log in|login|sign in|continue/i })
-    .or(page.locator('button[type="submit"]'))
+    .or(form.locator('button[type="submit"]'))
     .first();
 
   const signInTab = page.getByRole('tab', { name: /sign in|login/i });
 
-  return { username, password, submit, signInTab };
+  return { form, username, password, submit, signInTab };
+}
+
+function authFormLocator(page: Page) {
+  return page.locator('form:has(input[type="password"], input[name="password"])').first();
+}
+
+async function typeLikeUser(locator: Locator, value: string) {
+  await locator.click({ timeout: 10_000 });
+  await locator.fill('');
+  await locator.type(value, { delay: 10 });
+}
+
+async function submitLoginForm(form: Locator, submit: Locator) {
+  await submit.click({ timeout: 10_000 });
+  await form.evaluate((f) => (f as HTMLFormElement).requestSubmit?.());
 }
 
 test.describe('OmniAI v1 Smoke Tests', () => {
@@ -213,21 +297,66 @@ test.describe('OmniAI v1 Smoke Tests', () => {
       await gotoLogin(page);
 
       if (!(await hasSessionCookie(page))) {
-        const { username, password, submit, signInTab } = loginLocators(page);
+        const { form, username, password, submit, signInTab } = loginLocators(page);
 
         if (await signInTab.isVisible().catch(() => false)) {
           await signInTab.click();
         }
 
+        await expect(form).toHaveCount(1, { timeout: 15_000 });
         await expect(password).toBeVisible({ timeout: 15_000 });
         await expect(username).toBeVisible({ timeout: 15_000 });
 
-        await username.fill(E2E_USERNAME!);
-        await password.fill(E2E_PASSWORD!);
+        await typeLikeUser(username, E2E_USERNAME!);
+        await typeLikeUser(password, E2E_PASSWORD!);
+
+        await expect(submit).toBeVisible({ timeout: 15_000 });
+        await expect(submit).toBeEnabled({ timeout: 15_000 });
+
+        let loginDiag: { requests: { method: string; url: string; type: string }[]; consoles: { type: string; text: string }[]; pageErrors: string[] } = {
+          requests: [],
+          consoles: [],
+          pageErrors: [],
+        };
 
         const loginSucceeded = assertLoginSucceeded(page, testInfo);
-        await submit.click();
-        await loginSucceeded;
+        const browserCsrfCapture = E2E_DEBUG
+          ? captureBrowserCsrfBootstrap(page, BACKEND_URL, testInfo).catch(async (error) => {
+              await testInfo.attach('csrf_bootstrap_browser_response_error', {
+                body: String(error?.message ?? error),
+                contentType: 'text/plain',
+              });
+            })
+          : Promise.resolve();
+
+        loginDiag = await recordLoginAttempt(page, async () => {
+          await submitLoginForm(form, submit);
+        });
+
+        await browserCsrfCapture;
+
+        if (E2E_DEBUG) {
+          await testInfo.attach('login_requests_all', {
+            body: JSON.stringify(loginDiag.requests, null, 2),
+            contentType: 'application/json',
+          });
+          await testInfo.attach('login_console', {
+            body: JSON.stringify(loginDiag.consoles, null, 2),
+            contentType: 'application/json',
+          });
+          await testInfo.attach('login_page_errors', {
+            body: JSON.stringify(loginDiag.pageErrors, null, 2),
+            contentType: 'application/json',
+          });
+        }
+
+        try {
+          await loginSucceeded;
+        } catch (error: any) {
+          throw new Error(
+            `Login response wait failed.${E2E_DEBUG ? ` requests=${JSON.stringify(loginDiag.requests)}` : ''}\n${String(error?.message ?? error)}`
+          );
+        }
       }
 
       await assertSessionUsable(page, BACKEND_URL, testInfo);
