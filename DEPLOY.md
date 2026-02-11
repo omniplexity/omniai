@@ -64,6 +64,26 @@ Use your existing stack (Docker/Caddy/systemd). If reverse proxying with Caddy, 
 - `/api/chat/stream*`
 - `/v1/chat/stream*`
 
+## Domain Routing
+Canonical production routing:
+- UI SPA domain: `https://omniplexity.github.io`
+- API domain: `https://omniplexity.duckdns.org`
+
+DuckDNS domain behavior:
+- `GET /` redirects to `https://omniplexity.github.io/`
+- `GET /ops` and `GET /ops/` redirect to `https://omniplexity.github.io/#/ops`
+- Backend APIs stay on DuckDNS:
+- `/health`, `/readyz`
+- `/api/auth/*`
+- `/v1/*`
+
+Notes:
+- Do not use same-host hash redirects like `/ops -> /#/ops`; URL fragments are client-side only and can cause redirect loops at the proxy.
+- For cross-origin auth (Pages UI -> DuckDNS API), keep cookie policy + CORS aligned:
+- `COOKIE_SAMESITE=none`
+- `COOKIE_SECURE=true`
+- `CORS_ORIGINS` must include `https://omniplexity.github.io`
+
 ## DuckDNS reliability + security
 Use the hardened updater + task setup scripts:
 - `deploy/duckdns/duckdns_update.ps1`
