@@ -1,15 +1,130 @@
-import { test, expect } from '@playwright/test';
+import { test, expect, type BrowserContext, type Page, type TestInfo } from '@playwright/test';
 
 // OmniAI v1 End-to-End Tests
 // Run with: npx playwright install chromium && npx playwright test tests/e2e/chat.spec.ts
 
 const BACKEND_URL = process.env.BACKEND_BASE_URL || process.env.BACKEND_URL || 'http://localhost:8000';
 const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5173';
+const E2E_USERNAME = process.env.E2E_USERNAME;
+const E2E_PASSWORD = process.env.E2E_PASSWORD;
+
+async function safeClearStorage(page: any) {
+  await page.evaluate(() => {
+    try { localStorage.clear(); } catch {}
+    try { sessionStorage.clear(); } catch {}
+  });
+}
+
+async function hasSessionCookie(page: Page): Promise<boolean> {
+  const cookies = await page.context().cookies();
+  return cookies.some((c) => c.name === 'omni_session' || c.name.includes('session') || c.name.includes('auth'));
+}
+
+function requireCreds(testInfo: TestInfo) {
+  if (!E2E_USERNAME || !E2E_PASSWORD) {
+    testInfo.skip(
+      true,
+      'E2E_USERNAME and E2E_PASSWORD must be set (no defaults). ' +
+        'Example: E2E_USERNAME=... E2E_PASSWORD=... npx playwright test ...'
+    );
+  }
+}
+
+async function preflightAuthBackend(page: Page, baseApi: string, testInfo: TestInfo) {
+  const health = await page.request.get(`${baseApi}/health`).catch(() => null);
+  if (!health || !health.ok()) {
+    await testInfo.attach('backend_health_status', {
+      body: String(health?.status() ?? 'NO_RESPONSE'),
+      contentType: 'text/plain',
+    });
+    throw new Error(`Backend not reachable/healthy at ${baseApi} (health check failed).`);
+  }
+
+  const csrf = await page.request.get(`${baseApi}/api/auth/csrf/bootstrap`).catch(() => null);
+  const csrfText = csrf ? await csrf.text().catch(() => '') : '';
+  await testInfo.attach('csrf_bootstrap_status', {
+    body: `${csrf?.status() ?? 'NO_RESPONSE'}\n${csrfText}`,
+    contentType: 'text/plain',
+  });
+  if (!csrf || !csrf.ok()) {
+    throw new Error(`CSRF bootstrap failed at ${baseApi}/api/auth/csrf/bootstrap`);
+  }
+}
+
+async function waitForSessionCookie(context: BrowserContext, testInfo: TestInfo) {
+  try {
+    await expect
+      .poll(async () => {
+        const cookies = await context.cookies();
+        return cookies.some((c) => c.name === 'omni_session');
+      }, { timeout: 15_000 })
+      .toBeTruthy();
+  } catch (error) {
+    const cookies = await context.cookies();
+    await testInfo.attach('cookies_snapshot', {
+      body: JSON.stringify(cookies, null, 2),
+      contentType: 'application/json',
+    });
+    throw error;
+  }
+}
+
+async function gotoLogin(page: Page) {
+  if (await hasSessionCookie(page)) return;
+  const candidates = ['/login', '/#/login', '/#login'];
+
+  for (const path of candidates) {
+    await page.goto(`${FRONTEND_URL}${path}`, { waitUntil: 'domcontentloaded' });
+    await page.waitForTimeout(200);
+
+    const hasPassword =
+      (await page.locator('input[type="password"], input[name="password"]').count()) > 0;
+    const hasSubmit =
+      (await page.locator('button[type="submit"]').count()) > 0;
+
+    if (hasPassword || hasSubmit) return;
+  }
+}
+
+function loginLocators(page: Page) {
+  const username = page
+    .getByRole('textbox', { name: /username|email/i })
+    .or(page.locator('input[name="username"], input[name="email"], input[autocomplete="username"], input[type="text"]'))
+    .first();
+
+  const password = page
+    .getByRole('textbox', { name: /password/i })
+    .or(page.locator('input[name="password"], input[autocomplete="current-password"], input[type="password"]'))
+    .first();
+
+  const submit = page
+    .getByRole('button', { name: /log in|login|sign in|continue/i })
+    .or(page.locator('button[type="submit"]'))
+    .first();
+
+  const signInTab = page.getByRole('tab', { name: /sign in|login/i });
+
+  return { username, password, submit, signInTab };
+}
 
 test.describe('OmniAI v1 Smoke Tests', () => {
-  test.beforeEach(async ({ page }) => {
-    // Clear localStorage to start fresh
-    await page.evaluate(() => localStorage.clear());
+  test.beforeEach(async ({ page, context, baseURL }) => {
+    await context.clearCookies();
+    const origin = baseURL ?? FRONTEND_URL;
+    await page.goto(`${origin}/`, { waitUntil: 'domcontentloaded' });
+    await safeClearStorage(page);
+    await page.reload({ waitUntil: 'domcontentloaded' });
+  });
+
+  test.afterEach(async ({ page }, testInfo) => {
+    if (testInfo.status !== testInfo.expectedStatus) {
+      await testInfo.attach('url', { body: page.url(), contentType: 'text/plain' });
+      await testInfo.attach('html', { body: await page.content(), contentType: 'text/html' });
+      await testInfo.attach('screenshot', {
+        body: await page.screenshot({ fullPage: true }),
+        contentType: 'image/png',
+      });
+    }
   });
 
   test.describe('Boot', () => {
@@ -33,31 +148,51 @@ test.describe('OmniAI v1 Smoke Tests', () => {
   });
 
   test.describe('Authentication', () => {
-    test('login sets cookie session', async ({ page }) => {
-      await page.goto(`${FRONTEND_URL}/#/login`);
-      
-      // Fill login form
-      await page.fill('input[name="username"], input[type="text"]', 'admin');
-      await page.fill('input[name="password"], input[type="password"]', 'password');
-      
-      // Submit
-      await page.click('button[type="submit"]');
-      
-      // Wait for navigation or success indicator
-      await page.waitForURL(/.*chat.*|.*$/, { timeout: 10000 }).catch(() => {});
-      
-      // Verify session cookie is set
-      const cookies = await page.context().cookies();
-      const sessionCookie = cookies.find(c => c.name.includes('session') || c.name.includes('auth'));
-      expect(sessionCookie).toBeDefined();
+    test('login sets cookie session', async ({ page }, testInfo) => {
+      requireCreds(testInfo);
+      await preflightAuthBackend(page, BACKEND_URL, testInfo);
+      await gotoLogin(page);
+
+      if (!(await hasSessionCookie(page))) {
+        const { username, password, submit, signInTab } = loginLocators(page);
+
+        if (await signInTab.isVisible().catch(() => false)) {
+          await signInTab.click();
+        }
+
+        await expect(password).toBeVisible({ timeout: 15_000 });
+        await expect(username).toBeVisible({ timeout: 15_000 });
+
+        await username.fill(E2E_USERNAME!);
+        await password.fill(E2E_PASSWORD!);
+
+        await Promise.all([
+          page.waitForNavigation({ waitUntil: 'domcontentloaded' }).catch(() => null),
+          submit.click(),
+        ]);
+      }
+
+      await waitForSessionCookie(page.context(), testInfo);
     });
 
-    test('logout clears session', async ({ page }) => {
+    test('logout clears session', async ({ page }, testInfo) => {
+      requireCreds(testInfo);
+      await preflightAuthBackend(page, BACKEND_URL, testInfo);
       // First login
-      await page.goto(`${FRONTEND_URL}/#/login`);
-      await page.fill('input[name="username"]', 'admin');
-      await page.fill('input[name="password"]', 'password');
-      await page.click('button[type="submit"]');
+      await gotoLogin(page);
+      const { username, password, submit, signInTab } = loginLocators(page);
+      if (await signInTab.isVisible().catch(() => false)) {
+        await signInTab.click();
+      }
+      await expect(password).toBeVisible({ timeout: 15_000 });
+      await expect(username).toBeVisible({ timeout: 15_000 });
+      await username.fill(E2E_USERNAME!);
+      await password.fill(E2E_PASSWORD!);
+      await Promise.all([
+        page.waitForNavigation({ waitUntil: 'domcontentloaded' }).catch(() => null),
+        submit.click(),
+      ]);
+      await waitForSessionCookie(page.context(), testInfo);
       
       // Wait for authenticated state
       await page.waitForURL(/.*chat.*|.*$/, { timeout: 10000 }).catch(() => {});
@@ -72,6 +207,10 @@ test.describe('OmniAI v1 Smoke Tests', () => {
   });
 
   test.describe('Conversations', () => {
+    test.beforeEach(async ({}, testInfo) => {
+      requireCreds(testInfo);
+    });
+
     test('list loads', async ({ page }) => {
       // Assuming already logged in from previous test
       await page.goto(`${FRONTEND_URL}/#/chat`);
@@ -154,6 +293,10 @@ test.describe('OmniAI v1 Smoke Tests', () => {
   });
 
   test.describe('Streaming', () => {
+    test.beforeEach(async ({}, testInfo) => {
+      requireCreds(testInfo);
+    });
+
     test('send message streams response with deltas', async ({ page }) => {
       await page.goto(`${FRONTEND_URL}/#/chat`);
       
@@ -212,6 +355,10 @@ test.describe('OmniAI v1 Smoke Tests', () => {
   });
 
   test.describe('Settings', () => {
+    test.beforeEach(async ({}, testInfo) => {
+      requireCreds(testInfo);
+    });
+
     test('provider/model dropdown works when endpoints available', async ({ page }) => {
       await page.goto(`${FRONTEND_URL}/#/chat`);
       
@@ -259,6 +406,10 @@ test.describe('OmniAI v1 Smoke Tests', () => {
   });
 
   test.describe('Feature Flags', () => {
+    test.beforeEach(async ({}, testInfo) => {
+      requireCreds(testInfo);
+    });
+
     test('enabling flags shows panel toggles', async ({ page }) => {
       await page.goto(`${FRONTEND_URL}/#/chat`);
       
