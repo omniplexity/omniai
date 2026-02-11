@@ -3,7 +3,7 @@ import { test, expect, type BrowserContext, type Locator, type Page, type TestIn
 // OmniAI v1 End-to-End Tests
 // Run with: npx playwright install chromium && npx playwright test tests/e2e/chat.spec.ts
 
-const BACKEND_URL = process.env.BACKEND_BASE_URL || process.env.BACKEND_URL || 'http://localhost:8000';
+const BACKEND_URL = process.env.BACKEND_URL || process.env.BACKEND_BASE_URL || 'http://localhost:8000';
 const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5173';
 const E2E_USERNAME = process.env.E2E_USERNAME;
 const E2E_PASSWORD = process.env.E2E_PASSWORD;
@@ -57,7 +57,7 @@ async function waitForLoginResponse(page: Page) {
     const req = resp.request();
     return (
       req.method() === 'POST' &&
-      /\/api\/auth\//i.test(resp.url()) &&
+      /\/(api|v1)\/auth\//i.test(resp.url()) &&
       /login|session|signin/i.test(resp.url())
     );
   }, { timeout: 15_000 });
@@ -164,20 +164,54 @@ async function assertLoginSucceeded(page: Page, testInfo: TestInfo) {
 }
 
 async function assertSessionUsable(page: Page, backendUrl: string, testInfo: TestInfo) {
+  const urls = [`${backendUrl}/v1/auth/me`, `${backendUrl}/api/auth/me`];
+
   await expect
     .poll(async () => {
-      const r = await page.request.get(`${backendUrl}/api/auth/me`).catch(() => null);
-      const status = r?.status() ?? 0;
-      if (status !== 200) {
-        const t = await r?.text().catch(() => '');
-        await testInfo.attach('auth_me_status', {
-          body: `${status}\n${t?.slice(0, 2000) ?? ''}`,
-          contentType: 'text/plain',
+      const results = await page.evaluate(async (probeUrls: string[]) => {
+        const out: { url: string; status: number; body: string }[] = [];
+        for (const url of probeUrls) {
+          try {
+            const r = await fetch(url, {
+              method: 'GET',
+              credentials: 'include',
+              headers: { Accept: 'application/json' },
+            });
+            const body = await r.text().catch(() => '');
+            out.push({ url, status: r.status, body: body.slice(0, 500) });
+          } catch (e: any) {
+            out.push({ url, status: 0, body: String(e?.message ?? e) });
+          }
+        }
+        return out;
+      }, urls);
+
+      if (results.some((r) => r.status === 200)) {
+        await testInfo.attach('auth_me_results', {
+          body: JSON.stringify(results, null, 2),
+          contentType: 'application/json',
         });
+        return 200;
       }
-      return status;
+
+      await testInfo.attach('auth_me_results', {
+        body: JSON.stringify(results, null, 2),
+        contentType: 'application/json',
+      });
+      return results[0]?.status ?? 0;
     }, { timeout: 15_000 })
     .toBe(200);
+}
+
+async function attachCookieHostDiagnostics(page: Page, testInfo: TestInfo) {
+  await testInfo.attach('cookies_localhost', {
+    body: JSON.stringify(await page.context().cookies('http://localhost:8000'), null, 2),
+    contentType: 'application/json',
+  });
+  await testInfo.attach('cookies_127', {
+    body: JSON.stringify(await page.context().cookies('http://127.0.0.1:8000'), null, 2),
+    contentType: 'application/json',
+  });
 }
 
 async function waitForSessionCookie(context: BrowserContext, testInfo: TestInfo, backendUrl: string) {
@@ -357,6 +391,7 @@ test.describe('OmniAI v1 Smoke Tests', () => {
             `Login response wait failed.${E2E_DEBUG ? ` requests=${JSON.stringify(loginDiag.requests)}` : ''}\n${String(error?.message ?? error)}`
           );
         }
+        await attachCookieHostDiagnostics(page, testInfo);
       }
 
       await assertSessionUsable(page, BACKEND_URL, testInfo);
@@ -382,6 +417,7 @@ test.describe('OmniAI v1 Smoke Tests', () => {
         submit.click(),
       ]);
       await loginSucceeded;
+      await attachCookieHostDiagnostics(page, testInfo);
       await assertSessionUsable(page, BACKEND_URL, testInfo);
       await waitForSessionCookie(page.context(), testInfo, BACKEND_URL);
       
