@@ -129,3 +129,65 @@ def test_cross_origin_login_sets_partitioned_cookie_when_enabled(monkeypatch, tm
     finally:
         dispose_engine()
         get_settings.cache_clear()
+
+
+def test_cross_origin_logout_clears_partitioned_cookies_when_enabled(monkeypatch, tmp_path):
+    engine = _setup_db(
+        tmp_path,
+        monkeypatch,
+        ENVIRONMENT="test",
+        COOKIE_SECURE="true",
+        COOKIE_SAMESITE="none",
+        COOKIE_PARTITIONED="true",
+        CORS_ORIGINS="http://localhost:5173",
+    )
+
+    SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+    db = SessionLocal()
+    try:
+        db.add(
+            User(
+                email="e2e-auth-logout@example.test",
+                username="e2e-auth-logout",
+                hashed_password=hash_password("StrongPass!123"),
+                is_admin=True,
+                is_active=True,
+            )
+        )
+        db.commit()
+    finally:
+        db.close()
+
+    from backend.main import create_app
+
+    app = create_app()
+    client = TestClient(app)
+    try:
+        origin = "http://localhost:5173"
+
+        boot = client.get("/v1/auth/csrf/bootstrap", headers={"Origin": origin})
+        assert boot.status_code == 200
+        csrf = boot.json()["csrf_token"]
+
+        login = client.post(
+            "/v1/auth/login",
+            headers={"Origin": origin, "X-CSRF-Token": csrf},
+            json={"username": "e2e-auth-logout", "password": "StrongPass!123"},
+        )
+        assert login.status_code == 200
+
+        logout = client.post(
+            "/v1/auth/logout",
+            headers={"Origin": origin, "X-CSRF-Token": csrf},
+            json={},
+        )
+        assert logout.status_code == 200
+        set_cookie_values = logout.headers.get_list("set-cookie")
+        joined = " | ".join(set_cookie_values)
+        assert "omni_session=" in joined
+        assert "omni_csrf=" in joined
+        assert "Partitioned" in joined
+        assert "Max-Age=0" in joined
+    finally:
+        dispose_engine()
+        get_settings.cache_clear()

@@ -107,6 +107,46 @@ def _set_cookie_compat(
     response.headers.append("set-cookie", f"{morsel.OutputString()}; Partitioned")
 
 
+def _delete_cookie_compat(
+    response: Response,
+    *,
+    key: str,
+    secure: bool,
+    httponly: bool,
+    samesite: str,
+    domain: str | None,
+    path: str,
+    partitioned: bool,
+) -> None:
+    """Delete cookies with Partitioned compatibility on Python < 3.14."""
+    if not partitioned:
+        response.delete_cookie(
+            key=key,
+            domain=domain,
+            path=path,
+            secure=secure,
+            httponly=httponly,
+            samesite=samesite.lower() if samesite else "lax",
+        )
+        return
+
+    cookie = SimpleCookie()
+    cookie[key] = ""
+    morsel = cookie[key]
+    morsel["path"] = path
+    if domain:
+        morsel["domain"] = domain
+    morsel["max-age"] = "0"
+    morsel["expires"] = "Thu, 01 Jan 1970 00:00:00 GMT"
+    if secure:
+        morsel["secure"] = True
+    if httponly:
+        morsel["httponly"] = True
+    if samesite:
+        morsel["samesite"] = samesite
+    response.headers.append("set-cookie", f"{morsel.OutputString()}; Partitioned")
+
+
 class RegisterRequest(BaseModel):
     """Registration request model."""
 
@@ -433,13 +473,23 @@ async def logout(
     audit_log_event(db, event_type="auth.logout", user_id=user_id, request=request, data=None)
 
     # Clear cookies
-    response.delete_cookie(
-        settings.session_cookie_name,
+    _delete_cookie_compat(
+        response,
+        key=settings.session_cookie_name,
+        secure=settings.cookie_secure,
+        httponly=True,
+        samesite=settings.cookie_samesite_header,
+        partitioned=settings.cookie_partitioned_enabled,
         domain=settings.cookie_domain or None,
         path="/",
     )
-    response.delete_cookie(
-        settings.csrf_cookie_name,
+    _delete_cookie_compat(
+        response,
+        key=settings.csrf_cookie_name,
+        secure=settings.cookie_secure,
+        httponly=False,
+        samesite=settings.cookie_samesite_header,
+        partitioned=settings.cookie_partitioned_enabled,
         domain=settings.cookie_domain or None,
         path="/",
     )
@@ -827,8 +877,26 @@ async def delete_my_account(
     db.delete(current_user)
     db.commit()
 
-    response.delete_cookie(settings.session_cookie_name, domain=settings.cookie_domain or None, path="/")
-    response.delete_cookie(settings.csrf_cookie_name, domain=settings.cookie_domain or None, path="/")
+    _delete_cookie_compat(
+        response,
+        key=settings.session_cookie_name,
+        secure=settings.cookie_secure,
+        httponly=True,
+        samesite=settings.cookie_samesite_header,
+        partitioned=settings.cookie_partitioned_enabled,
+        domain=settings.cookie_domain or None,
+        path="/",
+    )
+    _delete_cookie_compat(
+        response,
+        key=settings.csrf_cookie_name,
+        secure=settings.cookie_secure,
+        httponly=False,
+        samesite=settings.cookie_samesite_header,
+        partitioned=settings.cookie_partitioned_enabled,
+        domain=settings.cookie_domain or None,
+        path="/",
+    )
 
     return {"message": "Account deleted"}
 
@@ -902,8 +970,26 @@ async def revoke_session(
     )
 
     if is_current:
-        response.delete_cookie(settings.session_cookie_name, domain=settings.cookie_domain or None, path="/")
-        response.delete_cookie(settings.csrf_cookie_name, domain=settings.cookie_domain or None, path="/")
+        _delete_cookie_compat(
+            response,
+            key=settings.session_cookie_name,
+            secure=settings.cookie_secure,
+            httponly=True,
+            samesite=settings.cookie_samesite_header,
+            partitioned=settings.cookie_partitioned_enabled,
+            domain=settings.cookie_domain or None,
+            path="/",
+        )
+        _delete_cookie_compat(
+            response,
+            key=settings.csrf_cookie_name,
+            secure=settings.cookie_secure,
+            httponly=False,
+            samesite=settings.cookie_samesite_header,
+            partitioned=settings.cookie_partitioned_enabled,
+            domain=settings.cookie_domain or None,
+            path="/",
+        )
 
     return {"message": "Session revoked", "session_id": session_id, "is_current": is_current}
 
@@ -943,8 +1029,26 @@ async def revoke_all_sessions_except_current(
 
     # If there is no current session token, clear cookies anyway.
     if not current_hash:
-        response.delete_cookie(settings.session_cookie_name, domain=settings.cookie_domain or None, path="/")
-        response.delete_cookie(settings.csrf_cookie_name, domain=settings.cookie_domain or None, path="/")
+        _delete_cookie_compat(
+            response,
+            key=settings.session_cookie_name,
+            secure=settings.cookie_secure,
+            httponly=True,
+            samesite=settings.cookie_samesite_header,
+            partitioned=settings.cookie_partitioned_enabled,
+            domain=settings.cookie_domain or None,
+            path="/",
+        )
+        _delete_cookie_compat(
+            response,
+            key=settings.csrf_cookie_name,
+            secure=settings.cookie_secure,
+            httponly=False,
+            samesite=settings.cookie_samesite_header,
+            partitioned=settings.cookie_partitioned_enabled,
+            domain=settings.cookie_domain or None,
+            path="/",
+        )
 
     return {"message": "Sessions revoked", "deleted": deleted}
 
