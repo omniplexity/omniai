@@ -3,12 +3,13 @@
   Production smoke checks for OmniAI public API.
 .DESCRIPTION
   Validates health, CORS preflight, cross-site auth cookies, and session readback.
-  Required env vars:
+  Required env vars (or interactive prompt):
     SMOKE_USERNAME
     SMOKE_PASSWORD
   Optional env vars:
     SMOKE_BASE_URL (default https://omniplexity.duckdns.org)
     SMOKE_ORIGIN   (default https://omniplexity.github.io)
+    SMOKE_STRICT_BUILD=1 (fail if /health reports production with unknown build metadata)
 #>
 param()
 
@@ -18,13 +19,34 @@ $baseUrl = if ($env:SMOKE_BASE_URL) { $env:SMOKE_BASE_URL } else { "https://omni
 $origin = if ($env:SMOKE_ORIGIN) { $env:SMOKE_ORIGIN } else { "https://omniplexity.github.io" }
 $username = $env:SMOKE_USERNAME
 $password = $env:SMOKE_PASSWORD
+$strictBuildRaw = if ($null -eq $env:SMOKE_STRICT_BUILD) { "" } else { $env:SMOKE_STRICT_BUILD }
+$strictBuild = @("1", "true", "yes", "on") -contains $strictBuildRaw.ToLowerInvariant()
 
 function Pass([string]$msg) { Write-Host "PASS: $msg" -ForegroundColor Green }
 function Fail([string]$msg) { Write-Host "FAIL: $msg" -ForegroundColor Red; exit 1 }
 
 if ([string]::IsNullOrWhiteSpace($username) -or [string]::IsNullOrWhiteSpace($password)) {
-  Write-Host "FAIL: SMOKE_USERNAME and SMOKE_PASSWORD must be set" -ForegroundColor Red
-  exit 2
+  $canPrompt = -not [Console]::IsInputRedirected
+  if (-not $canPrompt) {
+    Write-Host "FAIL: SMOKE_USERNAME and SMOKE_PASSWORD must be set (non-interactive session)" -ForegroundColor Red
+    exit 2
+  }
+  if ([string]::IsNullOrWhiteSpace($username)) {
+    $username = Read-Host "SMOKE_USERNAME"
+  }
+  if ([string]::IsNullOrWhiteSpace($password)) {
+    $sec = Read-Host "SMOKE_PASSWORD" -AsSecureString
+    $bstr = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($sec)
+    try {
+      $password = [Runtime.InteropServices.Marshal]::PtrToStringBSTR($bstr)
+    } finally {
+      [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($bstr)
+    }
+  }
+  if ([string]::IsNullOrWhiteSpace($username) -or [string]::IsNullOrWhiteSpace($password)) {
+    Write-Host "FAIL: SMOKE_USERNAME and SMOKE_PASSWORD are required" -ForegroundColor Red
+    exit 2
+  }
 }
 
 $tmp = Join-Path $env:TEMP ("omniai-smoke-" + [guid]::NewGuid().ToString("N"))
@@ -32,14 +54,32 @@ New-Item -ItemType Directory -Path $tmp | Out-Null
 $cookieJar = Join-Path $tmp "cookies.txt"
 $headersOpts = Join-Path $tmp "opts.headers.txt"
 $headersLogin = Join-Path $tmp "login.headers.txt"
+$bodyHealth = Join-Path $tmp "health.body.json"
+$loginPayloadFile = Join-Path $tmp "login.payload.json"
 
 try {
   Write-Host "== Smoke: $baseUrl ==" -ForegroundColor Cyan
 
   # 1) GET /health
-  $healthCode = curl.exe -sS -o NUL -w "%{http_code}" "$baseUrl/health"
+  $healthCode = curl.exe -sS -o $bodyHealth -w "%{http_code}" "$baseUrl/health"
   if ($healthCode -ne "200") { Fail "GET /health returned $healthCode" }
   Pass "GET /health -> 200"
+  if ($strictBuild) {
+    try {
+      $health = Get-Content $bodyHealth -Raw | ConvertFrom-Json
+      $isProd = ($health.environment -eq "production")
+      $sha = if ($null -eq $health.build_sha) { "" } else { [string]$health.build_sha }
+      $time = if ($null -eq $health.build_time) { "" } else { [string]$health.build_time }
+      $shaUnknown = ($sha -eq "unknown")
+      $timeUnknown = ($time -eq "unknown")
+      if ($isProd -and ($shaUnknown -or $timeUnknown)) {
+        Fail "Strict build check failed: /health reports unknown build metadata in production"
+      }
+      Pass "Strict build metadata check passed"
+    } catch {
+      Fail "Strict build check failed: unable to parse /health JSON"
+    }
+  }
 
   # 2) OPTIONS /v1/auth/login
   $optsCode = curl.exe -sS -D $headersOpts -o NUL -w "%{http_code}" `
@@ -60,12 +100,13 @@ try {
 
   # 3) POST /v1/auth/login
   $payload = (@{ username = $username; password = $password } | ConvertTo-Json -Compress)
+  Set-Content -Path $loginPayloadFile -Value $payload -Encoding UTF8
   $loginCode = curl.exe -sS -D $headersLogin -o NUL -w "%{http_code}" `
     -c $cookieJar `
     -X POST "$baseUrl/v1/auth/login" `
     -H "Origin: $origin" `
     -H "Content-Type: application/json" `
-    --data $payload
+    --data-binary "@$loginPayloadFile"
   if ($loginCode -ne "200") { Fail "POST /v1/auth/login returned $loginCode" }
 
   $loginHeaderText = Get-Content $headersLogin -Raw
@@ -86,4 +127,3 @@ try {
 finally {
   if (Test-Path $tmp) { Remove-Item -Path $tmp -Recurse -Force -ErrorAction SilentlyContinue }
 }
-
