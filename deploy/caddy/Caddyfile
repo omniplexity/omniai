@@ -11,9 +11,10 @@ omniplexity.duckdns.org {
     # Enable compression
     encode zstd gzip
 
-    # SPA ops route convenience redirects
-    redir /ops /#/ops 302
-    redir /ops/ /#/ops 302
+    # Redirect web entrypoints to GitHub Pages SPA
+    redir / https://omniplexity.github.io/ 302
+    redir /ops https://omniplexity.github.io/#/ops 302
+    redir /ops/ https://omniplexity.github.io/#/ops 302
 
     # Security headers
     header {
