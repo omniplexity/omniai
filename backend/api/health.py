@@ -20,6 +20,11 @@ from backend.services.capabilities_service import compute_service_capabilities
 router = APIRouter(tags=["health"])
 
 
+def _safe_env_string(name: str) -> str:
+    raw = (os.getenv(name) or "").strip()
+    return raw if raw else "unknown"
+
+
 def _duckdns_scheduler_stale() -> bool:
     settings = get_settings()
     if not settings.ops_scheduler_enabled:
@@ -56,11 +61,20 @@ async def healthcheck() -> dict[str, Any]:
     orchestrators, and monitoring systems.
     """
     settings = get_settings()
+    environment = (
+        (os.getenv("OMNIAI_ENV") or "").strip()
+        or (os.getenv("ENVIRONMENT") or "").strip()
+        or (settings.environment or "").strip()
+        or "unknown"
+    )
 
     return {
         "status": "ok",
         "version": "0.1.0",
         "timestamp": datetime.now(UTC).isoformat(),
+        "build_sha": _safe_env_string("BUILD_SHA"),
+        "build_time": _safe_env_string("BUILD_TIME"),
+        "environment": environment,
         "debug": settings.debug,
         "duckdns_token_present": bool((os.getenv("DUCKDNS_TOKEN") or settings.duckdns_token or "").strip()),
         "duckdns_scheduler_stale": _duckdns_scheduler_stale(),

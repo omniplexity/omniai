@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "preact/hooks";
+import { getHealthStatus, type HealthStatus } from "../core/api/healthApi";
 import {
   getDuckDnsLogs,
   getDuckDnsStatus,
@@ -33,8 +34,21 @@ function fmtIso(value: string | null | undefined): string {
   return new Date(value).toLocaleString();
 }
 
+export function buildMetaViewModel(meta: HealthStatus | null): {
+  environment: string;
+  buildSha: string;
+  buildTime: string;
+} {
+  return {
+    environment: meta?.environment || "unknown",
+    buildSha: meta?.build_sha || "unknown",
+    buildTime: meta?.build_time || "unknown"
+  };
+}
+
 export function OpsRoute() {
   const [status, setStatus] = useState<DuckDnsStatus | null>(null);
+  const [health, setHealth] = useState<HealthStatus | null>(null);
   const [logs, setLogs] = useState<DuckDnsLog[]>([]);
   const [busy, setBusy] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -45,9 +59,14 @@ export function OpsRoute() {
   async function loadData() {
     try {
       setError(null);
-      const [s, l] = await Promise.all([getDuckDnsStatus(), getDuckDnsLogs(200)]);
+      const [s, l, h] = await Promise.all([
+        getDuckDnsStatus(),
+        getDuckDnsLogs(200),
+        getHealthStatus().catch(() => null)
+      ]);
       setStatus(s);
       setLogs(l);
+      setHealth(h);
     } catch (e: any) {
       setError(String(e?.message || e));
     } finally {
@@ -115,6 +134,7 @@ export function OpsRoute() {
 
   const lastErrorCode = status?.last_update?.error_code ?? logs.find((x) => !x.success)?.error_code;
   const remediation = useMemo(() => remediationFor(lastErrorCode), [lastErrorCode]);
+  const build = useMemo(() => buildMetaViewModel(health), [health]);
 
   return (
     <div class="page pad" data-testid="ops-page">
@@ -224,6 +244,14 @@ export function OpsRoute() {
           </table>
           {logs.length === 0 ? <p class="muted">No logs yet.</p> : null}
         </div>
+      </div>
+
+      <div class="card wide" aria-label="Build metadata">
+        <h2 class="h2">Build</h2>
+        <p data-testid="ops-build-footer">
+          <strong>Environment:</strong> {build.environment} | <strong>Build SHA:</strong> {build.buildSha} |{" "}
+          <strong>Build time:</strong> {build.buildTime}
+        </p>
       </div>
     </div>
   );

@@ -1,6 +1,9 @@
 // OmniAI v1 API - Canonical endpoints only
 // Fallbacks removed for production stability
 export const endpoints = {
+  // Health
+  health: ["/health"],
+
   // Authentication
   meta: ["/v1/meta"],
   csrfBootstrap: ["/v1/auth/csrf/bootstrap"],

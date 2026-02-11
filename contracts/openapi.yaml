@@ -12,6 +12,19 @@ servers:
     description: OmniAI v1 API (recommended)
 
 paths:
+  # Health Endpoints
+  /health:
+    get:
+      tags: [Health]
+      summary: Service liveness with safe build metadata
+      responses:
+        '200':
+          description: Health status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthStatus'
+
   # Authentication Endpoints
   /auth/register:
     post:
@@ -856,6 +869,29 @@ paths:
 
 components:
   schemas:
+    HealthStatus:
+      type: object
+      properties:
+        status:
+          type: string
+        version:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
+        build_sha:
+          type: string
+        build_time:
+          type: string
+        environment:
+          type: string
+        debug:
+          type: boolean
+        duckdns_token_present:
+          type: boolean
+        duckdns_scheduler_stale:
+          type: boolean
+
     # Auth Schemas
     RegisterRequest:
       type: object

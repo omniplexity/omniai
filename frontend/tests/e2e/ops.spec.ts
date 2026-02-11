@@ -15,6 +15,19 @@ test.describe("Ops Console", () => {
       });
     });
 
+    await page.route("**/health", async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          status: "ok",
+          build_sha: "b9ef74c",
+          build_time: "2026-02-11T07:12:34Z",
+          environment: "production"
+        })
+      });
+    });
+
     await page.route("**/v1/**", async (route) => {
       const req = route.request();
       const url = new URL(req.url());
@@ -116,6 +129,8 @@ test.describe("Ops Console", () => {
     await expect(page.locator("[data-testid='ops-page']")).toBeVisible();
     await expect(page.getByRole("heading", { name: "Ops Console" })).toBeVisible();
     await expect(page.getByRole("button", { name: "Test DuckDNS now" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Build" })).toBeVisible();
+    await expect(page.locator("[data-testid='ops-build-footer']")).toContainText("b9ef74c");
 
     await page.getByRole("button", { name: "Test DuckDNS now" }).click();
     await expect(page.getByText(/Test executed/i)).toBeVisible();

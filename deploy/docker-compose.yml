@@ -92,6 +92,9 @@ services:
       # Backend binds to 0.0.0.0 inside container, but port is only exposed to localhost
       HOST: "0.0.0.0"
       PORT: "8000"
+      BUILD_SHA: ${BUILD_SHA:-unknown}
+      BUILD_TIME: ${BUILD_TIME:-unknown}
+      OMNIAI_ENV: ${OMNIAI_ENV:-production}
       # Database: PostgreSQL from compose
       DATABASE_URL: postgresql://omniai:omniai_secure_2024@postgres:5432/omniai
       # Redis connection
