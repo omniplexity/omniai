@@ -51,22 +51,81 @@ async function preflightAuthBackend(page: Page, baseApi: string, testInfo: TestI
   }
 }
 
-async function waitForSessionCookie(context: BrowserContext, testInfo: TestInfo) {
-  try {
-    await expect
-      .poll(async () => {
-        const cookies = await context.cookies();
-        return cookies.some((c) => c.name === 'omni_session');
-      }, { timeout: 15_000 })
-      .toBeTruthy();
-  } catch (error) {
-    const cookies = await context.cookies();
-    await testInfo.attach('cookies_snapshot', {
-      body: JSON.stringify(cookies, null, 2),
-      contentType: 'application/json',
-    });
-    throw error;
+async function waitForLoginResponse(page: Page) {
+  return page.waitForResponse((resp) => {
+    const req = resp.request();
+    return (
+      req.method() === 'POST' &&
+      /\/api\/auth\//i.test(resp.url()) &&
+      /login|session|signin/i.test(resp.url())
+    );
+  }, { timeout: 15_000 });
+}
+
+async function assertLoginSucceeded(page: Page, testInfo: TestInfo) {
+  const resp = await waitForLoginResponse(page);
+  const status = resp.status();
+  const headers = resp.headers();
+  const body = await resp.text().catch(() => '');
+
+  await testInfo.attach('login_response', {
+    body: JSON.stringify(
+      {
+        url: resp.url(),
+        status,
+        set_cookie: headers['set-cookie'] ?? null,
+        body: body.slice(0, 2000),
+      },
+      null,
+      2
+    ),
+    contentType: 'application/json',
+  });
+
+  if (status < 200 || status >= 300) {
+    throw new Error(`Login POST failed: ${status} (see login_response attachment)`);
   }
+
+  const setCookie = headers['set-cookie'] ?? '';
+  if (/;\s*secure\b/i.test(setCookie) && page.url().startsWith('http://')) {
+    throw new Error(
+      'Backend issued a Secure session cookie while frontend is http://. ' +
+        'Cookie will not be stored. Use https for local dev or disable secure cookies in local env.'
+    );
+  }
+}
+
+async function assertSessionUsable(page: Page, backendUrl: string, testInfo: TestInfo) {
+  await expect
+    .poll(async () => {
+      const r = await page.request.get(`${backendUrl}/api/auth/me`).catch(() => null);
+      const status = r?.status() ?? 0;
+      if (status !== 200) {
+        const t = await r?.text().catch(() => '');
+        await testInfo.attach('auth_me_status', {
+          body: `${status}\n${t?.slice(0, 2000) ?? ''}`,
+          contentType: 'text/plain',
+        });
+      }
+      return status;
+    }, { timeout: 15_000 })
+    .toBe(200);
+}
+
+async function waitForSessionCookie(context: BrowserContext, testInfo: TestInfo, backendUrl: string) {
+  await expect
+    .poll(async () => {
+      const cookies = await context.cookies(backendUrl);
+      const has = cookies.some((c) => c.name === 'omni_session');
+      if (!has) {
+        await testInfo.attach('cookies_snapshot', {
+          body: JSON.stringify(cookies, null, 2),
+          contentType: 'application/json',
+        });
+      }
+      return has;
+    }, { timeout: 15_000 })
+    .toBeTruthy();
 }
 
 async function gotoLogin(page: Page) {
@@ -166,13 +225,13 @@ test.describe('OmniAI v1 Smoke Tests', () => {
         await username.fill(E2E_USERNAME!);
         await password.fill(E2E_PASSWORD!);
 
-        await Promise.all([
-          page.waitForNavigation({ waitUntil: 'domcontentloaded' }).catch(() => null),
-          submit.click(),
-        ]);
+        const loginSucceeded = assertLoginSucceeded(page, testInfo);
+        await submit.click();
+        await loginSucceeded;
       }
 
-      await waitForSessionCookie(page.context(), testInfo);
+      await assertSessionUsable(page, BACKEND_URL, testInfo);
+      await waitForSessionCookie(page.context(), testInfo, BACKEND_URL);
     });
 
     test('logout clears session', async ({ page }, testInfo) => {
@@ -188,11 +247,14 @@ test.describe('OmniAI v1 Smoke Tests', () => {
       await expect(username).toBeVisible({ timeout: 15_000 });
       await username.fill(E2E_USERNAME!);
       await password.fill(E2E_PASSWORD!);
+      const loginSucceeded = assertLoginSucceeded(page, testInfo);
       await Promise.all([
         page.waitForNavigation({ waitUntil: 'domcontentloaded' }).catch(() => null),
         submit.click(),
       ]);
-      await waitForSessionCookie(page.context(), testInfo);
+      await loginSucceeded;
+      await assertSessionUsable(page, BACKEND_URL, testInfo);
+      await waitForSessionCookie(page.context(), testInfo, BACKEND_URL);
       
       // Wait for authenticated state
       await page.waitForURL(/.*chat.*|.*$/, { timeout: 10000 }).catch(() => {});
