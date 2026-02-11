@@ -167,11 +167,25 @@ jobs:
           done
         shell: bash
 
+      - name: E2E auth credential mode
+        env:
+          E2E_USERNAME: ${{ secrets.E2E_USERNAME }}
+          E2E_PASSWORD: ${{ secrets.E2E_PASSWORD }}
+        run: |
+          if [ -z "${E2E_USERNAME}" ] || [ -z "${E2E_PASSWORD}" ]; then
+            echo "::notice::E2E creds not set; auth-dependent suites may be skipped."
+          else
+            echo "E2E creds are set; auth-dependent suites will run."
+          fi
+        shell: bash
+
       - name: Run E2E tests
         env:
           PLAYWRIGHT_WEB_SERVER: "0"
           FRONTEND_URL: http://127.0.0.1:4173
           BACKEND_BASE_URL: http://127.0.0.1:8000
+          E2E_USERNAME: ${{ secrets.E2E_USERNAME }}
+          E2E_PASSWORD: ${{ secrets.E2E_PASSWORD }}
         run: npx playwright test --project=chromium
 
       - name: Upload E2E artifacts

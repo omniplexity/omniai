@@ -97,6 +97,13 @@ cd backend
 python -m pytest
 ```
 
+```bash
+# Frontend Playwright chat smoke with explicit credentials (no defaults)
+cd frontend
+E2E_USERNAME=your_user E2E_PASSWORD=your_pass \
+  npx playwright test tests/e2e/chat.spec.ts --project=chromium --workers=1 --max-failures=1
+```
+
 ## Deployment
 
 - **Frontend:** GitHub Pages (static build output)
