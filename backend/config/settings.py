@@ -77,6 +77,9 @@ class Settings(BaseSettings):
     # Local/test-safe defaults. Production must explicitly set secure cross-site values.
     cookie_secure: bool = Field(default=False)
     cookie_samesite: str = Field(default="lax")
+    # CHIPS support: when true and cross-site cookie requirements are met,
+    # emit Partitioned cookies for third-party contexts (Pages -> API domain).
+    cookie_partitioned: bool = Field(default=True)
     cookie_domain: str = Field(default="")
     csrf_header_name: str = Field(default="X-CSRF-Token")
     csrf_cookie_name: str = Field(default="omni_csrf")
@@ -240,6 +243,11 @@ class Settings(BaseSettings):
         if self.cookie_samesite == "none":
             return "None"
         return self.cookie_samesite.capitalize()
+
+    @property
+    def cookie_partitioned_enabled(self) -> bool:
+        """Return whether Partitioned cookies should be emitted."""
+        return bool(self.cookie_partitioned and self.cookie_secure and self.cookie_samesite == "none")
 
     @field_validator("environment")
     @classmethod

@@ -1,7 +1,9 @@
 """Authentication API endpoints."""
 
 import secrets
+import sys
 from datetime import datetime
+from http.cookies import SimpleCookie
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
@@ -41,6 +43,68 @@ from backend.services.audit_service import audit_log_event
 
 logger = get_logger(__name__)
 router = APIRouter(prefix="/api/auth", tags=["auth"])
+
+
+def _set_cookie_compat(
+    response: Response,
+    *,
+    key: str,
+    value: str,
+    httponly: bool,
+    secure: bool,
+    samesite: str,
+    domain: str | None,
+    path: str,
+    max_age: int | None,
+    partitioned: bool,
+) -> None:
+    """Set cookies with Partitioned compatibility on Python < 3.14.
+
+    Starlette supports the `partitioned` kwarg only on Python 3.14+. For 3.13 and
+    below, append a manual Set-Cookie header when partitioned is requested.
+    """
+    if not partitioned:
+        response.set_cookie(
+            key=key,
+            value=value,
+            httponly=httponly,
+            secure=secure,
+            samesite=samesite,
+            domain=domain,
+            path=path,
+            max_age=max_age,
+        )
+        return
+
+    if sys.version_info >= (3, 14):
+        response.set_cookie(
+            key=key,
+            value=value,
+            httponly=httponly,
+            secure=secure,
+            samesite=samesite,
+            domain=domain,
+            path=path,
+            max_age=max_age,
+            partitioned=True,
+        )
+        return
+
+    cookie = SimpleCookie()
+    cookie[key] = value
+    morsel = cookie[key]
+    morsel["path"] = path
+    if domain:
+        morsel["domain"] = domain
+    if max_age is not None:
+        morsel["max-age"] = str(max_age)
+    if secure:
+        morsel["secure"] = True
+    if httponly:
+        morsel["httponly"] = True
+    if samesite:
+        morsel["samesite"] = samesite
+    response.headers.append("set-cookie", f"{morsel.OutputString()}; Partitioned")
 
 
 class RegisterRequest(BaseModel):
@@ -188,24 +252,26 @@ async def register(
     session_token, csrf_token = create_session(db, user)
 
     # Set session cookie (use cookie_samesite_header for correct capitalization)
-    response.set_cookie(
+    _set_cookie_compat(response, 
         key=settings.session_cookie_name,
         value=session_token,
         httponly=True,
         secure=settings.cookie_secure,
         samesite=settings.cookie_samesite_header,
+        partitioned=settings.cookie_partitioned_enabled,
         domain=settings.cookie_domain or None,
         path="/",
         max_age=settings.session_ttl_seconds,
     )
 
     # Set CSRF cookie
-    response.set_cookie(
+    _set_cookie_compat(response, 
         key=settings.csrf_cookie_name,
         value=csrf_token,
         httponly=False,
         secure=settings.cookie_secure,
         samesite=settings.cookie_samesite_header,
+        partitioned=settings.cookie_partitioned_enabled,
         domain=settings.cookie_domain or None,
         path="/",
         max_age=settings.session_ttl_seconds,
@@ -304,23 +370,25 @@ async def login(
     session_token, csrf_token = create_session(db, user)
 
     # Set cookies (use cookie_samesite_header for correct capitalization)
-    response.set_cookie(
+    _set_cookie_compat(response, 
         key=settings.session_cookie_name,
         value=session_token,
         httponly=True,
         secure=settings.cookie_secure,
         samesite=settings.cookie_samesite_header,
+        partitioned=settings.cookie_partitioned_enabled,
         domain=settings.cookie_domain or None,
         path="/",
         max_age=settings.session_ttl_seconds,
     )
 
-    response.set_cookie(
+    _set_cookie_compat(response, 
         key=settings.csrf_cookie_name,
         value=csrf_token,
         httponly=False,
         secure=settings.cookie_secure,
         samesite=settings.cookie_samesite_header,
+        partitioned=settings.cookie_partitioned_enabled,
         domain=settings.cookie_domain or None,
         path="/",
         max_age=settings.session_ttl_seconds,
@@ -413,22 +481,24 @@ async def refresh_session(
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Session expired or invalid")
     new_session_token, new_csrf_token, _ = rotated
 
-    response.set_cookie(
+    _set_cookie_compat(response, 
         key=settings.session_cookie_name,
         value=new_session_token,
         httponly=True,
         secure=settings.cookie_secure,
         samesite=settings.cookie_samesite_header,
+        partitioned=settings.cookie_partitioned_enabled,
         domain=settings.cookie_domain or None,
         path="/",
         max_age=settings.session_ttl_seconds,
     )
-    response.set_cookie(
+    _set_cookie_compat(response, 
         key=settings.csrf_cookie_name,
         value=new_csrf_token,
         httponly=False,
         secure=settings.cookie_secure,
         samesite=settings.cookie_samesite_header,
+        partitioned=settings.cookie_partitioned_enabled,
         domain=settings.cookie_domain or None,
         path="/",
         max_age=settings.session_ttl_seconds,
@@ -459,12 +529,13 @@ async def csrf_bootstrap(request: Request, response: Response):
         csrf_token = secrets.token_urlsafe(32)
 
     # Set CSRF cookie with same attributes as authenticated endpoint
-    response.set_cookie(
+    _set_cookie_compat(response, 
         key=settings.csrf_cookie_name,
         value=csrf_token,
         httponly=False,
         secure=settings.cookie_secure,
         samesite=settings.cookie_samesite_header,
+        partitioned=settings.cookie_partitioned_enabled,
         domain=settings.cookie_domain or None,
         path="/",
         max_age=settings.session_ttl_seconds,
@@ -500,12 +571,13 @@ async def get_csrf_token(
 
     csrf_token = session.csrf_token
 
-    response.set_cookie(
+    _set_cookie_compat(response, 
         key=settings.csrf_cookie_name,
         value=csrf_token,
         httponly=False,
         secure=settings.cookie_secure,
         samesite=settings.cookie_samesite_header,
+        partitioned=settings.cookie_partitioned_enabled,
         domain=settings.cookie_domain or None,
         path="/",
         max_age=settings.session_ttl_seconds,
@@ -888,3 +960,4 @@ async def check_auth(
             "user": UserResponse.model_validate(current_user),
         }
     return {"authenticated": False, "user": None}
+
