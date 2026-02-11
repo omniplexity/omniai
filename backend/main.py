@@ -26,6 +26,7 @@ from backend.api import (
     workflows_router,
 )
 from backend.auth.bootstrap import ensure_bootstrap_admin
+from backend.auth.e2e_seed import ensure_e2e_seed_user
 from backend.agents.ops.duckdns_service import DuckDnsOpsScheduler
 from backend.config import get_settings
 from backend.core import (
@@ -80,8 +81,9 @@ async def lifespan(_app: FastAPI) -> AsyncGenerator[None, None]:
         logger.info("Database connection verified")
         try:
             ensure_bootstrap_admin(settings)
+            ensure_e2e_seed_user(settings)
         except Exception as exc:
-            logger.error("Bootstrap admin failed", data={"error": str(exc)})
+            logger.error("Auth startup seed failed", data={"error": str(exc)})
     else:
         logger.warning(
             "Database connection failed - run 'alembic upgrade head' to initialize"

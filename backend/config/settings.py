@@ -93,6 +93,10 @@ class Settings(BaseSettings):
     bootstrap_admin_username: str = Field(default="")
     bootstrap_admin_email: str = Field(default="")
     bootstrap_admin_password: str = Field(default="")
+    # Test-only deterministic E2E seed user (never enabled in production)
+    e2e_seed_user: bool = Field(default=False)
+    e2e_username: str = Field(default="")
+    e2e_password: str = Field(default="")
 
     # Database
     database_url: str = Field(default_factory=_get_default_db_path)
