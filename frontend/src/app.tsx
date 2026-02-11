@@ -1,6 +1,6 @@
 import { useEffect, useState } from "preact/hooks";
-import type { RuntimeConfig } from "./core/config/runtimeConfig";
-import { setRuntimeConfig } from "./core/config/runtimeConfig";
+import type { RuntimeConfig } from "./config/runtimeConfig";
+import { setRuntimeConfig } from "./config/runtimeConfig";
 import { setFlagsFromRuntime } from "./core/config/featureFlags";
 import { useHashLocation, Link } from "./core/router/hashRouter";
 import { Layout } from "./components/Layout";

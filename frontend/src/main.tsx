@@ -1,6 +1,6 @@
 import { render } from "preact";
 import { App } from "./app";
-import { loadRuntimeConfig } from "./core/config/runtimeConfig";
+import { loadRuntimeConfigSafe } from "./config/runtimeConfig";
 import "./styles/tokens.css";
 import "./styles/base.css";
 
@@ -10,7 +10,7 @@ async function bootstrap() {
 
   root.textContent = "Loading…";
 
-  const cfg = await loadRuntimeConfig();
+  const cfg = await loadRuntimeConfigSafe();
   render(<App runtimeConfig={cfg} />, root);
 }
 

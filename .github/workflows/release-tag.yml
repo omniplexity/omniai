@@ -1,0 +1,90 @@
+name: Release Tag
+
+on:
+  workflow_run:
+    workflows: ["Frontend CI"]
+    types: [completed]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  tag-and-release:
+    if: >
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.head_branch == 'main' &&
+       github.event.workflow_run.event == 'push')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Compute version
+        id: version
+        run: |
+          TAG="v1.0.${GITHUB_RUN_NUMBER}"
+          echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
+          echo "Tag: ${TAG}"
+        shell: bash
+
+      - name: Check tag existence
+        id: tagcheck
+        run: |
+          if git rev-parse "${{ steps.version.outputs.tag }}" >/dev/null 2>&1; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+        shell: bash
+
+      - name: Create annotated tag
+        if: steps.tagcheck.outputs.exists == 'false'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag -a "${{ steps.version.outputs.tag }}" -m "Release ${{ steps.version.outputs.tag }}"
+          git push origin "${{ steps.version.outputs.tag }}"
+        shell: bash
+
+      - name: Generate release notes
+        id: notes
+        run: |
+          CI_RUN_URL="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.event.workflow_run.id }}"
+          if [ -f CHANGELOG.md ]; then
+            awk 'BEGIN{p=0} /^## /{if(p==1) exit; p=1} p{print}' CHANGELOG.md > release_notes.txt
+          else
+            {
+              echo "Release ${{ steps.version.outputs.tag }}"
+              echo
+              if [ "${{ github.event_name }}" = "workflow_run" ]; then
+                echo "Source CI run: ${CI_RUN_URL}"
+                echo
+              fi
+              echo "Recent commits:"
+              git log --oneline -n 20
+            } > release_notes.txt
+          fi
+          if [ "${{ github.event_name }}" = "workflow_run" ]; then
+            {
+              echo
+              echo "Artifacts:"
+              echo "- Smoke/E2E artifacts are attached to CI run: ${CI_RUN_URL}"
+            } >> release_notes.txt
+          fi
+          echo "Generated release_notes.txt"
+        shell: bash
+
+      - name: Create GitHub release
+        if: steps.tagcheck.outputs.exists == 'false'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.version.outputs.tag }}
+          name: ${{ steps.version.outputs.tag }}
+          body_path: release_notes.txt
+          draft: false
+          prerelease: false

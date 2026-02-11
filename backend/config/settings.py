@@ -97,6 +97,13 @@ class Settings(BaseSettings):
     e2e_seed_user: bool = Field(default=False)
     e2e_username: str = Field(default="")
     e2e_password: str = Field(default="")
+    # Optional client telemetry ingest (metadata-only)
+    client_events_enabled: bool = Field(default=False)
+    client_events_max_batch: int = Field(default=50)
+    client_events_rpm: int = Field(default=120)
+    client_events_max_sample_rate: float = Field(default=0.1)
+    client_events_force_sample_rate: float | None = Field(default=None)
+    client_events_sampling_mode: str = Field(default="hash")
 
     # Database
     database_url: str = Field(default_factory=_get_default_db_path)
@@ -242,6 +249,14 @@ class Settings(BaseSettings):
             raise ValueError("ENVIRONMENT must be one of: development, staging, production, test")
         return vv
 
+    @field_validator("client_events_sampling_mode")
+    @classmethod
+    def validate_client_events_sampling_mode(cls, v: str) -> str:
+        vv = (v or "").strip().lower()
+        if vv not in {"hash", "random"}:
+            raise ValueError("CLIENT_EVENTS_SAMPLING_MODE must be one of: hash, random")
+        return vv
+
     @property
     def is_test(self) -> bool:
         """Check if running in test mode."""
@@ -300,6 +315,13 @@ class Settings(BaseSettings):
                     )
         if self.diag_enabled is None:
             self.diag_enabled = not self.is_prod_like
+
+        if not (0.0 <= self.client_events_max_sample_rate <= 1.0):
+            raise ValueError("CLIENT_EVENTS_MAX_SAMPLE_RATE must be between 0 and 1")
+        if self.client_events_force_sample_rate is not None and not (
+            0.0 <= self.client_events_force_sample_rate <= 1.0
+        ):
+            raise ValueError("CLIENT_EVENTS_FORCE_SAMPLE_RATE must be between 0 and 1")
         return self
 
 

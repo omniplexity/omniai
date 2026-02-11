@@ -12,6 +12,30 @@ on:
       - 'frontend/**'
 
 jobs:
+  gate-a-scripts:
+    name: Gate A Script Checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install shellcheck
+        run: sudo apt-get update && sudo apt-get install -y shellcheck
+
+      - name: ShellCheck gate scripts
+        run: shellcheck scripts/launch-gate-a.sh scripts/bundle-gate-a.sh
+
+      - name: Install PowerShell modules
+        shell: pwsh
+        run: |
+          Set-PSRepository -Name PSGallery -InstallationPolicy Trusted
+          Install-Module PSScriptAnalyzer -Force -Scope CurrentUser
+
+      - name: PSScriptAnalyzer gate scripts
+        shell: pwsh
+        run: |
+          Invoke-ScriptAnalyzer -Path scripts/launch-gate-a.ps1 -Recurse -Severity Error
+          Invoke-ScriptAnalyzer -Path scripts/bundle-gate-a.ps1 -Recurse -Severity Error
+
   lockfile:
     name: Dependencies
     runs-on: ubuntu-latest
@@ -75,7 +99,7 @@ jobs:
   build:
     name: Build
     runs-on: ubuntu-latest
-    needs: [lockfile, lint, test]
+    needs: [gate-a-scripts, lockfile, lint, test]
     defaults:
       run:
         working-directory: ./frontend
@@ -94,6 +118,11 @@ jobs:
       - name: Build frontend
         run: npm run build
 
+      - name: Inject build provenance
+        run: |
+          node ../scripts/inject-build-info.js dist/runtime-config.json
+        shell: bash
+
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -104,7 +133,11 @@ jobs:
   e2e:
     name: E2E Tests
     runs-on: ubuntu-latest
-    needs: [lockfile, lint, test]
+    needs: [gate-a-scripts, lockfile, lint, test]
+    env:
+      E2E_USERNAME: ci_e2e_user
+      E2E_PASSWORD: ci_e2e_pass
+      E2E_BASE_URL: http://127.0.0.1:8000
     defaults:
       run:
         working-directory: ./frontend
@@ -123,12 +156,17 @@ jobs:
       - name: Install Playwright browsers
         run: npm run test:e2e:install
 
+      - name: Validate CI E2E credentials
+        run: |
+          if [ -z "${E2E_USERNAME}" ] || [ -z "${E2E_PASSWORD}" ]; then
+            echo "::error::Missing required CI E2E credentials."
+            exit 1
+          fi
+        shell: bash
+
       # Start backend with mock provider for E2E tests
       - name: Start backend
         working-directory: ./backend
-        env:
-          E2E_USERNAME: ${{ secrets.E2E_USERNAME }}
-          E2E_PASSWORD: ${{ secrets.E2E_PASSWORD }}
         run: |
           python -m pip install -r requirements.txt
           export ENVIRONMENT=test
@@ -136,6 +174,8 @@ jobs:
           export COOKIE_SAMESITE=lax
           export PROVIDER_MODE=mock
           export E2E_SEED_USER=1
+          export E2E_USERNAME="${E2E_USERNAME}"
+          export E2E_PASSWORD="${E2E_PASSWORD}"
           python -m uvicorn main:app --host 127.0.0.1 --port 8000 &
           
           # Wait for backend to be healthy
@@ -155,12 +195,15 @@ jobs:
           PY
         shell: bash
 
+      - name: Verify E2E seed guard boundaries
+        working-directory: ./backend
+        run: python -m pytest tests/test_e2e_seed_user.py -q
+        shell: bash
+
       - name: Start frontend preview server
         run: |
           npm run build
-          cat > dist/runtime-config.json << 'EOF'
-          {"BACKEND_BASE_URL":"http://127.0.0.1:8000","FEATURE_FLAGS":{}}
-          EOF
+          node ../scripts/inject-build-info.js dist/runtime-config.json http://127.0.0.1:8000
           npm run preview -- --host 127.0.0.1 --port 4173 &
 
           # Wait for frontend preview server
@@ -173,16 +216,15 @@ jobs:
           done
         shell: bash
 
-      - name: E2E auth credential mode
-        env:
-          E2E_USERNAME: ${{ secrets.E2E_USERNAME }}
-          E2E_PASSWORD: ${{ secrets.E2E_PASSWORD }}
+      - name: Security smoke check (Origin + CSRF)
         run: |
-          if [ -z "${E2E_USERNAME}" ] || [ -z "${E2E_PASSWORD}" ]; then
-            echo "::notice::E2E creds not set; auth-dependent suites may be skipped."
-          else
-            echo "E2E creds are set; auth-dependent suites will run."
-          fi
+          bash ../scripts/smoke-frontend.sh "$BACKEND_BASE_URL" "$E2E_USERNAME" "$E2E_PASSWORD" \
+            | tee smoke.log
+        env:
+          BACKEND_BASE_URL: http://127.0.0.1:8000
+          E2E_USERNAME: ci_e2e_user
+          E2E_PASSWORD: ci_e2e_pass
+          ORIGIN: http://127.0.0.1:4173
         shell: bash
 
       - name: Run E2E tests
@@ -190,8 +232,9 @@ jobs:
           PLAYWRIGHT_WEB_SERVER: "0"
           FRONTEND_URL: http://127.0.0.1:4173
           BACKEND_BASE_URL: http://127.0.0.1:8000
-          E2E_USERNAME: ${{ secrets.E2E_USERNAME }}
-          E2E_PASSWORD: ${{ secrets.E2E_PASSWORD }}
+          E2E_BASE_URL: http://127.0.0.1:8000
+          E2E_USERNAME: ci_e2e_user
+          E2E_PASSWORD: ci_e2e_pass
         run: npx playwright test --project=chromium
 
       - name: Upload E2E artifacts
@@ -202,4 +245,5 @@ jobs:
           path: |
             frontend/playwright-report/
             frontend/test-results/
+            frontend/smoke.log
           retention-days: 7

@@ -1,5 +1,5 @@
 {
-  "BACKEND_BASE_URL": "https://omniplexity.run.place",
+  "BACKEND_BASE_URL": "https://omniplexity.duckdns.org",
   "FEATURE_FLAGS": {
     "memoryPanel": false,
     "knowledgePanel": false,

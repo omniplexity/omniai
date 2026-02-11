@@ -32,6 +32,7 @@ build/
 # Logs
 logs/
 *.log
+artifacts/
 
 # Frontend (separate repository — omniplexity.github.io)
 frontend-assets/

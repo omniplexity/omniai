@@ -1,5 +1,12 @@
 {
   "BACKEND_BASE_URL": "https://omniplexity.duckdns.org",
+  "FEATURE_FLAGS": {},
+  "ADAPTER_MODE": "sse",
+  "BUILD_INFO": {
+    "build_sha": "local-dev",
+    "build_timestamp": "2026-02-11T00:00:00Z",
+    "runtime_config_hash": "example"
+  },
   "_note": "Example only. In the GitHub Pages repo, commit runtime-config.json with the actual backend URL.",
   "_deployment": "DuckDNS with Caddy TLS proxy"
 }

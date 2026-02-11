@@ -8,6 +8,7 @@ from fastapi import APIRouter
 
 from backend.api.v1.auth import router as auth_router
 from backend.api.v1.chat import router as chat_router
+from backend.api.v1.client_events import router as client_events_router
 from backend.api.v1.conversations import router as conversations_router
 from backend.api.v1.memory import router as memory_router
 from backend.api.v1.meta import router as meta_router
@@ -29,6 +30,7 @@ router.include_router(status_router)        # /v1/status
 router.include_router(models_router)        # /v1/models
 router.include_router(providers_router)     # /v1/providers
 router.include_router(chat_router)         # /v1/chat
+router.include_router(client_events_router) # /v1/client-events
 router.include_router(conversations_router) # /v1/conversations
 router.include_router(voice_router)        # /v1/voice
 router.include_router(tools_router)        # /v1/tools
