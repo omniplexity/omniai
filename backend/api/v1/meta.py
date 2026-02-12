@@ -145,7 +145,7 @@ async def get_meta(
     set_feature("citations", supported=supported, permitted=permitted, reason_if_disabled=reason)
 
     # workspace-related features that use backend endpoints (projects/context/artifacts/runs)
-    supported, permitted, reason = auth_gate(True)
+    supported, permitted, reason = auth_gate(bool(settings.feature_workspace))
     set_feature("chat_projects", supported=supported, permitted=permitted, reason_if_disabled=reason)
 
     supported, permitted, reason = auth_gate(True)

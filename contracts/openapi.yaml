@@ -187,6 +187,40 @@ paths:
                 $ref: '#/components/schemas/ProviderCapabilities'
 
   # Conversation Endpoints
+  /projects:
+    get:
+      tags: [Conversations]
+      summary: List workspace projects for current user
+      responses:
+        '200':
+          description: List of projects (may be empty)
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: string
+                    name:
+                      type: string
+                    instructions:
+                      type: string
+                      nullable: true
+                    created_at:
+                      type: string
+                      format: date-time
+                    updated_at:
+                      type: string
+                      format: date-time
+        '403':
+          description: Capability disabled
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+
   /conversations:
     get:
       tags: [Conversations]

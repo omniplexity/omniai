@@ -17,5 +17,10 @@ describe("feature flags precedence", () => {
     setFlagsFromMeta({ flags: { effective: { workspace: true } } });
     expect(getFlags().workspace).toBe(true);
   });
-});
 
+  it("backend effective false overrides runtime true", () => {
+    setFlagsFromRuntime({ FEATURE_FLAGS: { workspace: true } });
+    setFlagsFromMeta({ flags: { effective: { workspace: false } } });
+    expect(getFlags().workspace).toBe(false);
+  });
+});

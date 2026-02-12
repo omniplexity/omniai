@@ -54,10 +54,10 @@ export function App(props: { runtimeConfig: RuntimeConfig; initialBootError?: st
   setFlagsFromMeta(props.initialMeta);
   const [bootError, setBootError] = useState<string | null>(props.initialBootError ?? null);
   const [bootRetrying, setBootRetrying] = useState(false);
-  const [workspaceEnabled, setWorkspaceEnabled] = useState<boolean>(getFlags().workspace);
 
   const [path] = useHashLocation();
   const r = parseRoute(path);
+  const workspaceEnabled = getFlags().workspace;
 
   const [auth, setAuth] = useState(authStore.get());
   useEffect(() => authStore.subscribe(() => setAuth(authStore.get())), []);
@@ -71,7 +71,6 @@ export function App(props: { runtimeConfig: RuntimeConfig; initialBootError?: st
     try {
       const meta = await getMeta();
       setFlagsFromMeta(meta);
-      setWorkspaceEnabled(getFlags().workspace);
       setBootError(null);
       await hydrateAuth();
     } catch (e: any) {

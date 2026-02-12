@@ -16,6 +16,7 @@ from backend.api.v1.models import router as models_router
 from backend.api.v1.ops import router as ops_router
 from backend.api.v1.ops_duckdns import router as ops_duckdns_router
 from backend.api.v1.presets import router as presets_router
+from backend.api.v1.projects import router as projects_router
 from backend.api.v1.providers import router as providers_router
 from backend.api.v1.status import router as status_router
 from backend.api.v1.tools import router as tools_router
@@ -32,6 +33,7 @@ router.include_router(providers_router)     # /v1/providers
 router.include_router(chat_router)         # /v1/chat
 router.include_router(client_events_router) # /v1/client-events
 router.include_router(conversations_router) # /v1/conversations
+router.include_router(projects_router)      # /v1/projects
 router.include_router(voice_router)        # /v1/voice
 router.include_router(tools_router)        # /v1/tools
 router.include_router(memory_router)       # /v1/memory

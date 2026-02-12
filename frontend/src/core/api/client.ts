@@ -6,6 +6,7 @@ const CSRF_COOKIE_NAME = "omni_csrf";
 const CSRF_HEADER_NAME = "X-CSRF-Token";
 
 let cachedCsrfToken: string | null = null;
+let inFlightMetaSync: Promise<void> | null = null;
 
 type RequestOpts = {
   baseUrl?: string;
@@ -79,17 +80,29 @@ export function clearCsrfTokenCache(): void {
 }
 
 export async function syncAuthFromMeta(baseUrl?: string): Promise<void> {
+  if (inFlightMetaSync) {
+    return inFlightMetaSync;
+  }
+
   const root = resolveBaseUrl(baseUrl);
   const url = normalizeUrl(endpoints.meta[0], root);
+  inFlightMetaSync = (async () => {
+    try {
+      await fetch(url, {
+        method: "GET",
+        credentials: "include",
+        cache: "no-store",
+        headers: { Accept: "application/json" },
+      });
+    } catch {
+      // Best-effort auth-state sync; caller handles original response.
+    }
+  })();
+
   try {
-    await fetch(url, {
-      method: "GET",
-      credentials: "include",
-      cache: "no-store",
-      headers: { Accept: "application/json" },
-    });
-  } catch {
-    // Best-effort auth-state sync; caller handles original response.
+    await inFlightMetaSync;
+  } finally {
+    inFlightMetaSync = null;
   }
 }
 
@@ -207,4 +220,5 @@ export async function toApiError(
 
 export function __resetApiClientForTest(): void {
   cachedCsrfToken = null;
+  inFlightMetaSync = null;
 }

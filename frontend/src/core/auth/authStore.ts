@@ -1,5 +1,6 @@
 import { createStore } from "../state/store";
 import * as authApi from "./authApi";
+import { setFlagsFromMeta } from "../config/featureFlags";
 
 export type AuthStatus = "unknown" | "authenticated" | "anonymous";
 
@@ -29,6 +30,7 @@ export async function hydrateAuth(): Promise<void> {
 
   try {
     const meta = await authApi.getMeta();
+    setFlagsFromMeta(meta);
     const n = normalizeMeta(meta);
     authStore.patch({
       status: n.authenticated ? "authenticated" : "anonymous",

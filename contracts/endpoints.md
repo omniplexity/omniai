@@ -13,6 +13,7 @@ CORS: strict allowlist (`CORS_ORIGINS`)
 - `/v1/providers/*`
 - `/v1/chat*`
 - `/v1/conversations*`
+- `/v1/projects*`
 - `/v1/memory*`
 - `/v1/tools*`
 - `/v1/voice*`

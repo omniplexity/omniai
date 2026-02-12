@@ -152,6 +152,7 @@ class Settings(BaseSettings):
     # Tools (server-side policy enforcement)
     # These settings enforce tool usage policy - client hints are NOT trusted
     tools_enabled: str = Field(default="")  # Empty = all disabled, comma-separated list to enable
+    feature_workspace: bool = Field(default=True)
     tools_web_browsing_enabled: bool = Field(default=False)
     tools_web_depth_max: int = Field(default=3)
     tools_max_calls_per_request: int = Field(default=10)
