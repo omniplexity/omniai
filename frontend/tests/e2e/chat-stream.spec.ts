@@ -39,16 +39,22 @@ test.describe("chat stream smoke", () => {
     await page.locator('[data-testid="composer-input"]').fill("please stream a long answer");
     await page.locator('[data-testid="send-btn"]').click();
     await page.locator('[data-testid="cancel-btn"]').click();
-    await expect(page.locator('[data-testid="transcript"]')).toContainText("E_CANCELLED");
+    const transcript = page.locator('[data-testid="transcript"]');
+    await expect(transcript).toContainText("E_CANCELLED");
+    await expect(transcript.getByText("E_CANCELLED")).toHaveCount(1);
   });
 
-  test("retry triggers new run path", async ({ page }) => {
+  test("retry triggers new run path with no duplicate cancellation markers", async ({ page }) => {
     await login(page);
     await page.goto(`${FRONTEND_URL}/#/chat`);
     await page.locator('[data-testid="composer-input"]').fill("retry test");
     await page.locator('[data-testid="send-btn"]').click();
+    await expect(page.locator('[data-testid="run-status"]')).toContainText(/Streaming|Idle/);
+    await page.locator('[data-testid="cancel-btn"]').click();
+    await expect(page.locator('[data-testid="transcript"]')).toContainText("E_CANCELLED");
     await page.locator('[data-testid="retry-btn"]').click();
     await expect(page.locator('[data-testid="run-status"]')).toContainText(/Streaming|Idle/);
+    await expect(page.locator('[data-testid="transcript"]').getByText("E_CANCELLED")).toHaveCount(1);
   });
 
   test("auth expiry shows sign in hint", async ({ page, context }) => {

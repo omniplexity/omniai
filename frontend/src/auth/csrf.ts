@@ -61,6 +61,10 @@ export async function fetchWithCsrf(
   const retry = opts.retryOnE2002 ?? true;
   const req = await withCsrfHeaders(init, opts.baseUrl);
   let res = await fetch(url, req);
+  if (res.status === 401) {
+    await syncAuthViaMeta(opts.baseUrl);
+    return res;
+  }
   if (!retry || res.status !== 403) return res;
 
   const code = await readBackendCode(res.clone());
@@ -70,7 +74,39 @@ export async function fetchWithCsrf(
   await bootstrapCsrf(opts.baseUrl);
   const retryReq = await withCsrfHeaders(init, opts.baseUrl);
   res = await fetch(url, retryReq);
+  if (res.status === 401) {
+    await syncAuthViaMeta(opts.baseUrl);
+  }
   return res;
+}
+
+export async function fetchWithSession(
+  url: string,
+  init: RequestInit | undefined,
+  opts: { baseUrl: string }
+): Promise<Response> {
+  const req: RequestInit = {
+    ...init,
+    credentials: init?.credentials ?? "include",
+  };
+  const res = await fetch(url, req);
+  if (res.status === 401) {
+    await syncAuthViaMeta(opts.baseUrl);
+  }
+  return res;
+}
+
+async function syncAuthViaMeta(baseUrl: string): Promise<void> {
+  try {
+    await fetch(`${baseUrl}/v1/meta`, {
+      method: "GET",
+      credentials: "include",
+      cache: "no-store",
+      headers: { Accept: "application/json" },
+    });
+  } catch {
+    // Best-effort auth state sync; callers handle original response status.
+  }
 }
 
 async function readBackendCode(res: Response): Promise<string | null> {

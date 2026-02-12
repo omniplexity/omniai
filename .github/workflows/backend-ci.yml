@@ -5,11 +5,13 @@ on:
     branches: [main, develop]
     paths:
       - 'backend/**'
+      - 'contracts/**'
       - '.github/workflows/backend-ci.yml'
   pull_request:
     branches: [main, develop]
     paths:
       - 'backend/**'
+      - 'contracts/**'
 
 env:
   PYTHON_VERSION: '3.11'

@@ -13,6 +13,7 @@ import { getRuntimeConfig } from "../config/runtimeConfig";
 import { reconcileMessages } from "../store/reconcileMessages";
 import { emitClientEvent } from "../telemetry/clientEvents";
 import { getDraft, loadUiPersistence, saveDraft, saveLastRun, saveSelectedConversation } from "../store/persistence";
+import { hydrateAuth } from "../core/auth/authStore";
 
 const conversationApi = new ConversationHttp();
 const ROW_HEIGHT = 88;
@@ -333,6 +334,10 @@ export function MainLayout(props: { threadId?: string }) {
           conversationId: params.conversationId,
         });
       } else {
+        if (uiError.code === "E_AUTH") {
+          // Canonical auth-state sync path is `/v1/meta` via hydrateAuth.
+          void hydrateAuth();
+        }
         runActions.markError(params.runId, uiError.code, uiError.message);
         emitClientEvent({
           type: "run_error",

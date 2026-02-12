@@ -1,16 +1,15 @@
 import type { Conversation, ConversationApi, ConversationMessage } from "./ConversationApi";
 import { getRuntimeConfig } from "../config/runtimeConfig";
-import { fetchWithCsrf } from "../auth/csrf";
+import { fetchWithCsrf, fetchWithSession } from "../auth/csrf";
 import { ChatProtocolError } from "./SSEBackendAdapter";
 
 export class ConversationHttp implements ConversationApi {
   async listConversations(signal?: AbortSignal): Promise<Conversation[]> {
     const base = getRuntimeConfig().BACKEND_BASE_URL;
-    const res = await fetch(`${base}/v1/conversations`, {
+    const res = await fetchWithSession(`${base}/v1/conversations`, {
       method: "GET",
-      credentials: "include",
       signal,
-    });
+    }, { baseUrl: base });
     if (!res.ok) {
       const body = await safeReadError(res);
       throw new ChatProtocolError("backend_http_error", body.message, {
@@ -45,13 +44,13 @@ export class ConversationHttp implements ConversationApi {
 
   async getMessages(params: { conversationId: string; signal?: AbortSignal }): Promise<ConversationMessage[]> {
     const base = getRuntimeConfig().BACKEND_BASE_URL;
-    const res = await fetch(
+    const res = await fetchWithSession(
       `${base}/v1/conversations/${encodeURIComponent(params.conversationId)}/messages`,
       {
         method: "GET",
-        credentials: "include",
         signal: params.signal,
-      }
+      },
+      { baseUrl: base }
     );
     if (!res.ok) {
       const body = await safeReadError(res);

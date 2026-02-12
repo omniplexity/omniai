@@ -8,8 +8,11 @@ info:
     url: https://github.com/storm/OmniAI
 
 servers:
-  - url: /api/v1
-    description: OmniAI v1 API (recommended)
+  - url: /v1
+    description: OmniAI v1 UI lane (canonical)
+
+# Legacy compatibility note:
+# `/api/*` routes are deprecated compat-only and are not canonical contract targets.
 
 paths:
   # Health Endpoints
@@ -24,6 +27,24 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HealthStatus'
+
+  /meta:
+    get:
+      tags: [Meta]
+      summary: Server-authoritative feature flags and capabilities for frontend boot
+      responses:
+        '200':
+          description: Meta payload
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MetaResponse'
+        '500':
+          description: Error response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
 
   # Authentication Endpoints
   /auth/register:
@@ -1064,3 +1085,184 @@ components:
     ProviderInfo:
       type: object
       properties: {}
+
+    ErrorInfo:
+      type: object
+      required: [code, message]
+      properties:
+        code:
+          type: string
+          description: Stable machine-readable error code
+        message:
+          type: string
+          description: User-safe summary message
+        detail:
+          type: string
+          nullable: true
+          description: Optional user-safe detail
+        request_id:
+          type: string
+          nullable: true
+          description: Correlation ID from backend request context
+
+    ErrorEnvelope:
+      type: object
+      required: [error]
+      properties:
+        error:
+          $ref: '#/components/schemas/ErrorInfo'
+
+    MetaUser:
+      type: object
+      required: [id, email, username, is_admin]
+      properties:
+        id:
+          type: string
+        email:
+          type: string
+        username:
+          type: string
+        is_admin:
+          type: boolean
+
+    MetaServer:
+      type: object
+      required: [version, build_sha, build_time, environment, server_time, debug]
+      properties:
+        version:
+          type: string
+        build_sha:
+          type: string
+        build_time:
+          type: string
+        environment:
+          type: string
+        server_time:
+          type: string
+          format: date-time
+        uptime_seconds:
+          type: integer
+          nullable: true
+        debug:
+          type: boolean
+
+    MetaCsrfConfig:
+      type: object
+      required: [cookie_name, header_name]
+      properties:
+        cookie_name:
+          type: string
+        header_name:
+          type: string
+
+    MetaCookiePolicy:
+      type: object
+      required: [secure, samesite, partitioned_configured, partitioned_enabled]
+      properties:
+        secure:
+          type: boolean
+        samesite:
+          type: string
+        partitioned_configured:
+          type: boolean
+        partitioned_enabled:
+          type: boolean
+
+    MetaAuth:
+      type: object
+      required: [required, authenticated, session_cookie_name, csrf, cookie_policy]
+      properties:
+        required:
+          type: boolean
+        authenticated:
+          type: boolean
+        user:
+          allOf:
+            - $ref: '#/components/schemas/MetaUser'
+          nullable: true
+        session_cookie_name:
+          type: string
+        csrf:
+          $ref: '#/components/schemas/MetaCsrfConfig'
+        cookie_policy:
+          $ref: '#/components/schemas/MetaCookiePolicy'
+
+    FeatureGate:
+      type: object
+      required: [supported, permitted, reason, details]
+      properties:
+        supported:
+          type: boolean
+        permitted:
+          type: boolean
+        reason:
+          type: string
+        details:
+          type: object
+          additionalProperties: true
+
+    FeatureFlags:
+      type: object
+      description: Authoritative server feature switches and defaults.
+      required: [schema_version, defaults, effective]
+      properties:
+        schema_version:
+          type: integer
+        defaults:
+          type: object
+          additionalProperties:
+            type: boolean
+        effective:
+          type: object
+          additionalProperties:
+            type: boolean
+
+    LaneRule:
+      type: object
+      required: [route_prefix, auth_mode, csrf_required, cors_mode, status]
+      properties:
+        route_prefix:
+          type: string
+        auth_mode:
+          type: string
+        csrf_required:
+          type: boolean
+        cors_mode:
+          type: string
+        status:
+          type: string
+
+    LaneRules:
+      type: object
+      required: [ui, public, dev, legacy]
+      properties:
+        ui:
+          $ref: '#/components/schemas/LaneRule'
+        public:
+          $ref: '#/components/schemas/LaneRule'
+        dev:
+          $ref: '#/components/schemas/LaneRule'
+        legacy:
+          $ref: '#/components/schemas/LaneRule'
+
+    MetaResponse:
+      type: object
+      required: [meta_version, server, auth, lanes, capabilities, features, flags]
+      properties:
+        meta_version:
+          type: integer
+        server:
+          $ref: '#/components/schemas/MetaServer'
+        auth:
+          $ref: '#/components/schemas/MetaAuth'
+        lanes:
+          $ref: '#/components/schemas/LaneRules'
+        capabilities:
+          type: object
+          additionalProperties: true
+        features:
+          type: object
+          additionalProperties:
+            $ref: '#/components/schemas/FeatureGate'
+        flags:
+          $ref: '#/components/schemas/FeatureFlags'

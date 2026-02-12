@@ -1,12 +1,18 @@
 """Exception handlers for FastAPI application."""
 
 from fastapi import FastAPI, HTTPException, Request, status
+from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from pydantic import ValidationError
 
+from backend.core.error_contract import build_error_envelope, http_status_to_code
 from backend.core.logging import get_logger, request_context
 
 logger = get_logger(__name__)
+
+
+def _is_v1_route(request: Request) -> bool:
+    return request.url.path.startswith("/v1/")
 
 
 class OmniAIException(Exception):
@@ -72,6 +78,17 @@ def setup_exception_handlers(app: FastAPI) -> None:
             data={"status_code": exc.status_code, "details": exc.details},
         )
         request_id = request_context.get().get("request_id") if request_context.get() else None
+        if _is_v1_route(request):
+            return JSONResponse(
+                status_code=exc.status_code,
+                content=build_error_envelope(
+                    code=exc.code,
+                    message=exc.message,
+                    detail=exc.message,
+                    request_id=request_id,
+                    extra=exc.details,
+                ),
+            )
         return JSONResponse(
             status_code=exc.status_code,
             content={
@@ -95,6 +112,48 @@ def setup_exception_handlers(app: FastAPI) -> None:
             data={"errors": exc.errors()},
         )
         request_id = request_context.get().get("request_id") if request_context.get() else None
+        if _is_v1_route(request):
+            return JSONResponse(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                content=build_error_envelope(
+                    code="E4220",
+                    message="Validation error",
+                    detail="Validation error",
+                    request_id=request_id,
+                ),
+            )
+        return JSONResponse(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            content={
+                "detail": "Validation error",
+                "errors": exc.errors(),
+                "error": {
+                    "code": "E4220",
+                    "message": "Validation error",
+                    "request_id": request_id,
+                },
+            },
+        )
+
+    @app.exception_handler(RequestValidationError)
+    async def request_validation_exception_handler(
+        request: Request, exc: RequestValidationError
+    ) -> JSONResponse:
+        logger.warning(
+            "Request validation error",
+            data={"errors": exc.errors()},
+        )
+        request_id = request_context.get().get("request_id") if request_context.get() else None
+        if _is_v1_route(request):
+            return JSONResponse(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                content=build_error_envelope(
+                    code="E4220",
+                    message="Validation error",
+                    detail="Validation error",
+                    request_id=request_id,
+                ),
+            )
         return JSONResponse(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             content={
@@ -118,6 +177,16 @@ def setup_exception_handlers(app: FastAPI) -> None:
             exc_info=True,
         )
         request_id = request_context.get().get("request_id") if request_context.get() else None
+        if _is_v1_route(request):
+            return JSONResponse(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                content=build_error_envelope(
+                    code="E5000",
+                    message="Internal server error",
+                    detail="Internal server error",
+                    request_id=request_id,
+                ),
+            )
         return JSONResponse(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             content={
@@ -134,7 +203,20 @@ def setup_exception_handlers(app: FastAPI) -> None:
         request: Request, exc: HTTPException
     ) -> JSONResponse:
         request_id = request_context.get().get("request_id") if request_context.get() else None
-        code = f"E{exc.status_code}0"
+        code = http_status_to_code(exc.status_code)
+        detail = str(exc.detail) if exc.detail is not None else None
+        message = detail or "HTTP error"
+        if _is_v1_route(request):
+            return JSONResponse(
+                status_code=exc.status_code,
+                content=build_error_envelope(
+                    code=code,
+                    message=message,
+                    detail=detail,
+                    request_id=request_id,
+                ),
+                headers=exc.headers,
+            )
         return JSONResponse(
             status_code=exc.status_code,
             content={

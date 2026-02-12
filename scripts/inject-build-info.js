@@ -1,14 +1,38 @@
 #!/usr/bin/env node
 const fs = require("fs");
 const crypto = require("crypto");
+const { mergeRuntimeConfig } = require("./inject-build-info.lib.js");
 
-const targetPath = process.argv[2];
+const args = process.argv.slice(2);
+const targetPath = args[0];
 if (!targetPath) {
-  console.error("Usage: node scripts/inject-build-info.js <runtime-config-path> [backendBaseUrl]");
+  console.error(
+    "Usage: node scripts/inject-build-info.js <runtime-config-path> [backendBaseUrl] [--backend-base-url <url>]"
+  );
   process.exit(1);
 }
 
-const backendBaseUrlArg = process.argv[3];
+function parseCliOverrides(cliArgs) {
+  const overrides = {};
+  const positionalBackend = cliArgs[1];
+  if (typeof positionalBackend === "string" && !positionalBackend.startsWith("--")) {
+    overrides.BACKEND_BASE_URL = positionalBackend;
+  }
+
+  for (let i = 1; i < cliArgs.length; i += 1) {
+    const token = cliArgs[i];
+    if (token === "--backend-base-url") {
+      const value = cliArgs[i + 1];
+      if (!value) {
+        throw new Error("Missing value for --backend-base-url");
+      }
+      overrides.BACKEND_BASE_URL = value;
+      i += 1;
+    }
+  }
+
+  return overrides;
+}
 
 function readJson(path) {
   if (!fs.existsSync(path)) return {};
@@ -21,20 +45,11 @@ function readJson(path) {
 }
 
 const base = readJson(targetPath);
-const merged = {
-  BACKEND_BASE_URL:
-    backendBaseUrlArg !== undefined
-      ? backendBaseUrlArg
-      : typeof base.BACKEND_BASE_URL === "string"
-        ? base.BACKEND_BASE_URL
-        : "",
-  FEATURE_FLAGS:
-    base.FEATURE_FLAGS && typeof base.FEATURE_FLAGS === "object"
-      ? base.FEATURE_FLAGS
-      : {},
-  ADAPTER_MODE: base.ADAPTER_MODE === "mock" ? "mock" : "sse",
-  ...base,
+const envOverrides = {
+  BACKEND_BASE_URL: process.env.BACKEND_BASE_URL,
 };
+const cliOverrides = parseCliOverrides(args);
+const merged = mergeRuntimeConfig(base, {}, envOverrides, cliOverrides);
 
 const configHash = crypto
   .createHash("sha256")
@@ -51,4 +66,3 @@ merged.BUILD_INFO = {
 
 fs.writeFileSync(targetPath, `${JSON.stringify(merged, null, 2)}\n`, "utf8");
 console.log(`Injected BUILD_INFO into ${targetPath}`);
-

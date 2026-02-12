@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   __resetCsrfCacheForTest,
   bootstrapCsrf,
+  fetchWithSession,
   fetchWithCsrf,
   getCsrfToken,
   readCookie,
@@ -63,5 +64,24 @@ describe("csrf helpers", () => {
     );
     await expect(getCsrfToken("http://localhost:8000")).resolves.toBe("cache-token");
     await expect(getCsrfToken("http://localhost:8000")).resolves.toBe("cache-token");
+  });
+
+  it("syncs auth via /v1/meta on unauthorized session fetch", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(new Response("unauthorized", { status: 401 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ auth: { authenticated: false } }), { status: 200 }));
+
+    vi.stubGlobal("fetch", fetchMock);
+
+    const res = await fetchWithSession(
+      "http://localhost:8000/v1/conversations",
+      { method: "GET" },
+      { baseUrl: "http://localhost:8000" }
+    );
+
+    expect(res.status).toBe(401);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(fetchMock.mock.calls[1]?.[0]).toBe("http://localhost:8000/v1/meta");
   });
 });

@@ -121,8 +121,15 @@ def test_cookie_attributes_in_production_login(monkeypatch, tmp_path):
         db.close()
 
     with _make_client() as client:
+        origin = "https://omniplexity.github.io"
+        boot = client.get("/v1/auth/csrf/bootstrap", headers={"Origin": origin})
+        assert boot.status_code == 200
+        csrf = boot.json()["csrf_token"]
+        client.cookies.set(get_settings().csrf_cookie_name, csrf)
+
         res = client.post(
             "/v1/auth/login",
+            headers={"Origin": origin, "X-CSRF-Token": csrf},
             json={"username": "cookie-prod", "password": "StrongPass!123"},
         )
         assert res.status_code == 200
@@ -131,4 +138,3 @@ def test_cookie_attributes_in_production_login(monkeypatch, tmp_path):
         assert "HttpOnly" in set_cookie
         assert "SameSite=None" in set_cookie
         assert "Secure" in set_cookie
-

@@ -63,6 +63,7 @@ def test_cross_origin_login_sets_session_cookie(monkeypatch, tmp_path):
         boot = client.get("/v1/auth/csrf/bootstrap", headers={"Origin": origin})
         assert boot.status_code == 200
         csrf = boot.json()["csrf_token"]
+        client.cookies.set(get_settings().csrf_cookie_name, csrf)
 
         login = client.post(
             "/v1/auth/login",
@@ -115,6 +116,7 @@ def test_cross_origin_login_sets_partitioned_cookie_when_enabled(monkeypatch, tm
         boot = client.get("/v1/auth/csrf/bootstrap", headers={"Origin": origin})
         assert boot.status_code == 200
         csrf = boot.json()["csrf_token"]
+        client.cookies.set(get_settings().csrf_cookie_name, csrf)
 
         login = client.post(
             "/v1/auth/login",
@@ -195,6 +197,7 @@ def test_cross_origin_logout_clears_partitioned_cookies_when_enabled(monkeypatch
         boot = client.get("/v1/auth/csrf/bootstrap", headers={"Origin": origin})
         assert boot.status_code == 200
         csrf = boot.json()["csrf_token"]
+        client.cookies.set(get_settings().csrf_cookie_name, csrf)
 
         login = client.post(
             "/v1/auth/login",
@@ -202,10 +205,12 @@ def test_cross_origin_logout_clears_partitioned_cookies_when_enabled(monkeypatch
             json={"username": "e2e-auth-logout", "password": "StrongPass!123"},
         )
         assert login.status_code == 200
+        csrf_after_login = login.json().get("csrf_token", csrf)
+        client.cookies.set(get_settings().csrf_cookie_name, csrf_after_login)
 
         logout = client.post(
             "/v1/auth/logout",
-            headers={"Origin": origin, "X-CSRF-Token": csrf},
+            headers={"Origin": origin, "X-CSRF-Token": csrf_after_login},
             json={},
         )
         assert logout.status_code == 200

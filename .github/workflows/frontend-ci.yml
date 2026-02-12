@@ -5,11 +5,18 @@ on:
     branches: [main, develop]
     paths:
       - 'frontend/**'
+      - 'backend/**'
+      - 'contracts/**'
+      - 'scripts/**'
       - '.github/workflows/frontend-ci.yml'
   pull_request:
     branches: [main, develop]
     paths:
       - 'frontend/**'
+      - 'backend/**'
+      - 'contracts/**'
+      - 'scripts/**'
+      - '.github/workflows/frontend-ci.yml'
 
 jobs:
   gate-a-scripts:
@@ -51,6 +58,10 @@ jobs:
           node-version: '20'
           cache: 'npm'
 
+      - name: Test build-info injector
+        working-directory: ./
+        run: node --test scripts/inject-build-info.test.js
+
       - name: Install dependencies
         run: npm ci
 
@@ -68,6 +79,10 @@ jobs:
         with:
           node-version: '20'
           cache: 'npm'
+
+      - name: Test build-info injector
+        working-directory: ./
+        run: node --test scripts/inject-build-info.test.js
 
       - name: Install dependencies
         run: npm ci
@@ -90,6 +105,10 @@ jobs:
           node-version: '20'
           cache: 'npm'
 
+      - name: Test build-info injector
+        working-directory: ./
+        run: node --test scripts/inject-build-info.test.js
+
       - name: Install dependencies
         run: npm ci
 
@@ -111,6 +130,10 @@ jobs:
         with:
           node-version: '20'
           cache: 'npm'
+
+      - name: Test build-info injector
+        working-directory: ./
+        run: node --test scripts/inject-build-info.test.js
 
       - name: Install dependencies
         run: npm ci
@@ -149,6 +172,10 @@ jobs:
         with:
           node-version: '20'
           cache: 'npm'
+
+      - name: Test build-info injector
+        working-directory: ./
+        run: node --test scripts/inject-build-info.test.js
 
       - name: Install dependencies
         run: npm ci

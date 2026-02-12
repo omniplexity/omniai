@@ -5,6 +5,7 @@ Single source of truth for frontend boot + feature gating.
 
 from __future__ import annotations
 
+import os
 from datetime import UTC, datetime
 from typing import Any, Dict, Optional
 
@@ -15,6 +16,7 @@ from backend.config import get_settings
 from backend.db.models import User
 from backend.services.capabilities_service import compute_service_capabilities
 from backend.services.tool_capabilities_service import get_tool_capabilities
+from backend.api.v1.meta_models import MetaResponse
 
 router = APIRouter()
 
@@ -36,11 +38,39 @@ def _feature_entry(*, supported: bool, permitted: bool, reason: str, details: Op
     }
 
 
-@router.get("/meta")
+def _safe_env_string(name: str) -> str:
+    raw = (os.getenv(name) or "").strip()
+    return raw if raw else "unknown"
+
+
+def _environment(settings: Any) -> str:
+    return (
+        (os.getenv("OMNIAI_ENV") or "").strip()
+        or (os.getenv("ENVIRONMENT") or "").strip()
+        or (settings.environment or "").strip()
+        or "unknown"
+    )
+
+
+def _default_flags() -> Dict[str, bool]:
+    return {
+        "workspace": False,
+        "intelligent_chat": False,
+        "memory": False,
+        "knowledge": False,
+        "voice": False,
+        "tools": False,
+        "admin_ops": False,
+        "public_api": False,
+        "dev_lane": False,
+    }
+
+
+@router.get("/meta", response_model=MetaResponse)
 async def get_meta(
     request: Request,
     current_user: Optional[User] = Depends(get_optional_user),
-) -> Dict[str, Any]:
+) -> MetaResponse:
     settings = get_settings()
     authenticated = current_user is not None
 
@@ -137,10 +167,57 @@ async def get_meta(
     supported, permitted, reason = auth_gate(True)
     set_feature("workflows", supported=supported, permitted=permitted, reason_if_disabled=reason)
 
-    return {
+    lanes = {
+        "ui": {
+            "route_prefix": "/v1",
+            "auth_mode": "cookie_session",
+            "csrf_required": True,
+            "cors_mode": "allowlist",
+            "status": "active",
+        },
+        "public": {
+            "route_prefix": "/v1/public",
+            "auth_mode": "bearer_token",
+            "csrf_required": False,
+            "cors_mode": "disabled",
+            "status": "planned_disabled",
+        },
+        "dev": {
+            "route_prefix": "/v1/dev",
+            "auth_mode": "cookie_session_admin",
+            "csrf_required": True,
+            "cors_mode": "allowlist",
+            "status": "planned_disabled",
+        },
+        "legacy": {
+            "route_prefix": "/api",
+            "auth_mode": "compat_mixed",
+            "csrf_required": True,
+            "cors_mode": "allowlist",
+            "status": "deprecated_compat_only",
+        },
+    }
+
+    flags_default = _default_flags()
+    flags_effective = {
+        "workspace": bool(features.get("chat_projects", {}).get("permitted")),
+        "intelligent_chat": bool(features.get("chat_sse_v2", {}).get("permitted")),
+        "memory": bool(features.get("knowledge_rag", {}).get("permitted")),
+        "knowledge": bool(features.get("knowledge_rag", {}).get("permitted")),
+        "voice": bool(features.get("voice", {}).get("permitted")),
+        "tools": bool(features.get("tools", {}).get("permitted")),
+        "admin_ops": bool(current_user and current_user.is_admin),
+        "public_api": False,
+        "dev_lane": False,
+    }
+
+    return MetaResponse.model_validate({
         "meta_version": 1,
         "server": {
             "version": request.app.version,
+            "build_sha": _safe_env_string("BUILD_SHA"),
+            "build_time": _safe_env_string("BUILD_TIME"),
+            "environment": _environment(settings),
             "server_time": datetime.now(UTC).isoformat(),
             "uptime_seconds": _uptime_seconds(request),
             "debug": bool(settings.debug),
@@ -161,6 +238,12 @@ async def get_meta(
                 "partitioned_enabled": bool(settings.cookie_partitioned_enabled),
             },
         },
+        "lanes": lanes,
         "capabilities": capabilities,
         "features": features,
-    }
+        "flags": {
+            "schema_version": 1,
+            "defaults": flags_default,
+            "effective": flags_effective,
+        },
+    })

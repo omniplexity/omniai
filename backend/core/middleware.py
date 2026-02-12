@@ -819,13 +819,10 @@ class ChatCSRFMiddleware(BaseHTTPMiddleware):
 
     SAFE_METHODS = {"GET", "HEAD", "OPTIONS"}
     EXEMPT_PATHS = {"/health", "/readyz", "/docs", "/redoc", "/openapi.json"}
-    AUTH_CSRF_EXEMPT_PATHS = {
+    AUTH_MUTATING_PATHS = {
         "/v1/auth/login",
-        "/api/auth/login",
         "/v1/auth/register",
-        "/api/auth/register",
         "/v1/auth/logout",
-        "/api/auth/logout",
     }
 
     # GET endpoints that return user data and need origin validation
@@ -923,7 +920,8 @@ class ChatCSRFMiddleware(BaseHTTPMiddleware):
         # For API endpoints, check CSRF header matches cookie when session cookie is present
         if normalized_path.startswith(("/api/", "/v1/")):
             session_cookie = request.cookies.get(settings.session_cookie_name)
-            if not session_cookie:
+            enforce_auth_csrf = normalized_path in self.AUTH_MUTATING_PATHS
+            if not session_cookie and not enforce_auth_csrf:
                 return await call_next(request)
 
             # Origin validation for cross-site request forgery protection
@@ -968,9 +966,20 @@ class ChatCSRFMiddleware(BaseHTTPMiddleware):
                     media_type="application/json",
                 )
 
-            # Auth endpoints are CSRF-exempt (for stale/cross-site cookie recovery),
-            # but still require strict origin validation above.
-            if normalized_path in self.AUTH_CSRF_EXEMPT_PATHS:
+            # Auth mutation endpoints require CSRF even before authentication.
+            if enforce_auth_csrf:
+                csrf_cookie = request.cookies.get(settings.csrf_cookie_name)
+                csrf_header = request.headers.get(settings.csrf_header_name)
+                if not csrf_cookie or not csrf_header or csrf_cookie != csrf_header:
+                    logger.warning(
+                        "CSRF validation failed for auth mutation endpoint",
+                        data={"path": request.url.path},
+                    )
+                    return Response(
+                        content='{"detail": "CSRF validation failed", "error": {"code": "E2002", "message": "CSRF validation failed"}}',
+                        status_code=403,
+                        media_type="application/json",
+                    )
                 return await call_next(request)
 
             # Validate session before enforcing CSRF

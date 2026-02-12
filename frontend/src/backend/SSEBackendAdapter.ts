@@ -1,7 +1,7 @@
 import type { ChatApiAdapter, StreamChunk, StreamMeta } from "./ChatApiAdapter";
 import { getRuntimeConfig } from "../config/runtimeConfig";
 import { parseSSE } from "./sseParser";
-import { fetchWithCsrf } from "../auth/csrf";
+import { fetchWithCsrf, fetchWithSession } from "../auth/csrf";
 
 export type ChatErrorCode =
   | "backend_http_error"
@@ -82,12 +82,11 @@ export class SSEBackendAdapter implements ChatApiAdapter {
     void
   > {
     const base = getRuntimeConfig().BACKEND_BASE_URL;
-    const res = await fetch(`${base}/v1/chat/stream?run_id=${encodeURIComponent(params.runId)}`, {
+    const res = await fetchWithSession(`${base}/v1/chat/stream?run_id=${encodeURIComponent(params.runId)}`, {
       method: "GET",
-      credentials: "include",
       headers: { Accept: "text/event-stream" },
       signal: params.signal,
-    });
+    }, { baseUrl: base });
 
     if (!res.ok || !res.body) {
       const body = await safeReadJsonOrText(res);

@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://omniplexity.github.io/contracts/flags.json",
+  "title": "OmniAI Server Authoritative Flags",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "defaults",
+    "notes"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "integer",
+      "const": 1
+    },
+    "defaults": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "workspace": { "type": "boolean", "default": false },
+        "intelligent_chat": { "type": "boolean", "default": false },
+        "memory": { "type": "boolean", "default": false },
+        "knowledge": { "type": "boolean", "default": false },
+        "voice": { "type": "boolean", "default": false },
+        "tools": { "type": "boolean", "default": false },
+        "admin_ops": { "type": "boolean", "default": false },
+        "public_api": { "type": "boolean", "default": false },
+        "dev_lane": { "type": "boolean", "default": false }
+      }
+    },
+    "notes": {
+      "type": "string"
+    }
+  }
+}

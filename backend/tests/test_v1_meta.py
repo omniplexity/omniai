@@ -67,8 +67,23 @@ def test_v1_meta_unauthenticated(monkeypatch, tmp_path):
         assert body["meta_version"] == 1
         assert "server" in body
         assert "auth" in body
+        assert "lanes" in body
         assert "capabilities" in body
         assert "features" in body
+        assert "flags" in body
+
+        assert isinstance(body["server"]["build_sha"], str)
+        assert isinstance(body["server"]["build_time"], str)
+        assert isinstance(body["server"]["environment"], str)
+
+        assert body["lanes"]["ui"]["route_prefix"] == "/v1"
+        assert body["lanes"]["legacy"]["route_prefix"] == "/api"
+        assert body["lanes"]["legacy"]["status"] == "deprecated_compat_only"
+
+        assert body["flags"]["schema_version"] == 1
+        assert body["flags"]["defaults"]["workspace"] is False
+        assert body["flags"]["defaults"]["public_api"] is False
+        assert body["flags"]["effective"]["public_api"] is False
 
         assert body["auth"]["authenticated"] is False
         assert body["auth"]["user"] is None
@@ -119,6 +134,7 @@ def test_v1_meta_authenticated(monkeypatch, tmp_path):
         assert body["auth"]["authenticated"] is True
         assert body["auth"]["user"]["username"] == "metauser"
         assert body["auth"]["user"]["email"] == "meta@example.com"
+        assert body["flags"]["effective"]["admin_ops"] is False
 
         # Auth-gated feature becomes permitted when authenticated.
         assert body["features"]["tools"]["supported"] is True

@@ -2,6 +2,7 @@ import { useEffect, useState } from "preact/hooks";
 import type { RuntimeConfig } from "./config/runtimeConfig";
 import { setRuntimeConfig } from "./config/runtimeConfig";
 import { setFlagsFromRuntime } from "./core/config/featureFlags";
+import { getMeta } from "./core/meta/metaApi";
 import { useHashLocation, Link } from "./core/router/hashRouter";
 import { Layout } from "./components/Layout";
 import { ErrorScreen } from "./components/ErrorScreen";
@@ -34,9 +35,11 @@ function routeRequiresAuth(name: string): boolean {
   return name === "chat" || name === "settings" || name === "admin" || name === "ops";
 }
 
-export function App(props: { runtimeConfig: RuntimeConfig }) {
+export function App(props: { runtimeConfig: RuntimeConfig; initialBootError?: string }) {
   setRuntimeConfig(props.runtimeConfig);
   setFlagsFromRuntime(props.runtimeConfig);
+  const [bootError, setBootError] = useState<string | null>(props.initialBootError ?? null);
+  const [bootRetrying, setBootRetrying] = useState(false);
 
   const [path] = useHashLocation();
   const r = parseRoute(path);
@@ -47,6 +50,19 @@ export function App(props: { runtimeConfig: RuntimeConfig }) {
   useEffect(() => {
     void hydrateAuth();
   }, []);
+
+  async function retryBackendCheck() {
+    setBootRetrying(true);
+    try {
+      await getMeta();
+      setBootError(null);
+      await hydrateAuth();
+    } catch (e: any) {
+      setBootError(String(e?.message ?? e));
+    } finally {
+      setBootRetrying(false);
+    }
+  }
 
   // Block on auth only for protected routes; allow login page to render while meta is pending.
   if (routeRequiresAuth(r.name) && auth.status === "unknown") {
@@ -94,6 +110,20 @@ export function App(props: { runtimeConfig: RuntimeConfig }) {
         auth.status === "authenticated" ? <ConversationSidebar /> : undefined
       }
     >
+      {bootError ? (
+        <div class="banner error" role="alert" data-testid="backend-error-banner">
+          <span>{bootError}</span>
+          <button
+            class="btn"
+            data-testid="backend-error-retry"
+            disabled={bootRetrying}
+            onClick={() => void retryBackendCheck()}
+            style="margin-left:12px;"
+          >
+            {bootRetrying ? "Retrying..." : "Retry"}
+          </button>
+        </div>
+      ) : null}
       {auth.lastError ? <Banner kind="error" text={auth.lastError} /> : null}
 
       {r.name === "login" && <LoginRoute />}
