@@ -204,3 +204,24 @@ def test_auth_endpoints_still_enforce_origin_validation(monkeypatch, tmp_path):
         assert res.status_code == 403
         body = res.json()
         assert body["error"]["code"] == "E2003"
+
+
+def test_auth_origin_allows_localhost_in_seeded_test_mode(monkeypatch, tmp_path):
+    _setup_db(
+        tmp_path,
+        monkeypatch,
+        ENVIRONMENT="test",
+        E2E_SEED_USER="1",
+        CORS_ORIGINS="https://omniplexity.github.io",
+    )
+
+    with _make_client() as client:
+        res = client.post(
+            "/v1/auth/login",
+            headers={"Origin": "http://127.0.0.1:5173"},
+            json={"username": "seeded-user", "password": "seeded-pass"},
+        )
+        assert res.status_code == 403
+        body = res.json()
+        # Localhost origin should pass origin validation; CSRF should fail next.
+        assert body["error"]["code"] == "E2002"

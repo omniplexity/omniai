@@ -185,8 +185,8 @@ def create_app() -> FastAPI:
     # 7. CORS (must be configured correctly for GitHub Pages frontend)
     # Note: Wildcard patterns for tunnel domains are NOT used here -
     # use exact origins in CORS_ORIGINS setting instead
-    allow_origin_regex = None
-    if not settings.is_production:
+    allow_origin_regex = settings.effective_cors_allow_origin_regex
+    if allow_origin_regex is None and not settings.is_production:
         # Allow localhost and 127.0.0.1 for dev; use CORS_ORIGINS for tunnel domains
         allow_origin_regex = r"^https?://(localhost|127\\.0\\.0\\.1)(:\\d+)?$"
     app.add_middleware(

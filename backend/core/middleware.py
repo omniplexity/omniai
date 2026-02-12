@@ -702,6 +702,27 @@ def _is_origin_allowed(origin: str, allowed_origins: Set[str]) -> bool:
     return False
 
 
+def _is_origin_allowed_with_regex(
+    origin: str,
+    allowed_origins: Set[str],
+    allow_origin_regex: str | None,
+) -> bool:
+    """Check whether origin is allowed by exact allowlist or regex."""
+    if _is_origin_allowed(origin, allowed_origins):
+        return True
+    if not allow_origin_regex:
+        return False
+    pattern = _ORIGIN_PATTERN_CACHE.get(allow_origin_regex)
+    if pattern is None:
+        try:
+            pattern = re.compile(allow_origin_regex)
+        except re.error:
+            logger.warning("Invalid CORS origin regex", data={"regex": allow_origin_regex})
+            return False
+        _ORIGIN_PATTERN_CACHE[allow_origin_regex] = pattern
+    return bool(pattern.match(origin))
+
+
 def _is_same_site_request(request: Request) -> bool:
     """Check if request is same-site based on Origin/Host headers."""
     origin = request.headers.get("origin")
@@ -875,8 +896,12 @@ class ChatCSRFMiddleware(BaseHTTPMiddleware):
             if referer_parsed:
                 check_origin = f"{referer_parsed[0]}://{referer_parsed[1]}:{referer_parsed[2]}"
 
-        if check_origin and allowed_origins:
-            if not _is_origin_allowed(check_origin, allowed_origins):
+        if check_origin and (allowed_origins or settings.effective_cors_allow_origin_regex):
+            if not _is_origin_allowed_with_regex(
+                check_origin,
+                allowed_origins,
+                settings.effective_cors_allow_origin_regex,
+            ):
                 logger.warning(
                     "Origin validation failed",
                     data={"origin": origin, "referer": referer, "path": request.url.path},
@@ -954,8 +979,12 @@ class ChatCSRFMiddleware(BaseHTTPMiddleware):
                 if referer_parsed:
                     check_origin = f"{referer_parsed[0]}://{referer_parsed[1]}:{referer_parsed[2]}"
 
-            if check_origin and allowed_origins:
-                if not _is_origin_allowed(check_origin, allowed_origins):
+            if check_origin and (allowed_origins or settings.effective_cors_allow_origin_regex):
+                if not _is_origin_allowed_with_regex(
+                    check_origin,
+                    allowed_origins,
+                    settings.effective_cors_allow_origin_regex,
+                ):
                     logger.warning(
                         "Origin validation failed",
                         data={"origin": origin, "referer": referer, "path": request.url.path},

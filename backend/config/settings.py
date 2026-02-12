@@ -55,6 +55,7 @@ class Settings(BaseSettings):
     # Security
     secret_key: str = Field(default_factory=lambda: secrets.token_urlsafe(64))
     cors_origins: str = Field(default="https://omniplexity.github.io")
+    cors_allow_origin_regex: Optional[str] = Field(default=None)
     required_frontend_origins: str = Field(
         default="",
         description="Comma-separated frontend origins required for CORS. Overrides default GH Pages origin. Leave empty to use default.",
@@ -186,6 +187,19 @@ class Settings(BaseSettings):
         if not self.cors_origins:
             return []
         return [origin.strip() for origin in self.cors_origins.split(",") if origin.strip()]
+
+    @property
+    def effective_cors_allow_origin_regex(self) -> str | None:
+        """Return effective origin regex for CORS/CSRF checks.
+
+        In deterministic E2E test mode, allow localhost/127.0.0.1 on any port.
+        """
+        explicit = (self.cors_allow_origin_regex or "").strip() or None
+        if explicit:
+            return explicit
+        if self.is_test and self.e2e_seed_user:
+            return r"^http://(localhost|127\.0\.0\.1)(:\d+)?$"
+        return None
 
     @property
     def providers_enabled_list(self) -> List[str]:
