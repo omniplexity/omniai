@@ -11,6 +11,21 @@ cd deploy
 docker compose up -d
 ```
 
+### Production (DuckDNS + Caddy)
+
+```bash
+cd deploy
+docker compose up -d --build
+```
+
+This `deploy/docker-compose.yml` stack is the only supported production entrypoint.
+The `deploy/caddy/docker-compose.caddy.yml` stack is profile-gated for local/dev only:
+
+```bash
+cd deploy/caddy
+docker compose --profile caddy-only up -d --build
+```
+
 ### Production (Kubernetes + Helm)
 
 ```bash
@@ -188,6 +203,37 @@ When using Traefik, metrics are exposed at `:8082/metrics`.
    - Verify LM Studio/Ollama is running
    - Check PROVIDERS_ENABLED list
    - Review provider base URLs
+
+### 502 Bad Gateway via DuckDNS (Caddy)
+
+Symptoms:
+- Browser reports CORS missing headers on `/v1/meta` or `/v1/auth/csrf/bootstrap`
+- `curl` shows `502 Bad Gateway` with `Server: Caddy`
+
+This is usually upstream reachability, not CORS policy.
+
+Verify in order:
+
+```bash
+cd deploy
+docker compose ps
+docker compose logs --tail=200 caddy
+docker compose logs --tail=200 backend
+curl -i http://127.0.0.1:8000/health
+curl -i https://omniplexity.duckdns.org/health
+curl -i -H "Origin: https://omniplexity.github.io" https://omniplexity.duckdns.org/v1/meta
+```
+
+Expected:
+- Local backend health: `200`
+- Public health/meta: `200`
+- Origin request includes:
+  - `Access-Control-Allow-Origin: https://omniplexity.github.io`
+  - `Access-Control-Allow-Credentials: true`
+  - `Vary: Origin`
+
+Use `scripts/docker-preflight.ps1` before Docker ops on Windows and
+`scripts/prod-verify.ps1` after deploy to validate routing/CORS end-to-end.
 
 See [KUBERNETES.md](KUBERNETES.md) for Kubernetes-specific troubleshooting.
 

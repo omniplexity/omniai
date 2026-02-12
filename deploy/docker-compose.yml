@@ -1,6 +1,11 @@
 # =============================================================================
 # OmniAI Backend - DuckDNS Production Deployment
 # =============================================================================
+# NOTE: This is the only supported production entrypoint.
+# Use from this directory:
+#   docker compose up -d --build
+# The caddy-only compose stack under deploy/caddy is opt-in for local/dev
+# troubleshooting and must be started with --profile caddy-only.
 # Target: https://omniplexity.duckdns.org
 # Architecture: Caddy (TLS) → Backend (localhost-only)
 # Database: PostgreSQL (Docker)

@@ -1,5 +1,7 @@
 # OmniAI Caddy Configuration
 # Automatic HTTPS with Let's Encrypt for DuckDNS
+# IMPORTANT: This file runs inside the Caddy container. Upstream MUST use
+# compose service-name networking (backend:8000), not 127.0.0.1.
 
 {
     # Global options
