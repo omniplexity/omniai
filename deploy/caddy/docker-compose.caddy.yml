@@ -6,11 +6,12 @@
 #
 # Usage:
 #   1. Update Caddyfile with your domain
-#   2. Run: docker compose -f docker-compose.caddy.yml up -d
+#   2. Run: docker compose -f docker-compose.caddy.yml --profile caddy-only up -d
 # =============================================================================
 
 services:
   caddy:
+    profiles: ["caddy-only"]
     image: caddy:2-alpine
     container_name: omniai-caddy
     restart: unless-stopped
@@ -29,13 +30,14 @@ services:
       - omniai_network
 
   backend:
+    profiles: ["caddy-only"]
     build:
       context: ../../backend
       dockerfile: Dockerfile
     container_name: omniai-backend
     restart: unless-stopped
     env_file:
-      - ../../backend/.env
+      - ../../.env
     environment:
       HOST: "0.0.0.0"
       PORT: "8000"
