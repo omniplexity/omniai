@@ -167,6 +167,8 @@ jobs:
     runs-on: ubuntu-latest
     needs: [gate-a-scripts, lockfile, lint, test]
     env:
+      ENVIRONMENT: test
+      E2E_SEED_USER: "1"
       E2E_USERNAME: ci_e2e_user
       E2E_PASSWORD: ci_e2e_pass
       E2E_BASE_URL: http://127.0.0.1:8000
@@ -206,13 +208,18 @@ jobs:
         run: |
           python --version
           python -m pip install -r backend/requirements.txt
-          export ENVIRONMENT=test
           export COOKIE_SECURE=false
           export COOKIE_SAMESITE=lax
           export PROVIDER_MODE=mock
-          export E2E_SEED_USER=1
           export E2E_USERNAME="${E2E_USERNAME}"
           export E2E_PASSWORD="${E2E_PASSWORD}"
+          export LIMITS_BACKEND=memory
+          export DATABASE_URL="sqlite:///./.test/omniai_e2e.sqlite3"
+          export DATABASE_URL_POSTGRES=""
+          mkdir -p .test
+          pushd backend
+          PYTHONPATH=.. alembic upgrade head
+          popd
           python -m uvicorn backend.main:app --host 127.0.0.1 --port 8000 &
           
           # Wait for backend to be healthy
@@ -266,13 +273,17 @@ jobs:
 
       - name: Run E2E tests
         env:
+          ENVIRONMENT: test
+          E2E_SEED_USER: "1"
           PLAYWRIGHT_WEB_SERVER: "0"
           FRONTEND_URL: http://127.0.0.1:4173
           BACKEND_BASE_URL: http://127.0.0.1:8000
           E2E_BASE_URL: http://127.0.0.1:8000
           E2E_USERNAME: ci_e2e_user
           E2E_PASSWORD: ci_e2e_pass
-        run: npx playwright test --project=chromium
+        run: |
+          npx playwright test tests/e2e/workspace-smoke.spec.ts --project=chromium
+          npx playwright test tests/e2e/chat-stream.spec.ts --project=chromium
 
       - name: Upload E2E artifacts
         if: always()

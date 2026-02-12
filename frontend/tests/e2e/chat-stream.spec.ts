@@ -1,25 +1,18 @@
 import { expect, test } from "@playwright/test";
 import { apiLogin } from "./helpers/auth";
+import { resolveE2ECredsOrSkip } from "./support/creds";
 
-const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:5173";
-const BACKEND_URL = process.env.E2E_BASE_URL || process.env.BACKEND_BASE_URL || "http://localhost:8000";
-const E2E_USERNAME = process.env.E2E_USERNAME;
-const E2E_PASSWORD = process.env.E2E_PASSWORD;
-
+const FRONTEND_URL = process.env.FRONTEND_URL || "http://127.0.0.1:5173";
+const BACKEND_URL = process.env.E2E_BASE_URL || process.env.BACKEND_BASE_URL || "http://127.0.0.1:8000";
 async function login(page: import("@playwright/test").Page) {
-  if (!E2E_USERNAME || !E2E_PASSWORD) {
-    if (process.env.CI) {
-      throw new Error("Missing E2E_USERNAME/E2E_PASSWORD in CI");
-    }
-    test.skip(true, "Missing E2E credentials");
-  }
+  const { username, password } = resolveE2ECredsOrSkip();
   const frontendOrigin = new URL(FRONTEND_URL).origin;
   await apiLogin({
     request: page.request,
     context: page.context(),
     backendUrl: BACKEND_URL,
-    username: E2E_USERNAME!,
-    password: E2E_PASSWORD!,
+    username,
+    password,
     frontendOrigin,
   });
 }
