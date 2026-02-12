@@ -54,6 +54,22 @@ def test_v1_projects_enabled_returns_empty_list(monkeypatch, tmp_path):
     dispose_engine()
 
 
+def test_v1_projects_unauthenticated_returns_401_envelope(monkeypatch, tmp_path):
+    monkeypatch.setenv("FEATURE_WORKSPACE", "false")
+    _setup_db(tmp_path, monkeypatch)
+    app = create_app()
+
+    with TestClient(app) as client:
+        res = client.get("/v1/projects")
+        assert res.status_code == 401
+        body = res.json()
+        assert body["error"]["code"] == "E4010"
+        assert isinstance(body["error"]["message"], str)
+        assert "request_id" in body["error"]
+
+    dispose_engine()
+
+
 def test_v1_projects_disabled_returns_capability_error(monkeypatch, tmp_path):
     monkeypatch.setenv("FEATURE_WORKSPACE", "false")
     engine = _setup_db(tmp_path, monkeypatch)

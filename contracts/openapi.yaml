@@ -189,7 +189,7 @@ paths:
   # Conversation Endpoints
   /projects:
     get:
-      tags: [Conversations]
+      tags: [Projects]
       summary: List workspace projects for current user
       responses:
         '200':
@@ -199,21 +199,13 @@ paths:
               schema:
                 type: array
                 items:
-                  type: object
-                  properties:
-                    id:
-                      type: string
-                    name:
-                      type: string
-                    instructions:
-                      type: string
-                      nullable: true
-                    created_at:
-                      type: string
-                      format: date-time
-                    updated_at:
-                      type: string
-                      format: date-time
+                  $ref: '#/components/schemas/ProjectSummary'
+        '401':
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
         '403':
           description: Capability disabled
           content:
@@ -1119,6 +1111,25 @@ components:
     ProviderInfo:
       type: object
       properties: {}
+
+    ProjectSummary:
+      type: object
+      additionalProperties: false
+      required: [id, name]
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        instructions:
+          type: string
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
 
     ErrorInfo:
       type: object
