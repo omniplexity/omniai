@@ -24,6 +24,7 @@ export const endpoints = {
   conversationRename: ["/v1/conversations/{id}"],
   conversationDelete: ["/v1/conversations/{id}"],
   conversationBranch: ["/v1/conversations/{id}/branch"],
+  projects: ["/v1/projects"],
 
   // Providers
   providers: ["/v1/providers"],
