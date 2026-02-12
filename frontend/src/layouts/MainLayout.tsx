@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "preact/hooks";
 import type { JSX } from "preact";
-import { MessageBubble } from "../components/MessageBubble";
+import { MessageList } from "../components/chat/MessageList";
 import { useChatStore } from "../store/chatStore";
 import { runStore, useRunStore } from "../store/runStore";
 import { useConversationStore } from "../store/conversationStore";
@@ -14,6 +14,9 @@ import { reconcileMessages } from "../store/reconcileMessages";
 import { emitClientEvent } from "../telemetry/clientEvents";
 import { getDraft, loadUiPersistence, saveDraft, saveLastRun, saveSelectedConversation } from "../store/persistence";
 import { hydrateAuth } from "../core/auth/authStore";
+import { pushToast } from "../ui/toastStore";
+import { useChatStream } from "../core/chat/useChatStream";
+import { uiPrefsStore } from "../core/prefs/uiPrefsStore";
 
 const conversationApi = new ConversationHttp();
 const ROW_HEIGHT = 88;
@@ -24,6 +27,7 @@ export function MainLayout(props: { threadId?: string }) {
   const { state: runState, actions: runActions } = useRunStore();
   const { state: convState, actions: convActions } = useConversationStore();
   const adapter = useMemo<ChatApiAdapter>(() => createChatAdapter(), []);
+  const stream = useChatStream(adapter);
   const runtimeCfg = useMemo(() => getRuntimeConfig(), []);
   const [draft, setDraft] = useState("");
   const [scrollTop, setScrollTop] = useState(0);
@@ -109,20 +113,28 @@ export function MainLayout(props: { threadId?: string }) {
         if (routeThreadId !== targetId) navigate(`/chat/${targetId}`);
       }
     } catch {
-      // Keep shell usable even if conversation bootstrap fails.
+      pushToast({ message: "Failed to load conversations." });
     } finally {
       convActions.setLoading(false);
     }
   }
 
   async function loadConversationMessages(conversationId: string) {
-    const serverMessages = await conversationApi.getMessages({ conversationId });
-    const merged = reconcileMessages({
-      localMessages: state.messages,
-      serverMessages,
-      runState: runStore.getState(),
-    });
-    actions.setMessages(merged);
+    try {
+      const serverMessages = await conversationApi.getMessages({ conversationId });
+      const merged = reconcileMessages({
+        localMessages: state.messages,
+        serverMessages,
+        runState: runStore.getState(),
+      });
+      actions.setMessages(merged);
+    } catch (error: any) {
+      pushToast({
+        message: error?.message ?? "Failed to load messages.",
+        backendCode: error?.backendCode ?? null,
+        requestId: error?.requestId ?? null,
+      });
+    }
   }
 
   async function onSelectConversation(conversationId: string) {
@@ -135,12 +147,20 @@ export function MainLayout(props: { threadId?: string }) {
 
   async function onNewConversation() {
     if (state.isStreaming) return;
-    const created = await conversationApi.createConversation({ title: "New Conversation" });
-    convActions.addConversation(created);
-    convActions.setActiveConversationId(created.id);
-    actions.reset();
-    setDraft("");
-    navigate(`/chat/${created.id}`);
+    try {
+      const created = await conversationApi.createConversation({ title: "New Conversation" });
+      convActions.addConversation(created);
+      convActions.setActiveConversationId(created.id);
+      actions.reset();
+      setDraft("");
+      navigate(`/chat/${created.id}`);
+    } catch (error: any) {
+      pushToast({
+        message: error?.message ?? "Failed to create conversation.",
+        backendCode: error?.backendCode ?? null,
+        requestId: error?.requestId ?? null,
+      });
+    }
   }
 
   async function onSend() {
@@ -154,6 +174,16 @@ export function MainLayout(props: { threadId?: string }) {
       role: m.role,
       content: m.content,
     }));
+    const prefs = uiPrefsStore.get();
+    const settingsSnapshot = {
+      provider: prefs.providerId ?? undefined,
+      model: prefs.modelId ?? undefined,
+      settings: {
+        temperature: prefs.temperature,
+        top_p: prefs.topP,
+        max_tokens: prefs.maxTokens,
+      },
+    };
     const runId = runActions.createRun({
       requestMessages: requestSnapshot,
       conversationId: activeConversationId,
@@ -165,6 +195,7 @@ export function MainLayout(props: { threadId?: string }) {
       conversationId: activeConversationId,
       input: text,
       sourceMessageId: userMessageId,
+      settingsSnapshot,
     });
   }
 
@@ -179,38 +210,12 @@ export function MainLayout(props: { threadId?: string }) {
       conversationId: prior.conversationId,
       sourceMessageId: prior.sourceMessageId,
     });
-
-    if (prior.sourceMessageId) {
-      await runStream({
-        runId,
-        conversationId: prior.conversationId,
-        input: "",
-        retryFromMessageId: prior.sourceMessageId,
-      });
-      return;
-    }
-    const lastLocalUserId = [...state.messages]
-      .reverse()
-      .find((m) => m.role === "user")?.id;
-    const mappedBackendId = lastLocalUserId
-      ? runState.messageMetaById[lastLocalUserId]?.backendMessageId ?? null
-      : null;
-    if (mappedBackendId) {
-      await runStream({
-        runId,
-        conversationId: prior.conversationId,
-        input: "",
-        retryFromMessageId: mappedBackendId,
-      });
-      return;
-    }
-
-    const fallbackInput =
-      [...prior.requestMessages].reverse().find((m) => m.role === "user")?.content ?? "";
     await runStream({
       runId,
       conversationId: prior.conversationId,
-      input: fallbackInput,
+      input: "",
+      useLastSnapshot: true,
+      settingsSnapshot: { provider: undefined, model: undefined, settings: {} },
     });
   }
 
@@ -220,9 +225,9 @@ export function MainLayout(props: { threadId?: string }) {
     input: string;
     retryFromMessageId?: string;
     sourceMessageId?: string;
+    useLastSnapshot?: boolean;
+    settingsSnapshot: { provider?: string; model?: string; settings?: Record<string, unknown> };
   }) {
-    const controller = new AbortController();
-    actions.setAbortController(controller);
     runActions.attachConversationId(params.runId, params.conversationId);
     if (params.sourceMessageId) runActions.attachSourceMessageId(params.runId, params.sourceMessageId);
 
@@ -252,27 +257,18 @@ export function MainLayout(props: { threadId?: string }) {
       if (watchdog !== null) window.clearTimeout(watchdog);
       watchdog = window.setTimeout(() => {
         watchdogTimedOut = true;
-        controller.abort();
+        stream.cancel();
       }, timeoutMs);
     };
     armWatchdog();
 
     try {
-      const created = await adapter.createRun({
-        conversationId: params.conversationId,
-        input: params.input,
-        retryFromMessageId: params.retryFromMessageId,
-        signal: controller.signal,
-      });
-      runActions.attachBackendRunId(params.runId, created.runId);
-      emitClientEvent({
-        type: "run_start",
-        runId: params.runId,
-        backendRunId: created.runId,
-        conversationId: params.conversationId,
-      });
-
-      for await (const chunk of adapter.streamRun({ runId: created.runId, signal: controller.signal })) {
+      const onChunk = (chunk: any) => {
+        const runRecord = runStore.getState().runsById[params.runId];
+        const isCancelled = runRecord?.status === "cancelled";
+        if (isCancelled && chunk.type !== "meta") {
+          return;
+        }
         armWatchdog();
         if (chunk.type === "delta") {
           runActions.markDelta(params.runId);
@@ -281,7 +277,6 @@ export function MainLayout(props: { threadId?: string }) {
             emitClientEvent({
               type: "run_first_delta",
               runId: params.runId,
-              backendRunId: created.runId,
               conversationId: params.conversationId,
             });
           }
@@ -307,6 +302,7 @@ export function MainLayout(props: { threadId?: string }) {
             runActions.attachMessageBackendId(assistantMsgId, meta.resultMessageId);
           }
         } else if (chunk.type === "done") {
+          if (isCancelled) return;
           flushQueuedDelta();
           actions.finalizeAssistantMessage(assistantMsgId);
           runActions.markDone(params.runId);
@@ -314,11 +310,21 @@ export function MainLayout(props: { threadId?: string }) {
           emitClientEvent({
             type: "run_done",
             runId: params.runId,
-            backendRunId: created.runId,
             conversationId: params.conversationId,
           });
-          await loadConversationMessages(params.conversationId);
+          void loadConversationMessages(params.conversationId);
         }
+      };
+      if (params.useLastSnapshot) {
+        await stream.retry(onChunk);
+      } else {
+        await stream.start({
+          threadId: params.conversationId,
+          input: params.input,
+          retryFromMessageId: params.retryFromMessageId,
+          settings: params.settingsSnapshot,
+          onChunk,
+        });
       }
     } catch (err) {
       flushQueuedDelta();
@@ -326,6 +332,11 @@ export function MainLayout(props: { threadId?: string }) {
         ? toUiError(new Error("Stream timed out waiting for events."))
         : toUiError(err);
       actions.replaceMessageContent(assistantMsgId, `⚠️ [${uiError.code}] ${uiError.message}`);
+      pushToast({
+        message: uiError.message,
+        backendCode: (err as any)?.backendCode ?? null,
+        requestId: (err as any)?.requestId ?? null,
+      });
       if (uiError.code === "E_CANCELLED") {
         runActions.markCancelled(params.runId);
         emitClientEvent({
@@ -350,13 +361,13 @@ export function MainLayout(props: { threadId?: string }) {
     } finally {
       if (flushTimer !== null) window.clearTimeout(flushTimer);
       if (watchdog !== null) window.clearTimeout(watchdog);
-      actions.setAbortController(null);
     }
   }
 
   async function onCancel() {
     const activeRunId = runState.activeRunId;
     const activeRun = activeRunId ? runState.runsById[activeRunId] : null;
+    stream.cancel();
     actions.cancelStream();
     if (activeRunId) runActions.markCancelled(activeRunId);
     if (activeRunId) {
@@ -368,13 +379,7 @@ export function MainLayout(props: { threadId?: string }) {
       });
     }
 
-    const flags = getRuntimeConfig().FEATURE_FLAGS ?? {};
-    if (!activeRun?.backendRunId || !flags.SERVER_CANCEL) return;
-    try {
-      await adapter.cancelRun({ runId: activeRun.backendRunId });
-    } catch {
-      // best-effort server cancel
-    }
+    void activeRun;
   }
 
   function onKeyDown(e: JSX.TargetedKeyboardEvent<HTMLTextAreaElement>) {
@@ -468,11 +473,7 @@ export function MainLayout(props: { threadId?: string }) {
             aria-live="polite"
             aria-relevant="additions text"
           >
-            {topSpacer > 0 ? <div style={{ height: topSpacer }} aria-hidden="true" /> : null}
-            {visibleMessages.map((m) => (
-              <MessageBubble key={m.id} message={m} />
-            ))}
-            {bottomSpacer > 0 ? <div style={{ height: bottomSpacer }} aria-hidden="true" /> : null}
+            <MessageList messages={visibleMessages} topSpacer={topSpacer} bottomSpacer={bottomSpacer} />
           </div>
 
           <div style={styles.composerWrap}>

@@ -1,5 +1,6 @@
 import { StreamableText } from "./StreamableText";
 import type { ChatMessage } from "../store/chatStore";
+import { MessageContent } from "./chat/MessageContent";
 
 type Props = {
   message: ChatMessage;
@@ -8,6 +9,7 @@ type Props = {
 export function MessageBubble({ message }: Props) {
   const isUser = message.role === "user";
   const isError = !isUser && message.content.trim().startsWith("⚠️");
+  const variant = isUser ? "user" : isError ? "error" : "assistant";
 
   const wrapStyle = {
     display: "flex",
@@ -40,10 +42,10 @@ export function MessageBubble({ message }: Props) {
   };
 
   return (
-    <div style={wrapStyle}>
+    <div style={wrapStyle} data-testid={`message-bubble-${variant}`}>
       <div>
         <div style={bubbleStyle}>
-          <StreamableText text={message.content} />
+          {isUser || isError ? <StreamableText text={message.content} /> : <MessageContent content={message.content} />}
         </div>
         <div style={metaStyle}>
           {new Date(message.timestamp).toLocaleTimeString([], {
