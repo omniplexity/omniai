@@ -1,8 +1,9 @@
 import { useEffect, useState } from "preact/hooks";
 import type { RuntimeConfig } from "./config/runtimeConfig";
 import { setRuntimeConfig } from "./config/runtimeConfig";
-import { setFlagsFromRuntime } from "./core/config/featureFlags";
+import { getFlags, setFlagsFromMeta, setFlagsFromRuntime } from "./core/config/featureFlags";
 import { getMeta } from "./core/meta/metaApi";
+import type { MetaResponse } from "./core/meta/metaApi";
 import { useHashLocation, Link } from "./core/router/hashRouter";
 import { Layout } from "./components/Layout";
 import { ErrorScreen } from "./components/ErrorScreen";
@@ -13,17 +14,23 @@ import { ChatRoute } from "./routes/chat";
 import { SettingsRoute } from "./routes/settings";
 import { AdminRoute } from "./routes/admin";
 import { OpsRoute } from "./routes/ops";
+import { WorkspaceRoute } from "./routes/workspace";
 
 import { authStore, hydrateAuth } from "./core/auth/authStore";
 import { ConversationSidebar } from "./components/ConversationSidebar";
 
-function parseRoute(path: string): { name: string; threadId?: string } {
+function parseRoute(path: string): { name: string; threadId?: string; projectId?: string } {
   const clean = (path.split("?")[0] ?? "").split("#")[0] ?? "";
   if (clean === "/" || clean === "") return { name: "login" };
   if (clean === "/login") return { name: "login" };
   if (clean === "/settings") return { name: "settings" };
   if (clean === "/admin") return { name: "admin" };
   if (clean === "/ops") return { name: "ops" };
+  if (clean === "/workspace") return { name: "workspace" };
+  if (clean.startsWith("/workspace/")) {
+    const parts = clean.split("/").filter(Boolean);
+    return { name: "workspace", projectId: parts[1] };
+  }
   if (clean.startsWith("/chat")) {
     const parts = clean.split("/").filter(Boolean);
     return { name: "chat", threadId: parts[1] };
@@ -32,14 +39,22 @@ function parseRoute(path: string): { name: string; threadId?: string } {
 }
 
 function routeRequiresAuth(name: string): boolean {
-  return name === "chat" || name === "settings" || name === "admin" || name === "ops";
+  return (
+    name === "chat" ||
+    name === "workspace" ||
+    name === "settings" ||
+    name === "admin" ||
+    name === "ops"
+  );
 }
 
-export function App(props: { runtimeConfig: RuntimeConfig; initialBootError?: string }) {
+export function App(props: { runtimeConfig: RuntimeConfig; initialBootError?: string; initialMeta?: MetaResponse }) {
   setRuntimeConfig(props.runtimeConfig);
   setFlagsFromRuntime(props.runtimeConfig);
+  setFlagsFromMeta(props.initialMeta);
   const [bootError, setBootError] = useState<string | null>(props.initialBootError ?? null);
   const [bootRetrying, setBootRetrying] = useState(false);
+  const [workspaceEnabled, setWorkspaceEnabled] = useState<boolean>(getFlags().workspace);
 
   const [path] = useHashLocation();
   const r = parseRoute(path);
@@ -54,7 +69,9 @@ export function App(props: { runtimeConfig: RuntimeConfig; initialBootError?: st
   async function retryBackendCheck() {
     setBootRetrying(true);
     try {
-      await getMeta();
+      const meta = await getMeta();
+      setFlagsFromMeta(meta);
+      setWorkspaceEnabled(getFlags().workspace);
       setBootError(null);
       await hydrateAuth();
     } catch (e: any) {
@@ -101,6 +118,7 @@ export function App(props: { runtimeConfig: RuntimeConfig; initialBootError?: st
         <div class="nav">
           <Link class="navItem" to="/login">Login</Link>
           <Link class="navItem" to="/chat">Chat</Link>
+          {workspaceEnabled ? <Link class="navItem" to="/workspace">Workspace</Link> : null}
           <Link class="navItem" to="/settings">Settings</Link>
           {isAdmin ? <Link class="navItem" to="/admin">Admin</Link> : null}
           {isAdmin ? <Link class="navItem" to="/ops">Ops</Link> : null}
@@ -128,6 +146,13 @@ export function App(props: { runtimeConfig: RuntimeConfig; initialBootError?: st
 
       {r.name === "login" && <LoginRoute />}
       {r.name === "chat" && auth.status === "authenticated" && <ChatRoute threadId={r.threadId} />}
+      {r.name === "workspace" && auth.status === "authenticated" ? (
+        workspaceEnabled ? (
+          <WorkspaceRoute projectId={r.projectId} />
+        ) : (
+          <ErrorScreen title="Workspace Disabled" detail="Workspace feature is not enabled." />
+        )
+      ) : null}
       {r.name === "settings" && auth.status === "authenticated" && <SettingsRoute />}
 
       {r.name === "admin" && auth.status === "authenticated" ? (

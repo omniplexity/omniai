@@ -71,3 +71,15 @@ def test_v1_auth_logout_requires_csrf(monkeypatch, tmp_path):
         res = client.post("/v1/auth/logout", headers={"Origin": "http://localhost:3000"})
         assert res.status_code == 403
         assert res.json()["error"]["code"] == "E2002"
+
+
+def test_legacy_api_csrf_bootstrap_remains_compat(monkeypatch, tmp_path):
+    _setup_db(tmp_path, monkeypatch)
+
+    with _make_client() as client:
+        res = client.get("/api/auth/csrf/bootstrap")
+        assert res.status_code == 200
+        body = res.json()
+        assert isinstance(body.get("csrf_token"), str)
+        assert body["csrf_token"] != ""
+        assert res.headers.get("cache-control") == "no-store"

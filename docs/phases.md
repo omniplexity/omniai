@@ -7,4 +7,4 @@
 
 ## Current Focus
 
-- Phase 0: Contract, Flag, and CI baseline for `/v1/*` stability.
+- Phase 1: Auth + CSRF lifecycle closure and frontend API-client consolidation.

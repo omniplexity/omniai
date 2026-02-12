@@ -1,7 +1,6 @@
 import { endpoints, conversationEndpoint, conversationMessagesEndpoint } from "../api/endpoints";
-import { ApiError } from "../api/errors";
-import { ensureCsrfToken, getCsrfToken } from "../api/csrf";
-import { classifyHttpError, fetchWithTimeout, readErrorBody, tryPaths } from "../api/http";
+import { tryPaths } from "../api/http";
+import { requestMutating, requestSession, toApiError } from "../api/client";
 
 export interface Conversation {
   id: string;
@@ -25,18 +24,13 @@ export interface Message {
 
 export async function listConversations(limit = 50, offset = 0): Promise<Conversation[]> {
   return tryPaths(endpoints.conversations, async (url) => {
-    const res = await fetchWithTimeout(`${url}?limit=${limit}&offset=${offset}`, {
+    const res = await requestSession(`${url}?limit=${limit}&offset=${offset}`, {
       method: "GET",
-      credentials: "include",
       headers: { "Accept": "application/json" },
-      timeoutMs: 15000
     });
 
     if (!res.ok) {
-      const body = await readErrorBody(res);
-      throw classifyHttpError(res) instanceof ApiError
-        ? new ApiError(classifyHttpError(res).code, `List conversations failed (${res.status})`, res.status, body)
-        : new ApiError("unknown", `List conversations failed (${res.status})`, res.status, body);
+      throw await toApiError(res, "server_error", `List conversations failed (${res.status})`);
     }
 
     return await res.json();
@@ -44,26 +38,18 @@ export async function listConversations(limit = 50, offset = 0): Promise<Convers
 }
 
 export async function createConversation(title = "New Conversation"): Promise<Conversation> {
-  await ensureCsrfToken();
-
   return tryPaths(endpoints.conversations, async (url) => {
-    const res = await fetchWithTimeout(url, {
+    const res = await requestMutating(url, {
       method: "POST",
-      credentials: "include",
       headers: {
         "Content-Type": "application/json",
-        "Accept": "application/json",
-        "X-CSRF-Token": getCsrfToken() ?? ""
+        "Accept": "application/json"
       },
       body: JSON.stringify({ title }),
-      timeoutMs: 15000
     });
 
     if (!res.ok) {
-      const body = await readErrorBody(res);
-      throw classifyHttpError(res) instanceof ApiError
-        ? new ApiError(classifyHttpError(res).code, `Create conversation failed (${res.status})`, res.status, body)
-        : new ApiError("unknown", `Create conversation failed (${res.status})`, res.status, body);
+      throw await toApiError(res, "server_error", `Create conversation failed (${res.status})`);
     }
 
     return await res.json();
@@ -71,26 +57,18 @@ export async function createConversation(title = "New Conversation"): Promise<Co
 }
 
 export async function renameConversation(id: string, title: string): Promise<Conversation> {
-  await ensureCsrfToken();
-
   return tryPaths(conversationEndpoint(id), async (url) => {
-    const res = await fetchWithTimeout(url, {
+    const res = await requestMutating(url, {
       method: "PATCH",
-      credentials: "include",
       headers: {
         "Content-Type": "application/json",
-        "Accept": "application/json",
-        "X-CSRF-Token": getCsrfToken() ?? ""
+        "Accept": "application/json"
       },
       body: JSON.stringify({ title }),
-      timeoutMs: 15000
     });
 
     if (!res.ok) {
-      const body = await readErrorBody(res);
-      throw classifyHttpError(res) instanceof ApiError
-        ? new ApiError(classifyHttpError(res).code, `Rename conversation failed (${res.status})`, res.status, body)
-        : new ApiError("unknown", `Rename conversation failed (${res.status})`, res.status, body);
+      throw await toApiError(res, "server_error", `Rename conversation failed (${res.status})`);
     }
 
     return await res.json();
@@ -98,42 +76,29 @@ export async function renameConversation(id: string, title: string): Promise<Con
 }
 
 export async function deleteConversation(id: string): Promise<void> {
-  await ensureCsrfToken();
-
   return tryPaths(conversationEndpoint(id), async (url) => {
-    const res = await fetchWithTimeout(url, {
+    const res = await requestMutating(url, {
       method: "DELETE",
-      credentials: "include",
       headers: {
-        "Accept": "application/json",
-        "X-CSRF-Token": getCsrfToken() ?? ""
+        "Accept": "application/json"
       },
-      timeoutMs: 15000
     });
 
     if (!res.ok) {
-      const body = await readErrorBody(res);
-      throw classifyHttpError(res) instanceof ApiError
-        ? new ApiError(classifyHttpError(res).code, `Delete conversation failed (${res.status})`, res.status, body)
-        : new ApiError("unknown", `Delete conversation failed (${res.status})`, res.status, body);
+      throw await toApiError(res, "server_error", `Delete conversation failed (${res.status})`);
     }
   });
 }
 
 export async function getMessages(conversationId: string): Promise<Message[]> {
   return tryPaths(conversationMessagesEndpoint(conversationId), async (url) => {
-    const res = await fetchWithTimeout(url, {
+    const res = await requestSession(url, {
       method: "GET",
-      credentials: "include",
       headers: { "Accept": "application/json" },
-      timeoutMs: 15000
     });
 
     if (!res.ok) {
-      const body = await readErrorBody(res);
-      throw classifyHttpError(res) instanceof ApiError
-        ? new ApiError(classifyHttpError(res).code, `Get messages failed (${res.status})`, res.status, body)
-        : new ApiError("unknown", `Get messages failed (${res.status})`, res.status, body);
+      throw await toApiError(res, "server_error", `Get messages failed (${res.status})`);
     }
 
     return await res.json();

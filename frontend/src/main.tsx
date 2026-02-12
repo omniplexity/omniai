@@ -11,7 +11,14 @@ async function bootstrap() {
   root.textContent = "Loading…";
 
   const boot = await bootstrapApp();
-  render(<App runtimeConfig={boot.runtimeConfig} initialBootError={boot.bootError} />, root);
+  render(
+    <App
+      runtimeConfig={boot.runtimeConfig}
+      initialBootError={boot.bootError}
+      initialMeta={boot.meta}
+    />,
+    root
+  );
 }
 
 bootstrap().catch((err) => {

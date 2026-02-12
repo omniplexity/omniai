@@ -1,7 +1,7 @@
 import type { ChatApiAdapter, StreamChunk, StreamMeta } from "./ChatApiAdapter";
 import { getRuntimeConfig } from "../config/runtimeConfig";
 import { parseSSE } from "./sseParser";
-import { fetchWithCsrf, fetchWithSession } from "../auth/csrf";
+import { requestMutating, requestSession } from "../core/api/client";
 
 export type ChatErrorCode =
   | "backend_http_error"
@@ -38,7 +38,7 @@ export class SSEBackendAdapter implements ChatApiAdapter {
     settings?: Record<string, unknown>;
   }): Promise<{ runId: string; status: string }> {
     const base = getRuntimeConfig().BACKEND_BASE_URL;
-    const res = await fetchWithCsrf(
+    const res = await requestMutating(
       `${base}/v1/chat`,
       {
         method: "POST",
@@ -53,8 +53,7 @@ export class SSEBackendAdapter implements ChatApiAdapter {
           settings: params.settings,
           stream: true,
         }),
-      },
-      { baseUrl: base, retryOnE2002: true }
+      }
     );
 
     if (!res.ok) {
@@ -82,11 +81,11 @@ export class SSEBackendAdapter implements ChatApiAdapter {
     void
   > {
     const base = getRuntimeConfig().BACKEND_BASE_URL;
-    const res = await fetchWithSession(`${base}/v1/chat/stream?run_id=${encodeURIComponent(params.runId)}`, {
+    const res = await requestSession(`${base}/v1/chat/stream?run_id=${encodeURIComponent(params.runId)}`, {
       method: "GET",
       headers: { Accept: "text/event-stream" },
       signal: params.signal,
-    }, { baseUrl: base });
+    });
 
     if (!res.ok || !res.body) {
       const body = await safeReadJsonOrText(res);
@@ -159,15 +158,14 @@ export class SSEBackendAdapter implements ChatApiAdapter {
 
   async cancelRun(params: { runId: string; signal?: AbortSignal }): Promise<void> {
     const base = getRuntimeConfig().BACKEND_BASE_URL;
-    const res = await fetchWithCsrf(
+    const res = await requestMutating(
       `${base}/v1/chat/cancel`,
       {
         method: "POST",
         signal: params.signal,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ run_id: params.runId }),
-      },
-      { baseUrl: base, retryOnE2002: true }
+      }
     );
     if (!res.ok) {
       const body = await safeReadJsonOrText(res);

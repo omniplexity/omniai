@@ -41,14 +41,14 @@ async function preflightAuthBackend(page: Page, baseApi: string, testInfo: TestI
     throw new Error(`Backend not reachable/healthy at ${baseApi} (health check failed).`);
   }
 
-  const csrf = await page.request.get(`${baseApi}/api/auth/csrf/bootstrap`).catch(() => null);
+  const csrf = await page.request.get(`${baseApi}/v1/auth/csrf/bootstrap`).catch(() => null);
   const csrfText = csrf ? await csrf.text().catch(() => '') : '';
   await testInfo.attach('csrf_bootstrap_status', {
     body: `${csrf?.status() ?? 'NO_RESPONSE'}\n${csrfText}`,
     contentType: 'text/plain',
   });
   if (!csrf || !csrf.ok()) {
-    throw new Error(`CSRF bootstrap failed at ${baseApi}/api/auth/csrf/bootstrap`);
+    throw new Error(`CSRF bootstrap failed at ${baseApi}/v1/auth/csrf/bootstrap`);
   }
 }
 

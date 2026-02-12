@@ -1,7 +1,7 @@
 import { endpoints } from "../api/endpoints";
-import { tryPaths, fetchWithTimeout } from "../api/http";
-import { ensureCsrfToken, getCsrfToken } from "../api/csrf";
+import { tryPaths } from "../api/http";
 import { parseSseResponse } from "../api/sse";
+import { requestMutating, requestSession } from "../api/client";
 import type { ChatRequest, ChatStreamEvent } from "./types";
 
 function extractMeta(obj: any): { conversation_id?: string; run_id?: string } {
@@ -32,17 +32,13 @@ export async function* streamChat(
   req: ChatRequest,
   signal: AbortSignal
 ): AsyncGenerator<ChatStreamEvent> {
-  await ensureCsrfToken();
-
   // Step 1: POST /v1/chat to create a run (returns run_id)
   const createRes = await tryPaths(endpoints.chatStream, async (url) => {
-    return fetchWithTimeout(url, {
+    return requestMutating(url, {
       method: "POST",
-      credentials: "include",
       headers: {
         "Content-Type": "application/json",
-        "Accept": "application/json",
-        "X-CSRF-Token": getCsrfToken() ?? ""
+        "Accept": "application/json"
       },
       body: JSON.stringify({
         conversation_id: req.conversation_id,
@@ -75,15 +71,12 @@ export async function* streamChat(
   // Step 2: GET /v1/chat/stream?run_id=xxx to stream events
   const streamUrl = `${endpoints.chatStreamEvents[0]}?run_id=${encodeURIComponent(runId)}`;
   
-  const streamRes = await fetchWithTimeout(streamUrl, {
+  const streamRes = await requestSession(streamUrl, {
     method: "GET",
-    credentials: "include",
     headers: {
-      "Accept": "text/event-stream",
-      "X-CSRF-Token": getCsrfToken() ?? ""
+      "Accept": "text/event-stream"
     },
     signal,
-    timeoutMs: 0 as any
   });
 
   for await (const frame of parseSseResponse(streamRes, signal)) {
@@ -188,17 +181,13 @@ export async function* retryChat(
   messageId: string,
   signal: AbortSignal
 ): AsyncGenerator<ChatStreamEvent> {
-  await ensureCsrfToken();
-
   // Step 1: POST /v1/chat/retry to create a retry run (returns run_id)
   const retryRes = await tryPaths(endpoints.chatRetry, async (url) => {
-    return fetchWithTimeout(url, {
+    return requestMutating(url, {
       method: "POST",
-      credentials: "include",
       headers: {
         "Content-Type": "application/json",
-        "Accept": "application/json",
-        "X-CSRF-Token": getCsrfToken() ?? ""
+        "Accept": "application/json"
       },
       body: JSON.stringify({
         conversation_id: conversationId,
@@ -227,15 +216,12 @@ export async function* retryChat(
   // Step 2: GET /v1/chat/stream?run_id=xxx to stream events
   const streamUrl = `${endpoints.chatStreamEvents[0]}?run_id=${encodeURIComponent(runId)}`;
   
-  const streamRes = await fetchWithTimeout(streamUrl, {
+  const streamRes = await requestSession(streamUrl, {
     method: "GET",
-    credentials: "include",
     headers: {
-      "Accept": "text/event-stream",
-      "X-CSRF-Token": getCsrfToken() ?? ""
+      "Accept": "text/event-stream"
     },
     signal,
-    timeoutMs: 0 as any
   });
 
   // Reuse the same event parsing logic from streamChat
@@ -330,19 +316,14 @@ export async function* retryChat(
  * Cancel a running stream (best-effort)
  */
 export async function cancelChat(runId: string): Promise<void> {
-  await ensureCsrfToken();
-
   await tryPaths(endpoints.chatCancel, async (url) => {
-    return fetchWithTimeout(url, {
+    return requestMutating(url, {
       method: "POST",
-      credentials: "include",
       headers: {
         "Content-Type": "application/json",
-        "Accept": "application/json",
-        "X-CSRF-Token": getCsrfToken() ?? ""
+        "Accept": "application/json"
       },
       body: JSON.stringify({ run_id: runId }),
-      timeoutMs: 5000
     });
   });
   // Ignore response - best-effort
@@ -355,11 +336,9 @@ export async function tryLoadMessages(conversationId: string): Promise<any[] | n
   // Try /messages first
   try {
     const msgs = await tryPaths(endpoints.conversationMessages.map(replace), async (url) => {
-      const res = await fetchWithTimeout(url, {
+      const res = await requestSession(url, {
         method: "GET",
-        credentials: "include",
         headers: { "Accept": "application/json" },
-        timeoutMs: 15000
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       return res.json();
@@ -369,11 +348,9 @@ export async function tryLoadMessages(conversationId: string): Promise<any[] | n
     // Try conversation detail as fallback
     try {
       const convo = await tryPaths(endpoints.conversationGet.map(replace), async (url) => {
-        const res = await fetchWithTimeout(url, {
+        const res = await requestSession(url, {
           method: "GET",
-          credentials: "include",
           headers: { "Accept": "application/json" },
-          timeoutMs: 15000
         });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         return res.json();

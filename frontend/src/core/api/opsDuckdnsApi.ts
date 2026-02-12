@@ -1,7 +1,7 @@
-import { ensureCsrfToken, getCsrfToken } from "./csrf";
 import { endpoints } from "./endpoints";
 import { ApiError, type ApiErrorCode } from "./errors";
 import { fetchWithTimeout, readErrorBody, tryPaths } from "./http";
+import { requestMutating, requestSession } from "./client";
 
 export type DuckDnsStatus = {
   token_present: boolean;
@@ -66,11 +66,9 @@ async function parseOrThrow(res: Response): Promise<any> {
 
 export async function getDuckDnsStatus(): Promise<DuckDnsStatus> {
   return tryPaths(endpoints.opsDuckdnsStatus, async (url) => {
-    const res = await fetchWithTimeout(url, {
+    const res = await requestSession(url, {
       method: "GET",
-      credentials: "include",
       headers: { Accept: "application/json" },
-      timeoutMs: 15000
     });
     return parseOrThrow(res);
   });
@@ -79,11 +77,9 @@ export async function getDuckDnsStatus(): Promise<DuckDnsStatus> {
 export async function getDuckDnsLogs(limit = 200): Promise<DuckDnsLog[]> {
   return tryPaths(endpoints.opsDuckdnsLogs, async (base) => {
     const url = `${base}?limit=${encodeURIComponent(String(limit))}`;
-    const res = await fetchWithTimeout(url, {
+    const res = await requestSession(url, {
       method: "GET",
-      credentials: "include",
       headers: { Accept: "application/json" },
-      timeoutMs: 15000
     });
     const payload = await parseOrThrow(res);
     return Array.isArray(payload?.logs) ? payload.logs : [];
@@ -91,36 +87,28 @@ export async function getDuckDnsLogs(limit = 200): Promise<DuckDnsLog[]> {
 }
 
 export async function postDuckDnsUpdate(force: boolean): Promise<any> {
-  await ensureCsrfToken();
   return tryPaths(endpoints.opsDuckdnsUpdate, async (url) => {
-    const res = await fetchWithTimeout(url, {
+    const res = await requestMutating(url, {
       method: "POST",
-      credentials: "include",
       headers: {
         "Content-Type": "application/json",
-        Accept: "application/json",
-        "X-CSRF-Token": getCsrfToken() ?? ""
+        Accept: "application/json"
       },
       body: JSON.stringify({ force }),
-      timeoutMs: 30000
     });
     return parseOrThrow(res);
   });
 }
 
 export async function postDuckDnsTest(ip?: string): Promise<any> {
-  await ensureCsrfToken();
   return tryPaths(endpoints.opsDuckdnsTest, async (url) => {
-    const res = await fetchWithTimeout(url, {
+    const res = await requestMutating(url, {
       method: "POST",
-      credentials: "include",
       headers: {
         "Content-Type": "application/json",
-        Accept: "application/json",
-        "X-CSRF-Token": getCsrfToken() ?? ""
+        Accept: "application/json"
       },
       body: JSON.stringify(ip ? { ip } : {}),
-      timeoutMs: 30000
     });
     return parseOrThrow(res);
   });

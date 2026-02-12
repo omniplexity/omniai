@@ -22,6 +22,7 @@ describe("bootstrapApp", () => {
     const boot = await bootstrapApp();
     expect(boot.metaLoaded).toBe(true);
     expect(boot.runtimeConfig.BACKEND_BASE_URL).toBe("https://api.example.test");
+    expect(boot.meta?.meta_version).toBe(1);
     expect(boot.bootError).toBeUndefined();
   });
 

@@ -67,3 +67,12 @@ Lock v1 baseline without adding new `/api/*` routes and keep new behavior additi
 - Revert Phase 0 commits in reverse order if needed.
 - Server remains authoritative through `/v1/meta`; disable new capability via flags first.
 - Use `docs/PHASE_B_VERIFICATION.md` after rollback to confirm cross-site/session behavior.
+
+## Phase 1 Frontend Closure Checklist
+
+- [ ] Canonical API client in `frontend/src/core/api/client.ts` is used for session + mutating calls.
+- [ ] CSRF flow is single-path (`/v1/auth/csrf/bootstrap`), with E2002 refresh+retry once.
+- [ ] 401 handling triggers `/v1/meta` sync path only.
+- [ ] Frontend has no references to `/api/auth/csrf/bootstrap`.
+- [ ] `npm run test` and `npm run build` are green after migration.
+- [ ] Legacy `/api/auth/csrf/bootstrap` behavior remains explicitly verified in backend tests (compat mode).

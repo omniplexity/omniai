@@ -65,9 +65,11 @@ describe("opsDuckdnsApi", () => {
       2,
       "https://api.example.test/v1/ops/duckdns/update",
       expect.objectContaining({
-        method: "POST",
-        headers: expect.objectContaining({ "X-CSRF-Token": "csrf-1" })
+        method: "POST"
       })
     );
+    const secondCall = fetchMock.mock.calls[1]?.[1] as RequestInit | undefined;
+    const headers = new Headers(secondCall?.headers);
+    expect(headers.get("X-CSRF-Token")).toBe("csrf-1");
   });
 });

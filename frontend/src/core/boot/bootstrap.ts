@@ -1,9 +1,11 @@
 import { getMeta } from "../meta/metaApi";
+import type { MetaResponse } from "../meta/metaApi";
 import { loadRuntimeConfigSafe, setRuntimeConfig, type RuntimeConfig } from "../config/runtimeConfig";
 
 export type BootResult = {
   runtimeConfig: RuntimeConfig;
   metaLoaded: boolean;
+  meta?: MetaResponse;
   bootError?: string;
 };
 
@@ -17,8 +19,8 @@ export async function bootstrapApp(): Promise<BootResult> {
   setRuntimeConfig(runtimeConfig);
 
   try {
-    await getMeta();
-    return { runtimeConfig, metaLoaded: true };
+    const meta = await getMeta();
+    return { runtimeConfig, metaLoaded: true, meta };
   } catch (err) {
     return {
       runtimeConfig,
