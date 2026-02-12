@@ -32,8 +32,6 @@ omniplexity.duckdns.org {
         reverse_proxy backend:8000 {
             header_up Host {host}
             header_up X-Real-IP {remote}
-            header_up X-Forwarded-For {remote}
-            header_up X-Forwarded-Proto {scheme}
         }
     }
 
@@ -42,8 +40,6 @@ omniplexity.duckdns.org {
         reverse_proxy backend:8000 {
             header_up Host {host}
             header_up X-Real-IP {remote}
-            header_up X-Forwarded-For {remote}
-            header_up X-Forwarded-Proto {scheme}
             flush_interval -1
         }
     }
@@ -53,8 +49,6 @@ omniplexity.duckdns.org {
         reverse_proxy backend:8000 {
             header_up Host {host}
             header_up X-Real-IP {remote}
-            header_up X-Forwarded-For {remote}
-            header_up X-Forwarded-Proto {scheme}
             flush_interval -1
         }
     }
@@ -64,8 +58,6 @@ omniplexity.duckdns.org {
         reverse_proxy backend:8000 {
             header_up Host {host}
             header_up X-Real-IP {remote}
-            header_up X-Forwarded-For {remote}
-            header_up X-Forwarded-Proto {scheme}
         }
     }
 
@@ -74,8 +66,6 @@ omniplexity.duckdns.org {
         reverse_proxy backend:8000 {
             header_up Host {host}
             header_up X-Real-IP {remote}
-            header_up X-Forwarded-For {remote}
-            header_up X-Forwarded-Proto {scheme}
             flush_interval -1
         }
         header Cache-Control "no-store, no-cache, must-revalidate"
@@ -87,8 +77,6 @@ omniplexity.duckdns.org {
         reverse_proxy backend:8000 {
             header_up Host {host}
             header_up X-Real-IP {remote}
-            header_up X-Forwarded-For {remote}
-            header_up X-Forwarded-Proto {scheme}
         }
     }
 
@@ -97,8 +85,6 @@ omniplexity.duckdns.org {
         reverse_proxy backend:8000 {
             header_up Host {host}
             header_up X-Real-IP {remote}
-            header_up X-Forwarded-For {remote}
-            header_up X-Forwarded-Proto {scheme}
         }
     }
 

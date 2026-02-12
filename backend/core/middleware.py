@@ -34,8 +34,8 @@ TRUSTED_PROXY_NETS: List[ipaddress.IPv4Network | ipaddress.IPv6Network] = [
     # Loopback
     ipaddress.ip_network("127.0.0.0/8"),
     ipaddress.ip_network("::1/128"),
-    # Docker bridge (common internal networking)
-    ipaddress.ip_network("172.17.0.0/16"),
+    # Docker bridge/private container networking
+    ipaddress.ip_network("172.16.0.0/12"),
     # Kubernetes pod network (if running in k8s)
     ipaddress.ip_network("10.244.0.0/16"),
     # Additional ranges can be configured via settings
