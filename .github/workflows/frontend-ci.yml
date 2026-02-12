@@ -208,7 +208,7 @@ jobs:
       - name: Start backend
         run: |
           python --version
-          python -m pip install -r backend/requirements.txt
+          python -m pip install -r ../backend/requirements.txt
           export COOKIE_SECURE=false
           export COOKIE_SAMESITE=lax
           export PROVIDER_MODE=mock
@@ -218,7 +218,7 @@ jobs:
           export DATABASE_URL="sqlite:///./.test/omniai_e2e.sqlite3"
           export DATABASE_URL_POSTGRES=""
           mkdir -p .test
-          pushd backend
+          pushd ../backend
           PYTHONPATH=.. alembic upgrade head
           popd
           python -m uvicorn backend.main:app --host 127.0.0.1 --port 8000 &
