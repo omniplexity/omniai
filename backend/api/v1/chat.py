@@ -227,6 +227,93 @@ def _schedule_run_generation(
     _register_run_task(run_id, task)
 
 
+def _is_deterministic_test_mode() -> bool:
+    settings = get_settings()
+    return bool(settings.is_test and settings.e2e_seed_user)
+
+
+def _schedule_deterministic_stream_events(run_id: str) -> None:
+    """Emit deterministic canonical-compatible events asynchronously for CI test mode."""
+
+    async def emit() -> None:
+        session_local = sessionmaker(bind=get_engine())
+        db = session_local()
+        try:
+            chunks = ["Deterministic ", "stream ", "response."]
+            assembled = ""
+            seq = 0
+            for chunk in chunks:
+                run = db.query(ChatRun).filter(ChatRun.id == run_id).first()
+                if not run or run.status == "cancelled":
+                    if run:
+                        seq += 1
+                        db.add(
+                            ChatRunEvent(
+                                run_id=run_id,
+                                seq=seq,
+                                type="run.status",
+                                payload_json={"status": "cancelled", "run_id": run_id},
+                            )
+                        )
+                        db.commit()
+                    return
+                seq += 1
+                db.add(
+                    ChatRunEvent(
+                        run_id=run_id,
+                        seq=seq,
+                        type="message.delta",
+                        payload_json={"delta": chunk},
+                    )
+                )
+                db.commit()
+                assembled += chunk
+                await asyncio.sleep(0.45)
+
+            run = db.query(ChatRun).filter(ChatRun.id == run_id).first()
+            if run and run.status != "cancelled":
+                assistant_msg = Message(
+                    conversation_id=run.conversation_id,
+                    role="assistant",
+                    content=assembled,
+                    provider=run.provider,
+                    model=run.model,
+                )
+                db.add(assistant_msg)
+                db.flush()
+
+                seq += 1
+                db.add(
+                    ChatRunEvent(
+                        run_id=run_id,
+                        seq=seq,
+                        type="message.created",
+                        payload_json={
+                            "id": assistant_msg.id,
+                            "message_id": assistant_msg.id,
+                            "role": "assistant",
+                            "content": assembled,
+                        },
+                    )
+                )
+                seq += 1
+                db.add(
+                    ChatRunEvent(
+                        run_id=run_id,
+                        seq=seq,
+                        type="run.status",
+                        payload_json={"status": "completed", "run_id": run_id, "message_id": f"test-msg-{run_id[:8]}"},
+                    )
+                )
+                run.status = "completed"
+                db.commit()
+        finally:
+            db.close()
+
+    task = asyncio.create_task(emit())
+    _register_run_task(run_id, task)
+
+
 def _message_content_for_retry(db: DBSession, conversation: Conversation, message_id: str) -> str:
     """Resolve message content for retry generation."""
     msg = (
@@ -252,7 +339,7 @@ async def create_chat_run(
 ):
     """Create a new chat run (streaming or non-streaming)."""
     registry = getattr(request.app.state, "provider_registry", None)
-    if not registry:
+    if not registry and not _is_deterministic_test_mode():
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="No providers available")
 
     conversation = db.query(Conversation).filter(
@@ -276,6 +363,10 @@ async def create_chat_run(
             model=body.model,
             retry_from_message_id=body.retry_from_message_id,
         )
+
+        if _is_deterministic_test_mode():
+            _schedule_deterministic_stream_events(run.id)
+            return {"run_id": run.id, "status": run.status}
 
         _schedule_run_generation(
             request=request,
@@ -315,7 +406,7 @@ async def retry_chat_run(
 ):
     """Retry a message in a conversation."""
     registry = getattr(request.app.state, "provider_registry", None)
-    if not registry:
+    if not registry and not _is_deterministic_test_mode():
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="No providers available")
 
     conversation = db.query(Conversation).filter(
@@ -334,6 +425,10 @@ async def retry_chat_run(
         provider_name=body.provider,
         model=body.model,
     )
+
+    if _is_deterministic_test_mode():
+        _schedule_deterministic_stream_events(run.id)
+        return {"run_id": run.id, "status": run.status}
 
     retry_content = _message_content_for_retry(db, conversation, body.message_id)
     _schedule_run_generation(
