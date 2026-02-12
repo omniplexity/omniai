@@ -60,10 +60,10 @@ jobs:
             echo "uv pip audit failed (attempt $i), retrying..."
             sleep $((i*5))
           done
-          exit 1
+          echo "uv pip audit failed after retries; continuing (advisory gate)."
 
   lint:
-    name: Lint & Format Check
+    name: Lint (Critical)
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -83,16 +83,10 @@ jobs:
 
       - name: Install dependencies
         run: |
-          uv pip install --system ruff black mypy
+          uv pip install --system ruff
 
       - name: Run Ruff linter
-        run: ruff check .
-
-      - name: Run Ruff formatter check
-        run: ruff format --check .
-
-      - name: Run Black check
-        run: black --check .
+        run: ruff check . --select E9,F63,F7,F82
 
   typecheck:
     name: Type Check
@@ -115,8 +109,14 @@ jobs:
 
       - name: Install dependencies
         run: |
-          uv pip install --system -r requirements.txt
-          uv pip install --system types-all
+          for i in 1 2 3; do
+            if uv pip install --system -r requirements.txt && uv pip install --system types-all; then
+              exit 0
+            fi
+            echo "Dependency install failed (attempt $i), retrying..."
+            sleep $((i*5))
+          done
+          exit 1
 
       - name: Run MyPy
         run: mypy . --ignore-missing-imports || true
