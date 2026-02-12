@@ -172,6 +172,7 @@ jobs:
       E2E_USERNAME: ci_e2e_user
       E2E_PASSWORD: ci_e2e_pass
       E2E_BASE_URL: http://127.0.0.1:8000
+      FRONTEND_URL: http://127.0.0.1:5173
     defaults:
       run:
         working-directory: ./frontend
@@ -248,11 +249,11 @@ jobs:
         run: |
           npm run build
           node ../scripts/inject-build-info.js dist/runtime-config.json http://127.0.0.1:8000
-          npm run preview -- --host 127.0.0.1 --port 4173 &
+          npm run preview -- --host 127.0.0.1 --port 5173 &
 
           # Wait for frontend preview server
           for i in {1..60}; do
-            if curl -fsS "http://127.0.0.1:4173" >/dev/null; then
+            if curl -fsS "http://127.0.0.1:5173" >/dev/null; then
               echo "Frontend preview is healthy"
               break
             fi
@@ -268,7 +269,7 @@ jobs:
           BACKEND_BASE_URL: http://127.0.0.1:8000
           E2E_USERNAME: ci_e2e_user
           E2E_PASSWORD: ci_e2e_pass
-          ORIGIN: http://127.0.0.1:4173
+          ORIGIN: http://127.0.0.1:5173
         shell: bash
 
       - name: Run E2E tests
@@ -276,7 +277,7 @@ jobs:
           ENVIRONMENT: test
           E2E_SEED_USER: "1"
           PLAYWRIGHT_WEB_SERVER: "0"
-          FRONTEND_URL: http://127.0.0.1:4173
+          FRONTEND_URL: http://127.0.0.1:5173
           BACKEND_BASE_URL: http://127.0.0.1:8000
           E2E_BASE_URL: http://127.0.0.1:8000
           E2E_USERNAME: ci_e2e_user
