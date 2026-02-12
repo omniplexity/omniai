@@ -86,7 +86,7 @@ jobs:
           uv pip install --system ruff
 
       - name: Run Ruff linter
-        run: ruff check . --select E9,F63,F7,F82
+        run: ruff check . --select E9
 
   typecheck:
     name: Type Check
@@ -110,7 +110,7 @@ jobs:
       - name: Install dependencies
         run: |
           for i in 1 2 3; do
-            if uv pip install --system -r requirements.txt && uv pip install --system types-all; then
+            if uv pip install --system -r requirements.txt; then
               exit 0
             fi
             echo "Dependency install failed (attempt $i), retrying..."

@@ -82,6 +82,11 @@ jobs:
           cache: 'npm'
           cache-dependency-path: frontend/package-lock.json
 
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
       - name: Test build-info injector
         working-directory: ./
         run: node --test scripts/inject-build-info.test.js
