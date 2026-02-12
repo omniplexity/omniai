@@ -7,7 +7,7 @@ This directory contains all deployment configurations for OmniAI, supporting mul
 ### Local Development (Docker Compose)
 
 ```bash
-cd OmniAI-backend
+cd deploy
 docker compose up -d
 ```
 
@@ -23,7 +23,7 @@ helm install omniai . --namespace omniai --create-namespace
 
 | Method | Best For | Complexity | Scaling |
 |--------|----------|------------|---------|
-| [Docker Compose](../OmniAI-backend/docker-compose.yml) | Local dev, single server | Low | Manual |
+| [Docker Compose](docker-compose.yml) | Local dev, single server | Low | Manual |
 | [Docker + Nginx](nginx/) | Small production | Low-Medium | Manual |
 | [Docker + Caddy](caddy/) | Small-Medium production | Low | Manual |
 | [Docker + Traefik](traefik/) | Medium production | Medium | Manual |
@@ -153,8 +153,15 @@ backend:
 
 - `GET /health` - Liveness probe
 - `GET /readyz` - Readiness probe
-- `GET /api/diag/lite` - Lightweight health check
-- `GET /api/diag` - Full diagnostics (admin only)
+- `GET /v1/meta` - Canonical metadata/auth status
+- `GET /api/diag/lite` - Lightweight diagnostics (compat/ops)
+- `GET /api/diag` - Full diagnostics (admin only, compat/ops)
+
+### API Routing Policy
+
+- Canonical application API surface is `/v1/*`.
+- `/api/*` exists for explicit compatibility and ops-only endpoints during migration.
+- New frontend clients should not add new `/api/*` dependencies.
 
 ### Prometheus Metrics
 
