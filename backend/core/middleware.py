@@ -382,9 +382,9 @@ class HotPathRateLimitMiddleware(BaseHTTPMiddleware):
     """Stricter rate limiting for hot-path endpoints.
     
     Applies additional rate limits to endpoints that are commonly targeted:
-    - /api/auth/login - Brute force protection
+    - /api/auth/login and /v1/auth/login - Brute force protection
     - /api/auth/register - Account enumeration protection
-    - /api/auth/invite* - Invite spam protection
+    - /api/auth/invite* and /api/admin/invites* - Invite spam protection
     - /v1/chat/stream GET - Streaming abuse protection
     
     Security exemptions:
@@ -393,8 +393,8 @@ class HotPathRateLimitMiddleware(BaseHTTPMiddleware):
     """
 
     # Paths that need stricter rate limiting (use normalized paths)
-    AUTH_PATHS = frozenset({"/api/auth/login", "/api/auth/register"})
-    INVITE_PATHS = frozenset({"/api/auth/invite", "/api/admin/invite"})
+    AUTH_PATHS = frozenset({"/api/auth/login", "/v1/auth/login", "/api/auth/register"})
+    INVITE_PATHS = frozenset({"/api/auth/invite", "/api/admin/invite", "/api/admin/invites"})
     # Only GET /v1/chat/stream needs concurrent stream limiting
     # POST /v1/chat creates runs and should use regular rate limits
     STREAM_PATHS = frozenset({"/v1/chat/stream"})

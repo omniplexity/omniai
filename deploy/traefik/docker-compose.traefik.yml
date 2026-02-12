@@ -58,22 +58,22 @@ services:
       - "traefik.http.routers.omniai-health.tls.certresolver=letsencrypt"
       - "traefik.http.routers.omniai-health.priority=100"
       
-      # SSE streaming - no buffering
-      - "traefik.http.routers.omniai-stream.rule=Host(`omniai.yourdomain.com`) && PathPrefix(`/api/chat/stream`)"
+      # SSE streaming - no buffering (canonical + legacy compat)
+      - "traefik.http.routers.omniai-stream.rule=Host(`omniai.yourdomain.com`) && (PathPrefix(`/v1/chat/stream`) || PathPrefix(`/api/chat/stream`))"
       - "traefik.http.routers.omniai-stream.service=omniai"
       - "traefik.http.routers.omniai-stream.tls.certresolver=letsencrypt"
       - "traefik.http.routers.omniai-stream.middlewares=sse-headers@file"
       - "traefik.http.routers.omniai-stream.priority=90"
       
-      # Auth endpoints - strict rate limiting
-      - "traefik.http.routers.omniai-auth.rule=Host(`omniai.yourdomain.com`) && PathPrefix(`/api/auth/`)"
+      # Auth endpoints - strict rate limiting (canonical + legacy compat)
+      - "traefik.http.routers.omniai-auth.rule=Host(`omniai.yourdomain.com`) && (PathPrefix(`/v1/auth/`) || PathPrefix(`/api/auth/`))"
       - "traefik.http.routers.omniai-auth.service=omniai"
       - "traefik.http.routers.omniai-auth.tls.certresolver=letsencrypt"
       - "traefik.http.routers.omniai-auth.middlewares=auth-rate-limit@file,security-headers@file"
       - "traefik.http.routers.omniai-auth.priority=80"
       
-      # API endpoints - rate limiting
-      - "traefik.http.routers.omniai-api.rule=Host(`omniai.yourdomain.com`) && PathPrefix(`/api/`)"
+      # API endpoints - rate limiting (canonical + legacy compat)
+      - "traefik.http.routers.omniai-api.rule=Host(`omniai.yourdomain.com`) && (PathPrefix(`/v1/`) || PathPrefix(`/api/`))"
       - "traefik.http.routers.omniai-api.service=omniai"
       - "traefik.http.routers.omniai-api.tls.certresolver=letsencrypt"
       - "traefik.http.routers.omniai-api.middlewares=rate-limit@file,security-headers@file,compress@file"
