@@ -23,4 +23,20 @@ describe("feature flags precedence", () => {
     setFlagsFromMeta({ flags: { effective: { workspace: false } } });
     expect(getFlags().workspace).toBe(false);
   });
+
+  it("retains backend-effective overrides across runtime rehydrate", () => {
+    setFlagsFromRuntime({ FEATURE_FLAGS: { workspace: false, tools: false } });
+    setFlagsFromMeta({ flags: { effective: { workspace: true, tools: true } } });
+    expect(getFlags().workspace).toBe(true);
+    expect(getFlags().tools).toBe(true);
+
+    // Simulate logout/login runtime refresh followed by backend meta refresh.
+    setFlagsFromRuntime({ FEATURE_FLAGS: { workspace: false, tools: false } });
+    expect(getFlags().workspace).toBe(false);
+    expect(getFlags().tools).toBe(false);
+
+    setFlagsFromMeta({ flags: { effective: { workspace: true, tools: true } } });
+    expect(getFlags().workspace).toBe(true);
+    expect(getFlags().tools).toBe(true);
+  });
 });

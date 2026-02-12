@@ -18,25 +18,44 @@ const DEFAULT_FLAGS: Flags = {
 
 let _flags: Flags = { ...DEFAULT_FLAGS };
 
+const RUNTIME_FLAG_MAP: Record<string, keyof Flags> = {
+  workspace: "workspace",
+  memoryPanel: "memoryPanel",
+  knowledgePanel: "knowledgePanel",
+  voice: "voice",
+  tools: "tools",
+  adminOps: "adminOps",
+};
+
+const META_FLAG_MAP: Record<string, keyof Flags> = {
+  workspace: "workspace",
+  memory: "memoryPanel",
+  knowledge: "knowledgePanel",
+  voice: "voice",
+  tools: "tools",
+  admin_ops: "adminOps",
+};
+
 export function setFlagsFromRuntime(cfg: { FEATURE_FLAGS?: Record<string, boolean> }) {
   const f = cfg.FEATURE_FLAGS ?? {};
-  _flags = {
-    workspace: Boolean(f.workspace),
-    memoryPanel: Boolean(f.memoryPanel),
-    knowledgePanel: Boolean(f.knowledgePanel),
-    voice: Boolean(f.voice),
-    tools: Boolean(f.tools),
-    adminOps: Boolean(f.adminOps)
-  };
+  const next = { ...DEFAULT_FLAGS };
+  for (const [sourceKey, targetKey] of Object.entries(RUNTIME_FLAG_MAP)) {
+    next[targetKey] = Boolean(f[sourceKey]);
+  }
+  _flags = next;
 }
 
 export function setFlagsFromMeta(meta: { flags?: Record<string, unknown> } | undefined): void {
   const flags = meta?.flags ?? {};
   const effective = (flags.effective as Record<string, unknown> | undefined) ?? flags;
-  const nextWorkspace = effective.workspace;
-  if (typeof nextWorkspace === "boolean") {
-    _flags = { ..._flags, workspace: nextWorkspace };
+  const next = { ..._flags };
+  for (const [sourceKey, targetKey] of Object.entries(META_FLAG_MAP)) {
+    const value = effective[sourceKey];
+    if (typeof value === "boolean") {
+      next[targetKey] = value;
+    }
   }
+  _flags = next;
 }
 
 export function getFlags(): Flags {

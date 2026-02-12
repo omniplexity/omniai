@@ -5,9 +5,10 @@ import { getFlags, setFlagsFromMeta, setFlagsFromRuntime } from "./core/config/f
 import { getMeta } from "./core/meta/metaApi";
 import type { MetaResponse } from "./core/meta/metaApi";
 import { useHashLocation, Link } from "./core/router/hashRouter";
-import { Layout } from "./components/Layout";
+import { Shell } from "./app/Shell";
 import { ErrorScreen } from "./components/ErrorScreen";
 import { Banner } from "./components/Banner";
+import { ToastCenter } from "./ui/ToastCenter";
 
 import { LoginRoute } from "./routes/login";
 import { ChatRoute } from "./routes/chat";
@@ -18,6 +19,7 @@ import { WorkspaceRoute } from "./routes/workspace";
 
 import { authStore, hydrateAuth } from "./core/auth/authStore";
 import { ConversationSidebar } from "./components/ConversationSidebar";
+import { applyMetaSnapshot } from "./core/meta/metaStore";
 
 function parseRoute(path: string): { name: string; threadId?: string; projectId?: string } {
   const clean = (path.split("?")[0] ?? "").split("#")[0] ?? "";
@@ -52,6 +54,7 @@ export function App(props: { runtimeConfig: RuntimeConfig; initialBootError?: st
   setRuntimeConfig(props.runtimeConfig);
   setFlagsFromRuntime(props.runtimeConfig);
   setFlagsFromMeta(props.initialMeta);
+  applyMetaSnapshot(props.initialMeta);
   const [bootError, setBootError] = useState<string | null>(props.initialBootError ?? null);
   const [bootRetrying, setBootRetrying] = useState(false);
 
@@ -71,6 +74,7 @@ export function App(props: { runtimeConfig: RuntimeConfig; initialBootError?: st
     try {
       const meta = await getMeta();
       setFlagsFromMeta(meta);
+      applyMetaSnapshot(meta);
       setBootError(null);
       await hydrateAuth();
     } catch (e: any) {
@@ -83,20 +87,19 @@ export function App(props: { runtimeConfig: RuntimeConfig; initialBootError?: st
   // Block on auth only for protected routes; allow login page to render while meta is pending.
   if (routeRequiresAuth(r.name) && auth.status === "unknown") {
     return (
-      <Layout
-        nav={
+      <Shell
+        left={
           <div class="nav">
             <Link class="navItem" to="/login">Login</Link>
           </div>
         }
-      >
-        <div class="page pad">
+        main={<div class="page pad">
           <div class="card wide">
             <h1 class="h1">Loading session…</h1>
             <p class="muted">Checking authentication with backend.</p>
           </div>
-        </div>
-      </Layout>
+        </div>}
+      />
     );
   }
 
@@ -111,22 +114,30 @@ export function App(props: { runtimeConfig: RuntimeConfig; initialBootError?: st
   const role = String(auth.role ?? "").toLowerCase();
   const isAdmin = role === "admin" || role === "owner" || role === "root";
 
-  return (
-    <Layout
-      nav={
-        <div class="nav">
-          <Link class="navItem" to="/login">Login</Link>
-          <Link class="navItem" to="/chat">Chat</Link>
-          {workspaceEnabled ? <Link class="navItem" to="/workspace">Workspace</Link> : null}
-          <Link class="navItem" to="/settings">Settings</Link>
-          {isAdmin ? <Link class="navItem" to="/admin">Admin</Link> : null}
-          {isAdmin ? <Link class="navItem" to="/ops">Ops</Link> : null}
-        </div>
-      }
-      sidebar={
-        auth.status === "authenticated" ? <ConversationSidebar /> : undefined
-      }
-    >
+  const left = auth.status === "authenticated" ? (
+    <div class="conversation-sidebar">
+      <div class="nav">
+        <Link class="navItem" to="/chat">Chat</Link>
+        {workspaceEnabled ? <Link class="navItem" to="/workspace">Workspace</Link> : null}
+        <Link class="navItem" to="/settings">Settings</Link>
+        {isAdmin ? <Link class="navItem" to="/admin">Admin</Link> : null}
+        {isAdmin ? <Link class="navItem" to="/ops">Ops</Link> : null}
+      </div>
+      <ConversationSidebar />
+    </div>
+  ) : (
+    <div class="nav">
+      <Link class="navItem" to="/login">Login</Link>
+      <Link class="navItem" to="/chat">Chat</Link>
+      {workspaceEnabled ? <Link class="navItem" to="/workspace">Workspace</Link> : null}
+      <Link class="navItem" to="/settings">Settings</Link>
+      {isAdmin ? <Link class="navItem" to="/admin">Admin</Link> : null}
+      {isAdmin ? <Link class="navItem" to="/ops">Ops</Link> : null}
+    </div>
+  );
+
+  const main = (
+    <>
       {bootError ? (
         <div class="banner error" role="alert" data-testid="backend-error-banner">
           <span>{bootError}</span>
@@ -142,7 +153,7 @@ export function App(props: { runtimeConfig: RuntimeConfig; initialBootError?: st
         </div>
       ) : null}
       {auth.lastError ? <Banner kind="error" text={auth.lastError} /> : null}
-
+      <ToastCenter />
       {r.name === "login" && <LoginRoute />}
       {r.name === "chat" && auth.status === "authenticated" && <ChatRoute threadId={r.threadId} />}
       {r.name === "workspace" && auth.status === "authenticated" ? (
@@ -153,14 +164,14 @@ export function App(props: { runtimeConfig: RuntimeConfig; initialBootError?: st
         )
       ) : null}
       {r.name === "settings" && auth.status === "authenticated" && <SettingsRoute />}
-
       {r.name === "admin" && auth.status === "authenticated" ? (
         isAdmin ? <AdminRoute /> : <ErrorScreen title="Forbidden" detail="Admin role required." />
       ) : null}
-
       {r.name === "ops" && auth.status === "authenticated" ? (
         isAdmin ? <OpsRoute /> : <ErrorScreen title="Forbidden" detail="Admin role required." />
       ) : null}
-    </Layout>
+    </>
   );
+
+  return <Shell left={left} main={main} />;
 }

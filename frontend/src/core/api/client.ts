@@ -45,7 +45,8 @@ export function readCookie(name: string): string | null {
 
 export async function bootstrapCsrf(baseUrl?: string): Promise<string> {
   const root = resolveBaseUrl(baseUrl);
-  const url = normalizeUrl(endpoints.csrfBootstrap[0], root);
+  const csrfPath = endpoints.csrfBootstrap[0] ?? "/v1/auth/csrf/bootstrap";
+  const url = normalizeUrl(csrfPath, root);
   const res = await fetch(url, {
     method: "GET",
     credentials: "include",
@@ -85,7 +86,8 @@ export async function syncAuthFromMeta(baseUrl?: string): Promise<void> {
   }
 
   const root = resolveBaseUrl(baseUrl);
-  const url = normalizeUrl(endpoints.meta[0], root);
+  const metaPath = endpoints.meta[0] ?? "/v1/meta";
+  const url = normalizeUrl(metaPath, root);
   inFlightMetaSync = (async () => {
     try {
       await fetch(url, {

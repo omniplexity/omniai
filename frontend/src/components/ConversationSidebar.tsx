@@ -8,6 +8,7 @@ import {
   renameCurrentConversation,
   setCurrentConversation
 } from "../core/conversation/conversationStore";
+import { pushToast } from "../ui/toastStore";
 
 export function ConversationSidebar() {
   const [store, setStore] = useState(conversationStore.get());
@@ -37,7 +38,11 @@ export function ConversationSidebar() {
       const conv = await createNewConversation();
       navigate(`/chat/${conv.id}`);
     } catch (e) {
-      console.error("Failed to create conversation:", e);
+      pushToast({
+        message: (e as any)?.message ?? "Failed to create conversation.",
+        backendCode: (e as any)?.backendCode ?? null,
+        requestId: (e as any)?.requestId ?? null,
+      });
     } finally {
       setCreating(false);
     }
@@ -60,7 +65,11 @@ export function ConversationSidebar() {
       try {
         await renameCurrentConversation(editTitle.trim());
       } catch (e) {
-        console.error("Failed to rename:", e);
+        pushToast({
+          message: (e as any)?.message ?? "Failed to rename conversation.",
+          backendCode: (e as any)?.backendCode ?? null,
+          requestId: (e as any)?.requestId ?? null,
+        });
       }
     }
     setEditingId(null);
@@ -77,7 +86,11 @@ export function ConversationSidebar() {
           navigate("/chat");
         }
       } catch (e) {
-        console.error("Failed to delete:", e);
+        pushToast({
+          message: (e as any)?.message ?? "Failed to delete conversation.",
+          backendCode: (e as any)?.backendCode ?? null,
+          requestId: (e as any)?.requestId ?? null,
+        });
       }
     }
   }
