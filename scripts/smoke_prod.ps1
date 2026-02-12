@@ -93,6 +93,10 @@ $bodyRun = Join-Path $tmp "run.body.json"
 $bodyStream = Join-Path $tmp "stream.body.txt"
 $bodyRun2 = Join-Path $tmp "run2.body.json"
 $bodyCancel = Join-Path $tmp "cancel.body.json"
+$convPayloadFile = Join-Path $tmp "conv.payload.json"
+$runPayloadFile = Join-Path $tmp "run.payload.json"
+$run2PayloadFile = Join-Path $tmp "run2.payload.json"
+$cancelPayloadFile = Join-Path $tmp "cancel.payload.json"
 $payloadFile = Join-Path $tmp "login.payload.json"
 
 try {
@@ -166,28 +170,32 @@ try {
   }
 
   # 4) POST /v1/conversations
+  Set-Content -Path $convPayloadFile -Value (@{ title = "Smoke Conversation" } | ConvertTo-Json -Compress) -Encoding UTF8
   $convCode = curl.exe -sS -o $bodyConv -w "%{http_code}" `
     -c $cookieJar -b $cookieJar `
     -X POST "$baseUrl/v1/conversations" `
     -H "Origin: $origin" `
     -H "X-CSRF-Token: $csrf" `
     -H "Content-Type: application/json" `
-    -d '{"title":"Smoke Conversation"}'
+    --data-binary "@$convPayloadFile"
   if (@("200", "201") -notcontains $convCode) { Fail "POST /v1/conversations returned $convCode" }
   $convJson = Get-Content $bodyConv -Raw | ConvertFrom-Json
-  $convId = [string]($convJson.id ?? $convJson.conversation_id)
+  $convId = [string]$convJson.id
+  if ([string]::IsNullOrWhiteSpace($convId)) {
+    $convId = [string]$convJson.conversation_id
+  }
   if ([string]::IsNullOrWhiteSpace($convId)) { Fail "conversation id missing" }
   Pass "Conversation created"
 
   # 5) POST /v1/chat
-  $runBody = @{ conversation_id = $convId; input = "smoke test"; stream = $true } | ConvertTo-Json -Compress
+  Set-Content -Path $runPayloadFile -Value (@{ conversation_id = $convId; input = "smoke test"; stream = $true } | ConvertTo-Json -Compress) -Encoding UTF8
   $runCode = curl.exe -sS -o $bodyRun -w "%{http_code}" `
     -c $cookieJar -b $cookieJar `
     -X POST "$baseUrl/v1/chat" `
     -H "Origin: $origin" `
     -H "X-CSRF-Token: $csrf" `
     -H "Content-Type: application/json" `
-    --data-binary $runBody
+    --data-binary "@$runPayloadFile"
   if ($runCode -ne "200") { Fail "POST /v1/chat returned $runCode" }
   $runJson = Get-Content $bodyRun -Raw | ConvertFrom-Json
   $runId = [string]$runJson.run_id
@@ -212,27 +220,27 @@ try {
   Pass "SSE stream validated"
 
   # 7) Cancel flow
-  $run2Body = @{ conversation_id = $convId; input = "please stream a long answer"; stream = $true } | ConvertTo-Json -Compress
+  Set-Content -Path $run2PayloadFile -Value (@{ conversation_id = $convId; input = "please stream a long answer"; stream = $true } | ConvertTo-Json -Compress) -Encoding UTF8
   $run2Code = curl.exe -sS -o $bodyRun2 -w "%{http_code}" `
     -c $cookieJar -b $cookieJar `
     -X POST "$baseUrl/v1/chat" `
     -H "Origin: $origin" `
     -H "X-CSRF-Token: $csrf" `
     -H "Content-Type: application/json" `
-    --data-binary $run2Body
+    --data-binary "@$run2PayloadFile"
   if ($run2Code -ne "200") { Fail "POST /v1/chat (cancel path) returned $run2Code" }
   $run2Json = Get-Content $bodyRun2 -Raw | ConvertFrom-Json
   $run2Id = [string]$run2Json.run_id
   if ([string]::IsNullOrWhiteSpace($run2Id)) { Fail "run_id missing for cancel path" }
 
-  $cancelBody = @{ run_id = $run2Id } | ConvertTo-Json -Compress
+  Set-Content -Path $cancelPayloadFile -Value (@{ run_id = $run2Id } | ConvertTo-Json -Compress) -Encoding UTF8
   $cancelCode = curl.exe -sS -o $bodyCancel -w "%{http_code}" `
     -c $cookieJar -b $cookieJar `
     -X POST "$baseUrl/v1/chat/cancel" `
     -H "Origin: $origin" `
     -H "X-CSRF-Token: $csrf" `
     -H "Content-Type: application/json" `
-    --data-binary $cancelBody
+    --data-binary "@$cancelPayloadFile"
   if ($cancelCode -ne "200") { Fail "POST /v1/chat/cancel returned $cancelCode" }
   Pass "Cancel endpoint validated"
 
