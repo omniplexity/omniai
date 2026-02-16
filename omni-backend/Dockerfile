@@ -11,9 +11,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
   && rm -rf /var/lib/apt/lists/*
 
-# Copy source first
-COPY omni_backend ./omni_backend
+# Copy pyproject.toml first for better layer caching
 COPY pyproject.toml ./
+
+# Copy source
+COPY omni_backend ./omni_backend
 
 # Install pip and the package
 RUN pip install --no-cache-dir --upgrade pip && \

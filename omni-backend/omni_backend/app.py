@@ -279,7 +279,8 @@ class RequestSizeLimitMiddleware:
         if scope["type"] != "http":
             await self.app(scope, receive, send)
             return
-        if scope.get("method") == "PUT":
+        # Skip body check for methods that don't carry a meaningful body
+        if scope.get("method") in {"GET", "HEAD", "OPTIONS", "PUT"}:
             await self.app(scope, receive, send)
             return
         req = Request(scope, receive)
@@ -288,8 +289,14 @@ class RequestSizeLimitMiddleware:
             response = JSONResponse({"detail": "request body too large"}, status_code=413)
             await response(scope, receive, send)
             return
+        body_sent = False
         async def receive_again():
-            return {"type": "http.request", "body": body, "more_body": False}
+            nonlocal body_sent
+            if not body_sent:
+                body_sent = True
+                return {"type": "http.request", "body": body, "more_body": False}
+            # After body replay, delegate to original receive for disconnect detection
+            return await receive()
         await self.app(scope, receive_again, send)
 
 def _schema_dir() -> Path:
@@ -450,46 +457,74 @@ def create_app() -> FastAPI:
     if origins:
         app.add_middleware(CORSMiddleware, allow_origins=origins, allow_credentials=True, allow_methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"], allow_headers=["Content-Type", "Last-Event-ID", "X-Omni-CSRF", "X-Omni-Idempotency-Key"])
 
-    @app.middleware("http")
-    async def session_baseline(request: Request, call_next):
-        request.state.session_id = "session-baseline"
-        request.state.user_id = None
-        request.state.auth_session_id = None
-        request.state.csrf_expected = None
-        sid = request.cookies.get(settings.session_cookie_name)
-        if sid:
-            session = app.state.db.get_session(sid)
-            if session:
-                try:
-                    if datetime.fromisoformat(session["expires_at"]) > datetime.now(UTC):
-                        request.state.user_id = session["user_id"]
-                        request.state.auth_session_id = session["session_id"]
-                        request.state.csrf_expected = _csrf_token(session["csrf_secret"], session["session_id"])
-                        if settings.session_sliding_enabled:
-                            remaining = (datetime.fromisoformat(session["expires_at"]) - datetime.now(UTC)).total_seconds()
-                            if remaining < settings.session_sliding_window_seconds:
-                                new_exp = (datetime.now(UTC) + timedelta(seconds=settings.session_ttl_seconds)).isoformat()
-                                app.state.db.extend_session(session["session_id"], new_exp)
-                    else:
-                        app.state.db.delete_session(sid)
-                except Exception:
-                    pass
+    # --- Raw ASGI middleware (avoids BaseHTTPMiddleware which breaks SSE streaming) ---
+    class SessionBaselineMiddleware:
+        """Session + CSRF middleware as raw ASGI to preserve StreamingResponse."""
 
-        if request.method in {"POST", "PATCH", "DELETE"} and request.url.path not in {"/v1/auth/login", "/v1/auth/register"} and not request.url.path.startswith("/v2/"):
-            if not request.state.user_id:
-                return JSONResponse({"detail": "authentication required"}, status_code=401)
-            csrf_header = request.headers.get("X-Omni-CSRF", "")
-            if not request.state.csrf_expected or not hmac.compare_digest(csrf_header, request.state.csrf_expected):
-                # best-effort auth audit for csrf failures
-                uid = request.state.user_id or "unknown"
-                run_id = app.state.db.latest_run_for_user(uid) if uid != "unknown" else None
-                if run_id:
+        def __init__(self, asgi_app):
+            self.app = asgi_app
+
+        async def __call__(self, scope, receive, send):
+            if scope["type"] != "http":
+                await self.app(scope, receive, send)
+                return
+
+            # Ensure scope["state"] exists for request.state access
+            if "state" not in scope:
+                scope["state"] = {}
+            scope["state"]["session_id"] = "session-baseline"
+            scope["state"]["user_id"] = None
+            scope["state"]["auth_session_id"] = None
+            scope["state"]["csrf_expected"] = None
+
+            request = Request(scope, receive, send)
+            sid = request.cookies.get(settings.session_cookie_name)
+            if sid:
+                session = app.state.db.get_session(sid)
+                if session:
                     try:
-                        append_run_event(run_id, {"kind": "auth_csrf_failed", "actor": "system", "payload": {"user_id": uid, "path": request.url.path, "failed_at": datetime.now(UTC).isoformat()}, "privacy": {"redact_level": "none", "contains_secrets": False}, "pins": DEFAULT_PINS})
+                        if datetime.fromisoformat(session["expires_at"]) > datetime.now(UTC):
+                            scope["state"]["user_id"] = session["user_id"]
+                            scope["state"]["auth_session_id"] = session["session_id"]
+                            scope["state"]["csrf_expected"] = _csrf_token(session["csrf_secret"], session["session_id"])
+                            if settings.session_sliding_enabled:
+                                remaining = (datetime.fromisoformat(session["expires_at"]) - datetime.now(UTC)).total_seconds()
+                                if remaining < settings.session_sliding_window_seconds:
+                                    new_exp = (datetime.now(UTC) + timedelta(seconds=settings.session_ttl_seconds)).isoformat()
+                                    app.state.db.extend_session(session["session_id"], new_exp)
+                        else:
+                            app.state.db.delete_session(sid)
                     except Exception:
                         pass
-                return JSONResponse({"detail": "csrf validation failed"}, status_code=403)
-        return await call_next(request)
+
+            method = scope.get("method", "")
+            path = scope.get("path", "")
+            if method in {"POST", "PATCH", "DELETE"} and path not in {"/v1/auth/login", "/v1/auth/register"} and not path.startswith("/v2/"):
+                if not scope["state"]["user_id"]:
+                    resp = JSONResponse({"detail": "authentication required"}, status_code=401)
+                    await resp(scope, receive, send)
+                    return
+                csrf_header = ""
+                for hdr_name, hdr_val in scope.get("headers", []):
+                    if hdr_name == b"x-omni-csrf":
+                        csrf_header = hdr_val.decode("latin-1")
+                        break
+                csrf_expected = scope["state"]["csrf_expected"]
+                if not csrf_expected or not hmac.compare_digest(csrf_header, csrf_expected):
+                    uid = scope["state"]["user_id"] or "unknown"
+                    run_id = app.state.db.latest_run_for_user(uid) if uid != "unknown" else None
+                    if run_id:
+                        try:
+                            append_run_event(run_id, {"kind": "auth_csrf_failed", "actor": "system", "payload": {"user_id": uid, "path": path, "failed_at": datetime.now(UTC).isoformat()}, "privacy": {"redact_level": "none", "contains_secrets": False}, "pins": DEFAULT_PINS})
+                        except Exception:
+                            pass
+                    resp = JSONResponse({"detail": "csrf validation failed"}, status_code=403)
+                    await resp(scope, receive, send)
+                    return
+
+            await self.app(scope, receive, send)
+
+    app.add_middleware(SessionBaselineMiddleware)
 
     def append_run_event(run_id: str, event: dict[str, Any]) -> dict[str, Any]:
         ctx = app.state.db.get_run_context(run_id)
