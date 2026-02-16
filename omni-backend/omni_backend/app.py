@@ -447,7 +447,7 @@ def create_app() -> FastAPI:
     app.add_middleware(RequestSizeLimitMiddleware, max_bytes=settings.max_request_bytes)
     origins = settings.cors_origins
     if origins:
-        app.add_middleware(CORSMiddleware, allow_origins=origins, allow_credentials=False, allow_methods=["GET", "POST", "DELETE", "PATCH"], allow_headers=["Content-Type", "Last-Event-ID", "X-Omni-CSRF"])
+        app.add_middleware(CORSMiddleware, allow_origins=origins, allow_credentials=True, allow_methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"], allow_headers=["Content-Type", "Last-Event-ID", "X-Omni-CSRF", "X-Omni-Idempotency-Key"])
 
     @app.middleware("http")
     async def session_baseline(request: Request, call_next):
