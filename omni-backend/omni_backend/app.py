@@ -120,7 +120,8 @@ class CollectionCreateRequest(BaseModel):
     run_id: str
 
 class UpdateMeRequest(BaseModel):
-    display_name: str
+    display_name: str | None = None
+    avatar_url: str | None = None
 
 class ProjectMemberRequest(BaseModel):
     user_id: str
@@ -474,7 +475,7 @@ def create_app() -> FastAPI:
                 except Exception:
                     pass
 
-        if request.method in {"POST", "PATCH", "DELETE"} and request.url.path not in {"/v1/auth/login", "/v1/auth/register"}:
+        if request.method in {"POST", "PATCH", "DELETE"} and request.url.path not in {"/v1/auth/login", "/v1/auth/register"} and not request.url.path.startswith("/v2/"):
             if not request.state.user_id:
                 return JSONResponse({"detail": "authentication required"}, status_code=401)
             csrf_header = request.headers.get("X-Omni-CSRF", "")
@@ -1079,10 +1080,15 @@ def create_app() -> FastAPI:
     def patch_me(payload: UpdateMeRequest, request: Request):
         if not request.state.user_id:
             raise HTTPException(status_code=401, detail="authentication required")
-        updated = request.app.state.db.update_user_display_name(request.state.user_id, payload.display_name)
-        if not updated:
-            raise HTTPException(status_code=404, detail="user not found")
-        return updated
+        if payload.display_name is not None:
+            updated = request.app.state.db.update_user_display_name(request.state.user_id, payload.display_name)
+            if not updated:
+                raise HTTPException(status_code=404, detail="user not found")
+        if payload.avatar_url is not None:
+            updated = request.app.state.db.update_user_avatar(request.state.user_id, payload.avatar_url)
+            if not updated:
+                raise HTTPException(status_code=404, detail="user not found")
+        return request.app.state.db.get_user(request.state.user_id)
 
     @app.get("/v1/projects/{project_id}/members")
     def list_project_members(project_id: str, request: Request):
@@ -2893,5 +2899,16 @@ def create_app() -> FastAPI:
             "mode": payload.mode,
             "event_id": assistant_event["event_id"],
         }
+
+    # --- V2 subsystem lifecycle ---
+    from .v2.setup import setup_v2, teardown_v2
+
+    @app.on_event("startup")
+    async def _v2_startup():
+        await setup_v2(app)
+
+    @app.on_event("shutdown")
+    async def _v2_shutdown():
+        await teardown_v2(app)
 
     return app
