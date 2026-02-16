@@ -1,4 +1,26 @@
 services:
+  # PostgreSQL for V2
+  postgres:
+    image: postgres:16-alpine
+    container_name: omni-postgres
+    environment:
+      POSTGRES_USER: omni
+      POSTGRES_PASSWORD: omni_dev_pass
+      POSTGRES_DB: omniai
+    ports:
+      - "5432:5432"
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U omni -d omniai"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
+    restart: unless-stopped
+    networks:
+      - omni-network
+
   # Backend API service
   omni-backend:
     build:
@@ -20,9 +42,12 @@ services:
       OMNI_DEV_LOGIN_PASSWORD: "loeSqkosMZjDVda7Ns02mi8l1_fkx_-0Y_Lqo9MYYqGcYnLrGzJtSfDWawad3WZIad1mk8GdP5ZTwLcbMYr1kQ"
       # V2 settings
       OMNI_ENV: "dev"
-      OMNI_V2_DATABASE_URL: "sqlite+aiosqlite:////app/.data/omniai_v2.db"
+      OMNI_V2_DATABASE_URL: "postgresql+asyncpg://omni:omni_dev_pass@postgres:5432/omniai"
       OMNI_V2_CORS_ORIGINS: "http://localhost:8080,http://127.0.0.1:8080,http://localhost:5173,http://127.0.0.1:5173,http://localhost:3000,http://127.0.0.1:3000"
       OMNI_SSE_HEARTBEAT_SECONDS: "15"
+    depends_on:
+      postgres:
+        condition: service_healthy
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-fsS", "http://localhost:8000/v1/system/health"]
@@ -55,3 +80,5 @@ networks:
 volumes:
   omni_data:
     name: omni_data
+  pg_data:
+    name: omni_pg_data

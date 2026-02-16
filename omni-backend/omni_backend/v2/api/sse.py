@@ -69,7 +69,7 @@ async def stream_events(run_id: str, request: Request, after: str | None = None)
         for ev in backlog:
             cursor = ev["cursor"]
             after_seq = ev["seq"]
-            yield f"id: {cursor}\nevent: {ev['type']}\ndata: {json.dumps(ev['data'])}\n\n"
+            yield f"id: {cursor}\nevent: {ev['kind']}\ndata: {json.dumps(ev['payload'])}\n\n"
 
         # Phase 2: Live events from eventbus + heartbeat
         live_iter = eventbus.subscribe(channel, after_id=None)
@@ -86,7 +86,7 @@ async def stream_events(run_id: str, request: Request, after: str | None = None)
                 if ev_seq <= after_seq:
                     continue  # already sent via backlog
                 after_seq = ev_seq
-                yield f"id: {bus_event.event_id}\nevent: {bus_event.data.get('type', 'message')}\ndata: {json.dumps(bus_event.data)}\n\n"
+                yield f"id: {bus_event.event_id}\nevent: {bus_event.data.get('kind', 'message')}\ndata: {json.dumps(bus_event.data.get('payload', bus_event.data))}\n\n"
             except asyncio.TimeoutError:
                 yield ": heartbeat\n\n"
             except StopAsyncIteration:

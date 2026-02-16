@@ -14,12 +14,16 @@ router = APIRouter(prefix="/runs")
 
 
 class CreateRunRequest(BaseModel):
+    thread_id: str
     status: str = "active"
 
 
 class AppendEventRequest(BaseModel):
-    type: str
-    data: dict[str, Any] = Field(default_factory=dict)
+    kind: str
+    payload: dict[str, Any] = Field(default_factory=dict)
+    actor: str = "system"
+    parent_event_id: str | None = None
+    correlation_id: str | None = None
 
 
 def _get_run_service(request: Request) -> RunService:
@@ -29,7 +33,7 @@ def _get_run_service(request: Request) -> RunService:
 @router.post("")
 async def create_run(body: CreateRunRequest, request: Request):
     svc = _get_run_service(request)
-    run = await svc.create_run(status=body.status)
+    run = await svc.create_run(thread_id=body.thread_id, status=body.status)
     return run
 
 
@@ -48,7 +52,14 @@ async def append_event(run_id: str, body: AppendEventRequest, request: Request):
     run = await svc.get_run(run_id)
     if not run:
         raise HTTPException(status_code=404, detail="Run not found")
-    event = await svc.append_event(run_id, type=body.type, data=body.data)
+    event = await svc.append_event(
+        run_id,
+        kind=body.kind,
+        payload=body.payload,
+        actor=body.actor,
+        parent_event_id=body.parent_event_id,
+        correlation_id=body.correlation_id,
+    )
 
     # Publish to eventbus for live SSE subscribers
     eventbus: MemoryEventBus = request.app.state.v2_eventbus

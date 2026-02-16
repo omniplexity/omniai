@@ -56,6 +56,12 @@ class V2Settings:
         default_factory=lambda: int(os.getenv("OMNI_EVENTBUS_BACKLOG", "1000"))
     )
 
+    # Cutover flag: when True, V2 endpoints use V2 DB directly
+    # When False (default), V2 endpoints use V1 DB via bridge
+    v2_db_active: bool = field(
+        default_factory=lambda: os.getenv("OMNI_V2_DB_ACTIVE", "false").lower() in ("true", "1", "yes")
+    )
+
     @property
     def cors_origins(self) -> list[str]:
         raw = [o.strip() for o in self.cors_origins_raw.split(",") if o.strip()]

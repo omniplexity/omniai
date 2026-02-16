@@ -10,49 +10,73 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from ..db.models import Run, RunEvent
+from ..db.types import GUID
 
 
 class RunService:
     def __init__(self, session_factory: async_sessionmaker[AsyncSession]):
         self._sf = session_factory
 
-    async def create_run(self, status: str = "active") -> dict:
-        """Create a new run. Returns dict with id, status, created_at_utc."""
-        run = Run(id=str(uuid4()), status=status, created_at_utc=datetime.now(UTC))
+    async def create_run(self, thread_id: str, status: str = "active", created_by: str | None = None) -> dict:
+        """Create a new run. Returns dict with id, thread_id, status, created_at."""
+        run = Run(
+            id=GUID.new(),
+            thread_id=thread_id,
+            status=status,
+            created_by=created_by,
+        )
         async with self._sf() as session:
             async with session.begin():
                 session.add(run)
-        return {"id": run.id, "status": run.status, "created_at_utc": run.created_at_utc.isoformat()}
+        return {
+            "id": run.id,
+            "thread_id": run.thread_id,
+            "status": run.status,
+            "created_at": run.created_at.isoformat(),
+        }
 
     async def get_run(self, run_id: str) -> dict | None:
         async with self._sf() as session:
             result = await session.get(Run, run_id)
             if not result:
                 return None
-            return {"id": result.id, "status": result.status, "created_at_utc": result.created_at_utc.isoformat()}
+            return {
+                "id": result.id,
+                "thread_id": result.thread_id,
+                "status": result.status,
+                "created_at": result.created_at.isoformat(),
+            }
 
-    async def append_event(self, run_id: str, type: str, data: dict[str, Any] | None = None) -> dict:
+    async def append_event(
+        self,
+        run_id: str,
+        kind: str,
+        payload: dict[str, Any] | None = None,
+        actor: str = "system",
+        parent_event_id: str | None = None,
+        correlation_id: str | None = None,
+    ) -> dict:
         """Append an event to a run with monotonic seq.
 
         Uses SELECT MAX(seq) + 1 inside a transaction for safety.
-        Returns dict with id, run_id, seq, type, data, created_at_utc, cursor.
         """
-        data = data or {}
+        payload = payload or {}
         async with self._sf() as session:
             async with session.begin():
-                # Get next seq atomically within this transaction
                 result = await session.execute(
                     select(func.coalesce(func.max(RunEvent.seq), 0)).where(RunEvent.run_id == run_id)
                 )
                 next_seq = result.scalar_one() + 1
 
                 event = RunEvent(
-                    id=str(uuid4()),
+                    id=GUID.new(),
                     run_id=run_id,
                     seq=next_seq,
-                    type=type,
-                    data=data,
-                    created_at_utc=datetime.now(UTC),
+                    kind=kind,
+                    payload=payload,
+                    actor=actor,
+                    parent_event_id=parent_event_id,
+                    correlation_id=correlation_id,
                 )
                 session.add(event)
 
@@ -61,9 +85,10 @@ class RunService:
             "id": event.id,
             "run_id": event.run_id,
             "seq": event.seq,
-            "type": event.type,
-            "data": event.data,
-            "created_at_utc": event.created_at_utc.isoformat(),
+            "kind": event.kind,
+            "payload": event.payload,
+            "actor": event.actor,
+            "created_at": event.created_at.isoformat(),
             "cursor": cursor,
         }
 
@@ -84,9 +109,10 @@ class RunService:
                     "id": e.id,
                     "run_id": e.run_id,
                     "seq": e.seq,
-                    "type": e.type,
-                    "data": e.data,
-                    "created_at_utc": e.created_at_utc.isoformat(),
+                    "kind": e.kind,
+                    "payload": e.payload,
+                    "actor": e.actor,
+                    "created_at": e.created_at.isoformat(),
                     "cursor": f"{e.run_id}:{e.seq}",
                 }
                 for e in events

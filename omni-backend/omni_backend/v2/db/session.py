@@ -6,17 +6,25 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 
 
 def make_engine(database_url: str, echo: bool = False):
-    """Create an async engine. For SQLite, enable WAL and foreign keys."""
-    connect_args = {}
+    """Create an async engine with dialect-specific configuration.
+
+    - PostgreSQL (asyncpg): connection pooling with pre-ping
+    - SQLite (aiosqlite): check_same_thread=False, no pool sizing
+    """
+    connect_args: dict = {}
+    kwargs: dict = {
+        "echo": echo,
+        "pool_pre_ping": True,
+    }
+
     if database_url.startswith("sqlite"):
         connect_args["check_same_thread"] = False
+    elif database_url.startswith("postgresql"):
+        kwargs["pool_size"] = 10
+        kwargs["max_overflow"] = 20
 
-    return create_async_engine(
-        database_url,
-        echo=echo,
-        connect_args=connect_args,
-        pool_pre_ping=True,
-    )
+    kwargs["connect_args"] = connect_args
+    return create_async_engine(database_url, **kwargs)
 
 
 def make_session_factory(engine) -> async_sessionmaker[AsyncSession]:
