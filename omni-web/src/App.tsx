@@ -143,7 +143,7 @@ export function App() {
     return true;
   }), [orderedEvents, traceKind, traceToolId, traceErrorsOnly, traceSearch]);
 
-  // Effects
+  // Restore saved selection from localStorage (no API call)
   useEffect(() => {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (raw) {
@@ -152,45 +152,52 @@ export function App() {
       setSelectedThreadId(parsed.threadId || "");
       setSelectedRunId(parsed.runId || "");
     }
-    void refreshProjects();
   }, []);
+
+  // Gate all API calls on apiBaseUrl being loaded
+  useEffect(() => {
+    if (!apiBaseUrl) return;
+    void refreshProjects();
+  }, [apiBaseUrl]);
 
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify({ projectId: selectedProjectId, threadId: selectedThreadId, runId: selectedRunId }));
   }, [selectedProjectId, selectedThreadId, selectedRunId]);
 
   useEffect(() => {
-    if (!selectedProjectId) return;
+    if (!selectedProjectId || !apiBaseUrl) return;
     void Promise.all([refreshThreads(selectedProjectId), loadProjectPins(selectedProjectId)]);
-  }, [selectedProjectId]);
+  }, [selectedProjectId, apiBaseUrl]);
 
   useEffect(() => {
-    if (!selectedThreadId) return;
+    if (!selectedThreadId || !apiBaseUrl) return;
     void refreshRuns(selectedThreadId);
-  }, [selectedThreadId]);
+  }, [selectedThreadId, apiBaseUrl]);
 
   useEffect(() => {
+    if (!apiBaseUrl) return;
     void loadTools();
     void loadMcpServers();
-  }, []);
+  }, [apiBaseUrl]);
 
   useEffect(() => {
-    if (!selectedRunId) return;
+    if (!selectedRunId || !apiBaseUrl) return;
     void Promise.all([loadEvents(selectedRunId), loadArtifacts(selectedRunId), loadSummary(selectedRunId), loadApprovals(selectedRunId), loadRunMetrics(selectedRunId), loadProvenance(selectedRunId), loadProvenanceGraph(selectedRunId)]);
-  }, [selectedRunId]);
+  }, [selectedRunId, apiBaseUrl]);
 
   useEffect(() => {
+    if (!apiBaseUrl) return;
     void loadMemoryItems();
     void loadWorkflows();
     void loadRegistryPackages();
     void loadToolMetrics();
     void bootstrapAuth();
-  }, []);
+  }, [apiBaseUrl]);
 
   useEffect(() => {
-    if (!me) return;
+    if (!me || !apiBaseUrl) return;
     void Promise.all([loadNotifications(), loadNotificationUnreadCount()]);
-  }, [me]);
+  }, [me, apiBaseUrl]);
 
   useEffect(() => {
     if (!selectedRunId) return;
@@ -209,14 +216,14 @@ export function App() {
   }, [selectedRunId, apiBaseUrl]);
 
   useEffect(() => {
-    if (!selectedProjectId) return;
+    if (!selectedProjectId || !apiBaseUrl) return;
     void Promise.all([loadMembers(selectedProjectId), loadActivity(selectedProjectId)]);
-  }, [selectedProjectId]);
+  }, [selectedProjectId, apiBaseUrl]);
 
   useEffect(() => {
-    if (!selectedProjectId) return;
+    if (!selectedProjectId || !apiBaseUrl) return;
     void loadComments(selectedProjectId);
-  }, [selectedProjectId, selectedRunId]);
+  }, [selectedProjectId, selectedRunId, apiBaseUrl]);
 
   useEffect(() => {
     const onOnline = () => setIsOnline(true);
