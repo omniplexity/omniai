@@ -1,0 +1,5 @@
+{
+  "kind": "assistant_message",
+  "actor": "assistant",
+  "payload": {"text": "hi there"}
+}

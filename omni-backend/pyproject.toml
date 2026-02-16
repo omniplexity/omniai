@@ -1,0 +1,33 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "omni-backend"
+version = "0.1.0"
+requires-python = ">=3.12"
+dependencies = [
+  "fastapi>=0.115,<1",
+  "uvicorn>=0.30,<1",
+  "pydantic>=2.6,<3",
+  "jsonschema>=4.22,<5",
+  "pynacl>=1.5,<2",
+  "argon2-cffi>=23.1,<24"
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.0,<9",
+  "httpx>=0.27,<1",
+  "pytest-xdist>=3.6,<4"
+]
+
+[tool.setuptools]
+packages = ["omni_backend"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-m 'not slow'"
+markers = [
+  "slow: slower integration/timing tests (SSE, multipart uploads, replay-heavy flows)"
+]

@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["source_id", "title", "url", "retrieved_at", "correlation_id", "tool_id", "tool_version"],
+  "properties": {
+    "source_id": {"type": "string"},
+    "title": {"type": "string"},
+    "url": {"type": "string"},
+    "snippet": {"type": "string"},
+    "retrieved_at": {"type": "string", "format": "date-time"},
+    "correlation_id": {"type": "string"},
+    "tool_id": {"type": "string"},
+    "tool_version": {"type": "string"},
+    "artifact_id": {"type": ["string", "null"]}
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "kind": "tool_error",
+  "actor": "tool",
+  "payload": {
+    "tool_id": "python.compute",
+    "tool_version": "1.0.0",
+    "error_code": "TIMEOUT",
+    "message": "execution timed out",
+    "correlation_id": "c1"
+  }
+}

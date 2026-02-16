@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://omniai/schemas/run_event_kinds/tool_error.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["tool_id", "tool_version", "error_code", "message", "correlation_id"],
+  "properties": {
+    "tool_id": {"type": "string", "minLength": 1},
+    "tool_version": {"type": "string", "minLength": 1},
+    "error_code": {"type": "string", "minLength": 1},
+    "message": {"type": "string", "minLength": 1},
+    "correlation_id": {"type": "string", "minLength": 1},
+    "details": {"type": "object"}
+  }
+}

@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["project_id", "actor", "package_id", "version", "tool_id", "tool_version", "risk"],
+  "properties": {
+    "project_id": {"type": "string"},
+    "actor": {"type": "string"},
+    "package_id": {"type": "string"},
+    "version": {"type": "string"},
+    "tool_id": {"type": "string"},
+    "tool_version": {"type": "string"},
+    "risk": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["scopes_required", "external_write", "network_egress"],
+      "properties": {
+        "scopes_required": {"type": "array", "items": {"type": "string"}},
+        "external_write": {"type": "boolean"},
+        "network_egress": {"type": "boolean"}
+      }
+    }
+  }
+}

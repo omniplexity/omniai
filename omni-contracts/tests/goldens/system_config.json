@@ -1,0 +1,22 @@
+{
+  "notify_tool_errors": true,
+  "notify_tool_errors_only_codes": [
+    "E_TOOL_TIMEOUT"
+  ],
+  "notify_tool_errors_only_bindings": [
+    "mcp_remote"
+  ],
+  "notify_tool_errors_max_per_run": 5,
+  "sse_max_replay": 500,
+  "sse_heartbeat_seconds": 15,
+  "artifact_max_bytes": 26214400,
+  "artifact_part_size": 524288,
+  "session_ttl_seconds": 86400,
+  "session_sliding_enabled": true,
+  "session_sliding_window_seconds": 1800,
+  "max_events_per_run": 10000,
+  "max_bytes_per_run": 10485760,
+  "generated_at": "2026-02-13T00:00:00Z",
+  "contract_version": "0.1.0",
+  "runtime_version": "omni-backend-0.1.0"
+}

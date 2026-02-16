@@ -1,0 +1,41 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://omniai/schemas/run_event_envelope.schema.json",
+  "title": "RunEventEnvelope",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["event_id","run_id","thread_id","project_id","seq","ts","kind","payload","actor","privacy","pins"],
+  "properties": {
+    "event_id": {"type": "string", "format": "uuid"},
+    "run_id": {"type": "string", "format": "uuid"},
+    "thread_id": {"type": "string", "format": "uuid"},
+    "project_id": {"type": "string", "format": "uuid"},
+    "seq": {"type": "integer", "minimum": 1},
+    "ts": {"type": "string", "format": "date-time"},
+    "kind": {"type": "string", "enum": ["run_created","user_message","assistant_message","assistant_message_delta","tool_call","tool_result","tool_error","artifact_ref","artifact_linked","system_event","editor_action","run_status","memory_item_created","memory_item_updated","memory_item_deleted","memory_retrieved","research_stage_started","research_stage_completed","research_source_created","research_report_created","workflow_defined","workflow_run_started","workflow_node_started","workflow_node_completed","workflow_node_failed","workflow_run_completed","tool_package_published","tool_package_installed","tool_package_uninstalled","tool_package_yanked","tool_pins_updated","tool_package_reported","tool_package_status_changed","tool_package_mirrored","collection_created","collection_updated","metrics_computed","quota_exceeded","project_member_added","project_member_role_changed","project_member_removed","comment_created","comment_deleted","activity_emitted","auth_session_created","auth_session_revoked","auth_login_failed","auth_csrf_failed"]},
+    "payload": {"type": "object"},
+    "parent_event_id": {"type": "string", "format": "uuid"},
+    "correlation_id": {"type": "string", "minLength": 1},
+    "actor": {"type": "string", "enum": ["user", "assistant", "system", "tool"]},
+    "privacy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["redact_level", "contains_secrets"],
+      "properties": {
+        "redact_level": {"type": "string", "enum": ["none", "partial", "full"]},
+        "contains_secrets": {"type": "boolean"}
+      }
+    },
+    "pins": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["model", "tools", "runtime"],
+      "properties": {
+        "model": {"type": "object","additionalProperties": false,"required": ["provider", "model_id", "params"],"properties": {"provider": {"type": "string"},"model_id": {"type": "string"},"params": {"type": "object"},"seed": {"type": ["integer", "null"]}}},
+        "tools": {"type": "array","items": {"type": "object","additionalProperties": false,"required": ["name", "version"],"properties": {"name": {"type": "string"},"version": {"type": "string"}}}},
+        "runtime": {"type": "object","additionalProperties": false,"required": ["executor_version"],"properties": {"executor_version": {"type": "string"}}}
+      }
+    }
+  }
+}
+

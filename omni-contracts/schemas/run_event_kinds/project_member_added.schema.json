@@ -1,0 +1,13 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["project_id", "user_id", "role", "added_by", "added_at"],
+  "properties": {
+    "project_id": {"type": "string"},
+    "user_id": {"type": "string"},
+    "role": {"type": "string"},
+    "added_by": {"type": "string"},
+    "added_at": {"type": "string", "format": "date-time"}
+  }
+}

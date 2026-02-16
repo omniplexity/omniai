@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["project_id", "user_id", "from_role", "to_role", "changed_by", "changed_at"],
+  "properties": {
+    "project_id": {"type": "string"},
+    "user_id": {"type": "string"},
+    "from_role": {"type": "string"},
+    "to_role": {"type": "string"},
+    "changed_by": {"type": "string"},
+    "changed_at": {"type": "string", "format": "date-time"}
+  }
+}

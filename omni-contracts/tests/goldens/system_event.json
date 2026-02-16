@@ -1,0 +1,5 @@
+{
+  "kind": "system_event",
+  "actor": "system",
+  "payload": {"code": "agent_stage", "message": "stage transition", "details": {"stage": "plan_start"}}
+}

@@ -1,0 +1,13 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://omniai/schemas/run_event_kinds/memory_retrieved.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["query","memory_ids","budget_chars","budget_used"],
+  "properties": {
+    "query": {"type": "string"},
+    "memory_ids": {"type": "array", "items": {"type": "string"}},
+    "budget_chars": {"type": "integer"},
+    "budget_used": {"type": "integer"}
+  }
+}

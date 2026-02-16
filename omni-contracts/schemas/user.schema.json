@@ -1,0 +1,11 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["user_id", "display_name", "created_at"],
+  "properties": {
+    "user_id": {"type": "string"},
+    "display_name": {"type": "string"},
+    "created_at": {"type": "string", "format": "date-time"}
+  }
+}

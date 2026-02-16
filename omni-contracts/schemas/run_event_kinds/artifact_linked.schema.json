@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://omniai/schemas/run_event_kinds/artifact_linked.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "artifact_id",
+    "run_id",
+    "created_at",
+    "purpose",
+    "source_event_id",
+    "correlation_id",
+    "tool_id",
+    "tool_version"
+  ],
+  "properties": {
+    "artifact_id": {"type": "string", "minLength": 1},
+    "run_id": {"type": "string", "format": "uuid"},
+    "created_at": {"type": "string", "format": "date-time"},
+    "purpose": {"type": ["string", "null"]},
+    "source_event_id": {"type": ["string", "null"]},
+    "correlation_id": {"type": ["string", "null"]},
+    "tool_id": {"type": ["string", "null"]},
+    "tool_version": {"type": ["string", "null"]}
+  }
+}

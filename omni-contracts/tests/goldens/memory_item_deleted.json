@@ -1,0 +1,8 @@
+{
+  "kind": "memory_item_deleted",
+  "actor": "system",
+  "payload": {
+    "memory_id": "00000000-0000-0000-0000-000000000001",
+    "provenance": {"project_id": null, "thread_id": null, "run_id": null, "event_id": null, "artifact_id": null, "source_kind": "manual"}
+  }
+}

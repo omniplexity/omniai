@@ -1,0 +1,70 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://omniai/schemas/tool_package.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["package_id", "version", "created_at", "manifest", "signature", "metadata"],
+  "properties": {
+    "package_id": {"type": "string", "minLength": 1},
+    "version": {"type": "string", "minLength": 1},
+    "created_at": {"type": "string", "format": "date-time"},
+    "manifest": {"type": "object"},
+    "files": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["path", "sha256", "size_bytes", "media_type"],
+        "properties": {
+          "path": {"type": "string"},
+          "sha256": {"type": "string"},
+          "size_bytes": {"type": "integer", "minimum": 0},
+          "media_type": {"type": "string"}
+        }
+      }
+    },
+    "signature": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["algo", "public_key_id", "signature_base64"],
+      "properties": {
+        "algo": {"type": "string", "const": "ed25519"},
+        "public_key_id": {"type": "string"},
+        "signature_base64": {"type": "string"}
+      }
+    },
+    "metadata": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["tier", "tags", "description"],
+      "properties": {
+        "tier": {"type": "string", "enum": ["core", "private", "community", "verified"]},
+        "tags": {"type": "array", "items": {"type": "string"}},
+        "description": {"type": "string"},
+        "homepage": {"type": "string"}
+      }
+    },
+    "status": {"type": "string", "enum": ["active", "yanked", "revoked", "pending_review", "rejected", "verified"]},
+    "checks": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_ok", "signature_ok", "static_ok", "contract_tests_ok", "last_checked_at"],
+      "properties": {
+        "schema_ok": {"type": "boolean"},
+        "signature_ok": {"type": "boolean"},
+        "static_ok": {"type": "boolean"},
+        "contract_tests_ok": {"type": "boolean"},
+        "last_checked_at": {"type": ["string", "null"]}
+      }
+    },
+    "moderation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["reports_count", "last_report_at"],
+      "properties": {
+        "reports_count": {"type": "integer", "minimum": 0},
+        "last_report_at": {"type": ["string", "null"]}
+      }
+    }
+  }
+}

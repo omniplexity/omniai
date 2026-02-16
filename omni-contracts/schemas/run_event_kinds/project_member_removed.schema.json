@@ -1,0 +1,12 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["project_id", "user_id", "removed_by", "removed_at"],
+  "properties": {
+    "project_id": {"type": "string"},
+    "user_id": {"type": "string"},
+    "removed_by": {"type": "string"},
+    "removed_at": {"type": "string", "format": "date-time"}
+  }
+}

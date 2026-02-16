@@ -1,0 +1,62 @@
+# Docker Compose for Backend + ngrok Tunnel
+# This is a lightweight setup for running just the backend with external access via ngrok
+# Usage: 
+#   docker-compose -f docker-compose.backend.yml up
+#   docker-compose -f docker-compose.backend.yml up -d  (detached)
+
+services:
+  # Backend API service
+  omni-backend:
+    build:
+      context: ./omni-backend
+    container_name: omni-backend
+    ports:
+      - "127.0.0.1:8000:8000"
+    volumes:
+      - omni_data:/app/.data
+    environment:
+      OMNI_DEV_MODE: "false"
+      OMNI_DB_PATH: "/app/.data/omni.db"
+      OMNI_WORKSPACE_ROOT: "/app/.data/workspace"
+      OMNI_REGISTRY_ROOT: "/app/.data/registry"
+      # Allow ngrok tunnel URL + local development
+      OMNI_CORS_ORIGINS: "${OMNI_CORS_ORIGINS:-http://localhost:5173,http://localhost:5174,http://127.0.0.1:5173,http://127.0.0.1:5174}"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8000/v1/system/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+    networks:
+      - omni-network
+
+  # ngrok tunnel for external access
+  # Get your auth token from https://dashboard.ngrok.com/auth
+  # Set it via: export NGROK_AUTHTOKEN=your_token
+  # Or create a .env file with NGROK_AUTHTOKEN=your_token
+  ngrok:
+    image: ngrok/ngrok:latest
+    container_name: omni-ngrok
+    restart: unless-stopped
+    depends_on:
+      omni-backend:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:4040:4040"  # ngrok dashboard
+    environment:
+      NGROK_AUTHTOKEN: "${NGROK_AUTHTOKEN}"
+      NGROK_LOG_LEVEL: "info"
+    command: >
+      http
+      omni-backend:8000
+      --host-header=rewrite
+      --log=stdout
+    networks:
+      - omni-network
+
+networks:
+  omni-network:
+    driver: bridge
+
+volumes:
+  omni_data:

@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["comment_id", "project_id", "target_type", "target_id", "author_id", "body", "created_at"],
+  "properties": {
+    "comment_id": {"type": "string"},
+    "project_id": {"type": "string"},
+    "thread_id": {"type": ["string", "null"]},
+    "run_id": {"type": ["string", "null"]},
+    "target_type": {"type": "string", "enum": ["run", "event", "artifact"]},
+    "target_id": {"type": "string"},
+    "author_id": {"type": "string"},
+    "body": {"type": "string"},
+    "created_at": {"type": "string", "format": "date-time"}
+  }
+}

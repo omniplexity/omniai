@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "omni-contracts"
+version = "0.1.0"
+description = "OmniAI contract schemas and typed models"
+requires-python = ">=3.12"
+dependencies = [
+  "pydantic>=2.6,<3",
+  "jsonschema>=4.22,<5"
+]
+
+[tool.setuptools]
+package-dir = {"" = "python"}
+
+[tool.setuptools.packages.find]
+where = ["python"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

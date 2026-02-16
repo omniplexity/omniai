@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://omniai/schemas/run_event_kinds/tool_result.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["tool_id", "tool_version", "outputs", "correlation_id"],
+  "properties": {
+    "tool_id": {"type": "string", "minLength": 1},
+    "tool_version": {"type": "string", "minLength": 1},
+    "outputs": {"type": "object"},
+    "correlation_id": {"type": "string", "minLength": 1},
+    "executor_version": {"type": "string"}
+  }
+}

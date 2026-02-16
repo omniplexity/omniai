@@ -1,0 +1,11 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://omniai/schemas/run_event_kinds/memory_item_created.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["memory_id","provenance"],
+  "properties": {
+    "memory_id": {"type": "string"},
+    "provenance": {"type": "object", "required": ["source_kind"], "properties": {"project_id": {"type": ["string","null"]},"thread_id": {"type": ["string","null"]},"run_id": {"type": ["string","null"]},"event_id": {"type": ["string","null"]},"artifact_id": {"type": ["string","null"]},"source_kind": {"type": "string"}}}
+  }
+}

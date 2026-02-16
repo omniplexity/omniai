@@ -1,0 +1,11 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["collection_id", "name", "packages"],
+  "properties": {
+    "collection_id": {"type": "string"},
+    "name": {"type": "string"},
+    "packages": {"type": "array", "items": {"type": "object"}}
+  }
+}

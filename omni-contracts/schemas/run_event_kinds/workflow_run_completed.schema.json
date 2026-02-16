@@ -1,0 +1,11 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["workflow_run_id", "status", "completed_at"],
+  "properties": {
+    "workflow_run_id": {"type": "string"},
+    "status": {"type": "string"},
+    "completed_at": {"type": "string", "format": "date-time"}
+  }
+}

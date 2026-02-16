@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["package_id", "version", "from_status", "to_status", "decided_by", "decided_at"],
+  "properties": {
+    "package_id": {"type": "string"},
+    "version": {"type": "string"},
+    "from_status": {"type": "string"},
+    "to_status": {"type": "string"},
+    "decided_by": {"type": "string"},
+    "decided_at": {"type": "string", "format": "date-time"},
+    "notes": {"type": ["string", "null"]}
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["stage", "summary", "completed_at"],
+  "properties": {
+    "stage": {"type": "string"},
+    "summary": {"type": "string"},
+    "outputs_ref": {"type": ["string", "null"]},
+    "completed_at": {"type": "string", "format": "date-time"}
+  }
+}

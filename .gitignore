@@ -1,0 +1,42 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+dist/
+build/
+.eggs/
+*.egg
+.hypothesis/
+.pytest_cache/
+
+# Environment
+.env
+.env.local
+*.pem
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OmniAI specific
+omni-backend/.omni_*
+omni-backend/omni.db
+omni-backend/**/__pycache__/
+omni-contracts/**/__pycache__/
+omni-web/node_modules/
+omni-web/dist/
+omni-web/.vite/
+*.log
+
+# Test results
+test-results/
+playwright-report/

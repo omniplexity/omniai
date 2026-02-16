@@ -1,0 +1,12 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["workflow_run_id", "node_id", "attempt", "started_at"],
+  "properties": {
+    "workflow_run_id": {"type": "string"},
+    "node_id": {"type": "string"},
+    "attempt": {"type": "integer"},
+    "started_at": {"type": "string", "format": "date-time"}
+  }
+}

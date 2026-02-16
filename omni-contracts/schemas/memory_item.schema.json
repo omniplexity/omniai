@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://omniai/schemas/memory_item.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["memory_id","type","scope_type","content","importance","created_at","updated_at","privacy"],
+  "properties": {
+    "memory_id": {"type": "string", "format": "uuid"},
+    "type": {"type": "string", "enum": ["episodic","semantic","procedural"]},
+    "scope_type": {"type": "string", "enum": ["user","workspace","project","thread","document"]},
+    "scope_id": {"type": ["string","null"]},
+    "title": {"type": "string"},
+    "content": {"type": "string"},
+    "tags": {"type": "array", "items": {"type": "string"}},
+    "importance": {"type": "number", "minimum": 0, "maximum": 1},
+    "created_at": {"type": "string", "format": "date-time"},
+    "updated_at": {"type": "string", "format": "date-time"},
+    "expires_at": {"type": ["string","null"], "format": "date-time"},
+    "privacy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["redact_level","contains_secrets","do_not_store"],
+      "properties": {
+        "redact_level": {"type": "string", "enum": ["none","partial","full"]},
+        "contains_secrets": {"type": "boolean"},
+        "do_not_store": {"type": "boolean"}
+      }
+    }
+  }
+}

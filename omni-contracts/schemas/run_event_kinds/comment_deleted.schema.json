@@ -1,0 +1,11 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["comment_id", "deleted_by", "deleted_at"],
+  "properties": {
+    "comment_id": {"type": "string"},
+    "deleted_by": {"type": "string"},
+    "deleted_at": {"type": "string", "format": "date-time"}
+  }
+}

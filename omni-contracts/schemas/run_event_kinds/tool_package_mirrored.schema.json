@@ -1,0 +1,13 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["from_package_id", "from_version", "to_package_id", "to_version", "mirrored_at"],
+  "properties": {
+    "from_package_id": {"type": "string"},
+    "from_version": {"type": "string"},
+    "to_package_id": {"type": "string"},
+    "to_version": {"type": "string"},
+    "mirrored_at": {"type": "string", "format": "date-time"}
+  }
+}

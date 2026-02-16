@@ -1,0 +1,10 @@
+{
+  "kind": "tool_result",
+  "actor": "tool",
+  "payload": {
+    "tool_id": "web.search",
+    "tool_version": "1.0.0",
+    "outputs": {"results": []},
+    "correlation_id": "c1"
+  }
+}

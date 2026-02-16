@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["run_id", "computed_at", "event_count", "tool_calls", "tool_errors", "duration_ms", "bytes_in", "bytes_out"],
+  "properties": {
+    "run_id": {"type": "string"},
+    "computed_at": {"type": "string", "format": "date-time"},
+    "event_count": {"type": "integer", "minimum": 0},
+    "tool_calls": {"type": "integer", "minimum": 0},
+    "tool_errors": {"type": "integer", "minimum": 0},
+    "duration_ms": {"type": "integer", "minimum": 0},
+    "bytes_in": {"type": "integer", "minimum": 0},
+    "bytes_out": {"type": "integer", "minimum": 0}
+  }
+}

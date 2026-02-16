@@ -1,0 +1,11 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["report_artifact_id", "citations", "created_at"],
+  "properties": {
+    "report_artifact_id": {"type": "string"},
+    "citations": {"type": "array", "items": {"type": "object", "required": ["source_id"], "properties": {"source_id": {"type": "string"}, "note": {"type": "string"}}}},
+    "created_at": {"type": "string", "format": "date-time"}
+  }
+}

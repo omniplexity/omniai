@@ -1,0 +1,11 @@
+{
+  "kind": "tool_call",
+  "actor": "tool",
+  "payload": {
+    "tool_id": "web.search",
+    "tool_version": "1.0.0",
+    "inputs": {"query": "omni"},
+    "binding_type": "inproc_safe",
+    "correlation_id": "c1"
+  }
+}

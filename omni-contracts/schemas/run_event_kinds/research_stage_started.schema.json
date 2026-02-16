@@ -1,0 +1,12 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["stage", "query", "started_at"],
+  "properties": {
+    "stage": {"type": "string"},
+    "query": {"type": "string"},
+    "params": {"type": "object"},
+    "started_at": {"type": "string", "format": "date-time"}
+  }
+}

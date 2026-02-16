@@ -1,0 +1,5 @@
+{
+  "kind": "editor_action",
+  "actor": "system",
+  "payload": {"action": "version_saved", "title": "Doc", "artifact_id": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "media_type": "text/markdown"}
+}

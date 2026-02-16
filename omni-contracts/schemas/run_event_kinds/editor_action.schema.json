@@ -1,0 +1,13 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://omniai/schemas/run_event_kinds/editor_action.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["action", "title", "artifact_id"],
+  "properties": {
+    "action": {"type": "string", "enum": ["document_created", "version_saved", "version_loaded"]},
+    "title": {"type": "string"},
+    "artifact_id": {"type": "string", "minLength": 1},
+    "media_type": {"type": "string"}
+  }
+}

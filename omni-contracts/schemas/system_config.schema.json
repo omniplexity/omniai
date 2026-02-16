@@ -1,0 +1,86 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "notify_tool_errors",
+    "notify_tool_errors_only_codes",
+    "notify_tool_errors_only_bindings",
+    "notify_tool_errors_max_per_run",
+    "sse_max_replay",
+    "sse_heartbeat_seconds",
+    "artifact_max_bytes",
+    "artifact_part_size",
+    "session_ttl_seconds",
+    "session_sliding_enabled",
+    "session_sliding_window_seconds",
+    "max_events_per_run",
+    "max_bytes_per_run"
+  ],
+  "properties": {
+    "notify_tool_errors": {
+      "type": "boolean"
+    },
+    "notify_tool_errors_only_codes": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "notify_tool_errors_only_bindings": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "notify_tool_errors_max_per_run": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "sse_max_replay": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "sse_heartbeat_seconds": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "artifact_max_bytes": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "artifact_part_size": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "session_ttl_seconds": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "session_sliding_enabled": {
+      "type": "boolean"
+    },
+    "session_sliding_window_seconds": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "max_events_per_run": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "max_bytes_per_run": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "contract_version": {
+      "type": "string"
+    },
+    "runtime_version": {
+      "type": "string"
+    }
+  }
+}

@@ -1,0 +1,126 @@
+name: Backend CI
+
+on:
+  pull_request:
+    paths:
+      - "omni-backend/**"
+      - ".github/workflows/backend-ci.yml"
+  push:
+    branches: ["main"]
+    paths:
+      - "omni-backend/**"
+      - ".github/workflows/backend-ci.yml"
+  schedule:
+    - cron: "0 6 * * *"
+  workflow_dispatch:
+    inputs:
+      fast_budget_seconds:
+        description: "Fast tier budget in seconds"
+        required: false
+        default: "300"
+      run_slow:
+        description: "Run slow tier"
+        required: false
+        default: "true"
+
+env:
+  PYTHON_VERSION: "3.12"
+  FAST_BUDGET_SECONDS: "300"
+
+jobs:
+  backend-fast:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: omni-backend
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+          cache-dependency-path: omni-backend/pyproject.toml
+
+      - name: Install dev dependencies
+        run: python -m pip install -e ".[dev]"
+
+      - name: Run backend fast tier (xdist)
+        env:
+          FAST_BUDGET: ${{ github.event.inputs.fast_budget_seconds || env.FAST_BUDGET_SECONDS }}
+        run: |
+          set -euo pipefail
+          mkdir -p ../ci-artifacts
+          START_TS="$(date +%s)"
+          pytest -q -m "not slow" -n auto --durations=25 | tee ../ci-artifacts/backend-fast-pytest.log
+          END_TS="$(date +%s)"
+          DURATION="$((END_TS - START_TS))"
+          echo "$DURATION" > ../ci-artifacts/backend-fast-duration-seconds.txt
+          python - <<'PY'
+          import json, os, pathlib, time
+          duration = int(pathlib.Path("../ci-artifacts/backend-fast-duration-seconds.txt").read_text().strip())
+          budget = int(os.environ.get("FAST_BUDGET", "300"))
+          report = {
+              "tier": "backend-fast",
+              "duration_seconds": duration,
+              "budget_seconds": budget,
+              "within_budget": duration <= budget,
+              "generated_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+          }
+          pathlib.Path("../ci-artifacts/backend-fast-duration.json").write_text(json.dumps(report, indent=2))
+          print(json.dumps(report))
+          if duration > budget:
+              raise SystemExit(f"backend-fast duration {duration}s exceeded budget {budget}s")
+          PY
+
+      - name: Upload fast tier artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-fast-artifacts
+          path: |
+            ci-artifacts/backend-fast-pytest.log
+            ci-artifacts/backend-fast-duration-seconds.txt
+            ci-artifacts/backend-fast-duration.json
+
+  backend-slow:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    defaults:
+      run:
+        working-directory: omni-backend
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+          cache-dependency-path: omni-backend/pyproject.toml
+
+      - name: Install dev dependencies
+        run: python -m pip install -e ".[dev]"
+
+      - name: Run backend slow tier
+        if: github.event_name == 'schedule' || github.event.inputs.run_slow != 'false'
+        run: |
+          set -euo pipefail
+          mkdir -p ../ci-artifacts
+          START_TS="$(date +%s)"
+          pytest -q -m "slow" --durations=25 | tee ../ci-artifacts/backend-slow-pytest.log
+          END_TS="$(date +%s)"
+          echo "$((END_TS - START_TS))" > ../ci-artifacts/backend-slow-duration-seconds.txt
+
+      - name: Upload slow tier artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-slow-artifacts
+          path: |
+            ci-artifacts/backend-slow-pytest.log
+            ci-artifacts/backend-slow-duration-seconds.txt
+

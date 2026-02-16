@@ -1,0 +1,13 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["package_id", "version", "reason_code", "reported_at"],
+  "properties": {
+    "package_id": {"type": "string"},
+    "version": {"type": "string"},
+    "reason_code": {"type": "string"},
+    "details": {"type": ["string", "null"]},
+    "reported_at": {"type": "string", "format": "date-time"}
+  }
+}

@@ -1,0 +1,17 @@
+# Override file for local development
+# This runs the backend in dev mode with volume mounts for live reload
+# Usage: docker-compose -f docker-compose.yml -f docker-compose.override.yml up --build
+services:
+  omni-backend:
+    build:
+      context: ./omni-backend
+      dockerfile: Dockerfile.dev
+    environment:
+      OMNI_DEV_MODE: "true"
+      OMNI_CORS_ORIGINS: "http://localhost:5173,http://localhost:5174,http://127.0.0.1:5173,http://127.0.0.1:5174"
+    volumes:
+      - ./omni-backend:/app
+      - omni_data:/app/.data
+    # Skip healthcheck in dev for faster startup
+    healthcheck:
+      disable: true

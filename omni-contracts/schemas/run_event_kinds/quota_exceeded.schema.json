@@ -1,0 +1,12 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["scope", "limit", "observed", "at"],
+  "properties": {
+    "scope": {"type": "string"},
+    "limit": {"type": "integer", "minimum": 0},
+    "observed": {"type": "integer", "minimum": 0},
+    "at": {"type": "string", "format": "date-time"}
+  }
+}

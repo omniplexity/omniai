@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://omniai/schemas/run_event_kinds/tool_call.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["tool_id", "tool_version", "inputs", "binding_type", "correlation_id"],
+  "properties": {
+    "tool_id": {"type": "string", "minLength": 1},
+    "tool_version": {"type": "string", "minLength": 1},
+    "inputs": {"type": "object"},
+    "binding_type": {"type": "string", "enum": ["inproc_safe", "sandbox_job", "mcp_remote", "openapi_proxy"]},
+    "correlation_id": {"type": "string", "minLength": 1},
+    "executor_version": {"type": "string"}
+  }
+}

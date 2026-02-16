@@ -1,0 +1,14 @@
+{
+  "kind": "artifact_ref",
+  "actor": "system",
+  "payload": {
+    "artifact_id": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "kind": "document",
+    "media_type": "text/markdown",
+    "size_bytes": 12,
+    "content_hash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "created_at": "2026-02-12T00:00:00Z",
+    "storage_ref": ".omni_artifacts/aa/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.txt",
+    "title": "Doc"
+  }
+}
