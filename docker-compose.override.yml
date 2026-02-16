@@ -12,6 +12,9 @@ services:
     volumes:
       - ./omni-backend:/app
       - omni_data:/app/.data
-    # Skip healthcheck in dev for faster startup
+    # Keep healthcheck so frontend depends_on works
     healthcheck:
-      disable: true
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8000/v1/system/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 20

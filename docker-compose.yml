@@ -16,6 +16,9 @@ services:
       OMNI_REGISTRY_ROOT: "/app/.data/registry"
       # CORS - configured for local dev (ports 5173, 5174) and production
       OMNI_CORS_ORIGINS: "${OMNI_CORS_ORIGINS:-http://localhost:5173,http://localhost:5174,http://127.0.0.1:5173,http://127.0.0.1:5174,https://omniplexity.github.io}"
+      # Cross-site cookie settings (required for GH Pages -> ngrok)
+      OMNI_SESSION_SECURE: "${OMNI_SESSION_SECURE:-true}"
+      OMNI_SESSION_SAMESITE: "${OMNI_SESSION_SAMESITE:-none}"
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8000/v1/system/health"]
@@ -43,10 +46,6 @@ services:
     networks:
       - omni-network
 
-networks:
-  omni-network:
-    driver: bridge
-
   # ngrok tunnel for external access
   ngrok:
     image: ngrok/ngrok:latest
@@ -57,7 +56,6 @@ networks:
     ports:
       - "127.0.0.1:4040:4040"
     environment:
-      # ngrok auth token (set via NGROK_AUTHTOKEN env var)
       NGROK_AUTHTOKEN: "${NGROK_AUTHTOKEN}"
       NGROK_LOG_LEVEL: "info"
     command: >
@@ -69,6 +67,10 @@ networks:
       - omni-network
     profiles:
       - tunnel
+
+networks:
+  omni-network:
+    driver: bridge
 
 volumes:
   omni_data:
