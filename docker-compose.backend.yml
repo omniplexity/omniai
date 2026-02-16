@@ -14,13 +14,13 @@ services:
       - "127.0.0.1:8000:8000"
     volumes:
       - omni_data:/app/.data
+    env_file:
+      - .env
     environment:
       OMNI_DEV_MODE: "false"
       OMNI_DB_PATH: "/app/.data/omni.db"
       OMNI_WORKSPACE_ROOT: "/app/.data/workspace"
       OMNI_REGISTRY_ROOT: "/app/.data/registry"
-      # Allow ngrok tunnel URL + local development
-      OMNI_CORS_ORIGINS: "${OMNI_CORS_ORIGINS:-http://localhost:5173,http://localhost:5174,http://127.0.0.1:5173,http://127.0.0.1:5174}"
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8000/v1/system/health"]

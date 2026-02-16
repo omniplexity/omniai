@@ -5,7 +5,9 @@
   "required": ["user_id", "display_name", "created_at"],
   "properties": {
     "user_id": {"type": "string"},
+    "username": {"type": "string"},
     "display_name": {"type": "string"},
+    "avatar_url": {"type": "string"},
     "created_at": {"type": "string", "format": "date-time"}
   }
 }

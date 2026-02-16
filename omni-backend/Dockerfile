@@ -24,5 +24,4 @@ RUN mkdir -p /app/.omni_artifacts /app/.omni_uploads /app/.data
 
 EXPOSE 8000
 
-# Single process per container
 CMD ["python", "-m", "uvicorn", "omni_backend.main:app", "--host", "0.0.0.0", "--port", "8000"]

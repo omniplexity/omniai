@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-label="OmniAI favicon" shape-rendering="geometricPrecision">
+  <!-- Background -->
+  <circle cx="128" cy="128" r="120" fill="#0B0B0F"></circle>
+
+  <!-- Outer badge ring (denser) -->
+  <circle cx="128" cy="128" r="110" fill="none" stroke="#FFFFFF" stroke-width="7"></circle>
+
+  <!-- Symmetric interlinked “chain-knot” ring (6-fold) -->
+  <g fill="none" stroke="#FFFFFF" stroke-width="20" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M128 44 Q155 81.2 200.7 86"></path>
+    <path d="M200.7 86 Q232 128 200.7 170"></path>
+    <path d="M200.7 170 Q155 174.8 128 212"></path>
+    <path d="M128 212 Q76 218.1 55.3 170"></path>
+    <path d="M55.3 170 Q74 128 55.3 86"></path>
+    <path d="M55.3 86 Q76 37.9 128 44"></path>
+  </g>
+
+  <!-- “Weave” separation cuts -->
+  <g fill="#0B0B0F">
+    <circle cx="128" cy="44" r="11"></circle>
+    <circle cx="200.7" cy="86" r="11"></circle>
+    <circle cx="200.7" cy="170" r="11"></circle>
+    <circle cx="128" cy="212" r="11"></circle>
+    <circle cx="55.3" cy="170" r="11"></circle>
+    <circle cx="55.3" cy="86" r="11"></circle>
+  </g>
+
+  <!-- Nodes (cleaner at 16px) -->
+  <g fill="#FFFFFF">
+    <circle cx="128" cy="44" r="6"></circle>
+    <circle cx="200.7" cy="86" r="6"></circle>
+    <circle cx="200.7" cy="170" r="6"></circle>
+    <circle cx="128" cy="212" r="6"></circle>
+    <circle cx="55.3" cy="170" r="6"></circle>
+    <circle cx="55.3" cy="86" r="6"></circle>
+  </g>
+
+  <!-- Core -->
+  <circle cx="128" cy="128" r="18" fill="#FFFFFF"></circle>
+  <circle cx="128" cy="128" r="7" fill="#0B0B0F"></circle>
+</svg>

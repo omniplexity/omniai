@@ -1,0 +1,71 @@
+{
+  "package_id": "community.pkg.report",
+  "version": "1.0.0",
+  "created_at": "2026-02-16T13:05:42.404565+00:00",
+  "manifest": {
+    "tool_id": "community.pkg.report",
+    "version": "1.0.0",
+    "title": "community.pkg.report",
+    "description": "pkg",
+    "inputs_schema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "query": {
+          "type": "string"
+        }
+      }
+    },
+    "outputs_schema": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "results"
+      ],
+      "properties": {
+        "results": {
+          "type": "array"
+        }
+      }
+    },
+    "binding": {
+      "type": "inproc_safe",
+      "entrypoint": "omni_backend.tools_runtime:web_search"
+    },
+    "risk": {
+      "scopes_required": [],
+      "external_write": false,
+      "network_egress": false,
+      "secrets_required": []
+    },
+    "compat": {
+      "contract_version": "v1",
+      "min_runtime_version": "0.1"
+    }
+  },
+  "files": [],
+  "metadata": {
+    "tier": "community",
+    "tags": [
+      "test"
+    ],
+    "description": "desc"
+  },
+  "status": "pending_review",
+  "checks": {
+    "schema_ok": true,
+    "signature_ok": true,
+    "static_ok": false,
+    "contract_tests_ok": false,
+    "last_checked_at": null
+  },
+  "moderation": {
+    "reports_count": 0,
+    "last_report_at": null
+  },
+  "signature": {
+    "algo": "ed25519",
+    "public_key_id": "k1",
+    "signature_base64": "/0yLkpQ/oiPrpSauefa/chNgTmx5k2nxF29Xch4/nDs3qeqi21jthnfnHlyGGeaHuJZ3d9NiFyfXiDMXh+aTAA=="
+  }
+}

@@ -51,7 +51,7 @@ export type ProvenanceWhyPath = { nodes: string[]; edges: ProvenanceEdge[] };
 export type ProvenanceWhyResponse = { artifact_id: string; paths: ProvenanceWhyPath[]; truncated: boolean };
 
 // User & Collaboration Types
-export type Me = { user_id: string; display_name: string; created_at: string };
+export type Me = { user_id: string; display_name: string; avatar_url?: string; created_at: string; username?: string };
 export type Member = { project_id: string; user_id: string; role: string; added_at: string; display_name?: string };
 export type CommentRow = { comment_id: string; project_id: string; run_id?: string | null; thread_id?: string | null; target_type: "run" | "event" | "artifact"; target_id: string; author_id: string; body: string; created_at: string };
 export type ActivityRow = { activity_id: string; activity_seq: number; project_id: string; kind: string; ref_type: string; ref_id: string; actor_id: string; created_at: string };

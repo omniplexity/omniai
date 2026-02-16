@@ -5,68 +5,42 @@ services:
       context: ./omni-backend
     container_name: omni-backend
     ports:
-      - "127.0.0.1:8000:8000"
+      - "8000:8000"
     volumes:
       - omni_data:/app/.data
+    env_file:
+      - .env
     environment:
-      # settings (can be overridden in .env)
-      OMNI_DEV_MODE: "false"
+      OMNI_DEV_MODE: "true"
       OMNI_DB_PATH: "/app/.data/omni.db"
       OMNI_WORKSPACE_ROOT: "/app/.data/workspace"
       OMNI_REGISTRY_ROOT: "/app/.data/registry"
-      # CORS - configured for local dev (ports 5173, 5174) and production
-      OMNI_CORS_ORIGINS: "${OMNI_CORS_ORIGINS:-http://localhost:5173,http://localhost:5174,http://127.0.0.1:5173,http://127.0.0.1:5174,https://omniplexity.github.io}"
-      # Cross-site cookie settings (required for GH Pages -> ngrok)
-      OMNI_SESSION_SECURE: "${OMNI_SESSION_SECURE:-true}"
-      OMNI_SESSION_SAMESITE: "${OMNI_SESSION_SAMESITE:-none}"
+      OMNI_CORS_ORIGINS: "http://localhost:8080"
+      OMNI_DEV_LOGIN_PASSWORD: "loeSqkosMZjDVda7Ns02mi8l1_fkx_-0Y_Lqo9MYYqGcYnLrGzJtSfDWawad3WZIad1mk8GdP5ZTwLcbMYr1kQ"
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8000/v1/system/health"]
+      test: ["CMD", "curl", "-fsS", "http://localhost:8000/v1/system/health"]
       interval: 10s
       timeout: 3s
-      retries: 10
+      retries: 5
+      start_period: 10s
     networks:
       - omni-network
 
-  # Frontend static file service (production)
+  # Frontend with nginx reverse proxy
   omni-frontend:
     build:
       context: ./omni-web
       target: runner
     container_name: omni-frontend
     ports:
-      - "127.0.0.1:8080:8080"
-    environment:
-      # Tell frontend to talk to backend via internal network
-      VITE_API_BASE_URL: "http://omni-backend:8000"
+      - "8080:8080"
     restart: unless-stopped
     depends_on:
       omni-backend:
         condition: service_healthy
     networks:
       - omni-network
-
-  # ngrok tunnel for external access
-  ngrok:
-    image: ngrok/ngrok:latest
-    container_name: omni-ngrok
-    restart: unless-stopped
-    depends_on:
-      - omni-backend
-    ports:
-      - "127.0.0.1:4040:4040"
-    environment:
-      NGROK_AUTHTOKEN: "${NGROK_AUTHTOKEN}"
-      NGROK_LOG_LEVEL: "info"
-    command: >
-      http
-      --url=http://omni-backend:8000
-      --host-header=rewrite
-      --log=stdout
-    networks:
-      - omni-network
-    profiles:
-      - tunnel
 
 networks:
   omni-network:

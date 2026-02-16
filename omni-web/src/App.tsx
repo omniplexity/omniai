@@ -675,6 +675,21 @@ export function App() {
           onCreateProject={createProject}
           onCreateThread={createThread}
           onCreateRun={createRun}
+          onNewChat={() => { /* TODO: Navigate to new chat */ }}
+          onSearchChats={() => { /* TODO: Open search */ }}
+          onImages={() => { /* TODO: Navigate to images */ }}
+          onPlugins={() => { /* TODO: Navigate to plugins */ }}
+          onDeepResearch={() => { /* TODO: Navigate to deep research */ }}
+          onMcpBrowser={() => { /* TODO: Navigate to MCP browser */ }}
+          onUpdateUser={async (data) => {
+            if (!csrfToken) return;
+            await api("/v1/me", {
+              method: "PATCH",
+              headers: { "Content-Type": "application/json", "X-Omni-CSRF": csrfToken },
+              body: JSON.stringify(data),
+            });
+            await bootstrapAuth();
+          }}
           isAdmin={isAdmin}
           onLogout={logout}
           me={me}

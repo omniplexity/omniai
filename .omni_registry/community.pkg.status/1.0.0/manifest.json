@@ -1,0 +1,41 @@
+{
+  "tool_id": "community.pkg.status",
+  "version": "1.0.0",
+  "title": "community.pkg.status",
+  "description": "pkg",
+  "inputs_schema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "query": {
+        "type": "string"
+      }
+    }
+  },
+  "outputs_schema": {
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+      "results"
+    ],
+    "properties": {
+      "results": {
+        "type": "array"
+      }
+    }
+  },
+  "binding": {
+    "type": "inproc_safe",
+    "entrypoint": "omni_backend.tools_runtime:web_search"
+  },
+  "risk": {
+    "scopes_required": [],
+    "external_write": false,
+    "network_egress": false,
+    "secrets_required": []
+  },
+  "compat": {
+    "contract_version": "v1",
+    "min_runtime_version": "0.1"
+  }
+}

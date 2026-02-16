@@ -266,6 +266,7 @@ CREATE TABLE IF NOT EXISTS tool_metrics(
 CREATE TABLE IF NOT EXISTS users(
   user_id TEXT PRIMARY KEY,
   display_name TEXT NOT NULL,
+  avatar_url TEXT,
   created_at TEXT NOT NULL
 );
 CREATE TABLE IF NOT EXISTS project_members(
@@ -496,7 +497,14 @@ class Database:
 
     def ensure_user(self, user_id: str, display_name: str | None = None) -> dict[str, Any]:
         now = datetime.now(UTC).isoformat()
-        dname = (display_name or user_id).strip() or user_id
+        # Try to get the actual username from auth_identities to use as default display name
+        actual_username = None
+        with self.connect() as conn:
+            identity_row = conn.execute("SELECT username FROM auth_identities WHERE user_id = ?", (user_id,)).fetchone()
+            if identity_row:
+                actual_username = identity_row["username"]
+        # Use provided display_name, or fall back to actual username, then UUID
+        dname = (display_name or actual_username or user_id).strip() or user_id
         with self._retrying_connection() as conn:
             conn.execute("BEGIN IMMEDIATE")
             conn.execute("INSERT OR IGNORE INTO users(user_id, display_name, created_at) VALUES(?, ?, ?)", (user_id, dname, now))
@@ -507,8 +515,22 @@ class Database:
 
     def get_user(self, user_id: str) -> dict[str, Any] | None:
         with self.connect() as conn:
-            row = conn.execute("SELECT * FROM users WHERE user_id = ?", (user_id,)).fetchone()
+            row = conn.execute("""
+                SELECT u.user_id, u.display_name, u.avatar_url, u.created_at, i.username 
+                FROM users u 
+                LEFT JOIN auth_identities i ON u.user_id = i.user_id 
+                WHERE u.user_id = ?
+            """, (user_id,)).fetchone()
         return dict(row) if row else None
+
+    def update_user_avatar(self, user_id: str, avatar_url: str) -> dict[str, Any] | None:
+        with self._retrying_connection() as conn:
+            conn.execute("BEGIN IMMEDIATE")
+            changed = conn.execute("UPDATE users SET avatar_url = ? WHERE user_id = ?", (avatar_url, user_id)).rowcount
+            conn.execute("COMMIT")
+        if not changed:
+            return None
+        return self.get_user(user_id)
 
     def get_identity_by_username(self, username: str) -> dict[str, Any] | None:
         with self.connect() as conn:

@@ -1,0 +1,28 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(OMNI_CORS_ORIGINS=\"https://omniplexity.github.io,https://rossie-chargeful-plentifully.ngrok-free.dev\" OMNI_SESSION_SECURE=true OMNI_SESSION_SAMESITE=none python:*)",
+      "Bash(git status:*)",
+      "Bash(git pull:*)",
+      "Bash(git stash:*)",
+      "Bash(git checkout:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git rebase:*)",
+      "Bash(git push:*)",
+      "Bash(ls:*)",
+      "Bash(git log:*)",
+      "Bash(npm run build:*)",
+      "Bash(git reset:*)",
+      "Bash(git rm:*)",
+      "Bash(git fetch:*)",
+      "Bash(docker compose:*)",
+      "Bash(curl:*)",
+      "Bash(gh api:*)",
+      "Bash(python -m pytest:*)",
+      "Bash(pip install:*)",
+      "Bash(python:*)",
+      "Bash(chmod:*)"
+    ]
+  }
+}
