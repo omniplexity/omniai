@@ -195,6 +195,141 @@ def test_membership_role_gating_and_owner_changes(client: TestClient):
     assert client.delete(f"/v1/projects/{pid}/members/viewer1").status_code == 200
 
 
+def test_delete_thread_removes_thread_runs_and_events(client: TestClient):
+    project = client.post("/v1/projects", json={"name": "delete-thread-project"}).json()
+    thread = client.post(f"/v1/projects/{project['id']}/threads", json={"title": "delete-thread"}).json()
+    run = client.post(f"/v1/threads/{thread['id']}/runs", json={}).json()
+    payload = {
+        "kind": "user_message",
+        "actor": "user",
+        "payload": {"text": "hello"},
+        "privacy": {"redact_level": "none", "contains_secrets": False},
+        "pins": {"model": {"provider": "stub", "model_id": "stub-model", "params": {}, "seed": None}, "tools": [], "runtime": {"executor_version": "v0"}},
+    }
+    assert client.post(f"/v1/runs/{run['id']}/events", json=payload).status_code == 200
+
+    deleted = client.delete(f"/v1/threads/{thread['id']}")
+    assert deleted.status_code == 200
+    assert deleted.json()["deleted"] is True
+
+    threads = client.get("/v1/threads").json()["threads"]
+    assert all(t["id"] != thread["id"] for t in threads)
+    assert client.get(f"/v1/threads/{thread['id']}/runs").status_code == 404
+    assert client.app.state.db.get_run_context(run["id"]) is None
+
+
+def test_delete_uncategorized_thread_requires_owner(client: TestClient):
+    own_thread = client.post("/v1/threads", json={"title": "owned-chat"}).json()
+    login_as(client, "other-user")
+    denied = client.delete(f"/v1/threads/{own_thread['id']}")
+    assert denied.status_code == 404
+    own_list = client.get("/v1/threads").json()["threads"]
+    assert all(t["id"] != own_thread["id"] for t in own_list)
+    login_as(client, "dev-user")
+    own_list_after = client.get("/v1/threads").json()["threads"]
+    assert any(t["id"] == own_thread["id"] for t in own_list_after)
+
+
+def test_delete_project_thread_requires_editor_or_owner(client: TestClient):
+    login_as(client, "owner-user")
+    project = client.post("/v1/projects", json={"name": "auth-project"}).json()
+    thread = client.post(f"/v1/projects/{project['id']}/threads", json={"title": "project-chat"}).json()
+    login_as(client, "viewer-user")
+    viewer_id = client.get("/v1/me").json()["user_id"]
+    login_as(client, "editor-user")
+    editor_id = client.get("/v1/me").json()["user_id"]
+    login_as(client, "owner-user")
+    assert client.post(f"/v1/projects/{project['id']}/members", json={"user_id": viewer_id, "role": "viewer"}).status_code == 200
+    assert client.post(f"/v1/projects/{project['id']}/members", json={"user_id": editor_id, "role": "editor"}).status_code == 200
+
+    login_as(client, "viewer-user")
+    denied = client.delete(f"/v1/threads/{thread['id']}")
+    assert denied.status_code == 404
+
+    login_as(client, "editor-user")
+    allowed = client.delete(f"/v1/threads/{thread['id']}")
+    assert allowed.status_code == 200
+    assert allowed.json()["deleted"] is True
+
+
+def test_delete_project_cascades_project_threads_and_runs(client: TestClient):
+    project = client.post("/v1/projects", json={"name": "delete-project"}).json()
+    thread = client.post(f"/v1/projects/{project['id']}/threads", json={"title": "project-thread"}).json()
+    run = client.post(f"/v1/threads/{thread['id']}/runs", json={}).json()
+    uncategorized = client.post("/v1/threads", json={"title": "uncategorized-thread"}).json()
+    uncategorized_run = client.post(f"/v1/threads/{uncategorized['id']}/runs", json={}).json()
+    assert client.post(
+        f"/v1/projects/{project['id']}/comments",
+        json={"run_id": run["id"], "target_type": "run", "target_id": run["id"], "body": "to-delete"},
+    ).status_code == 200
+
+    deleted = client.delete(f"/v1/projects/{project['id']}")
+    assert deleted.status_code == 200
+    assert deleted.json()["deleted"] is True
+
+    projects = client.get("/v1/projects").json()["projects"]
+    assert all(p["id"] != project["id"] for p in projects)
+    threads = client.get("/v1/threads").json()["threads"]
+    assert all(t["id"] != thread["id"] for t in threads)
+    assert any(t["id"] == uncategorized["id"] for t in threads)
+    assert client.get(f"/v1/threads/{thread['id']}/runs").status_code == 404
+    assert client.get(f"/v1/threads/{uncategorized['id']}/runs").status_code == 200
+    assert client.app.state.db.get_run_context(run["id"]) is None
+    assert client.app.state.db.get_run_context(uncategorized_run["id"]) is not None
+
+
+def test_delete_project_cascades_threads_runs_events_comments(client: TestClient):
+    login_as(client, "cascade-owner")
+    project = client.post("/v1/projects", json={"name": "cascade-project"}).json()
+    thread = client.post(f"/v1/projects/{project['id']}/threads", json={"title": "cascade-thread"}).json()
+    run = client.post(f"/v1/threads/{thread['id']}/runs", json={}).json()
+    event_payload = {
+        "kind": "user_message",
+        "actor": "user",
+        "payload": {"text": "cascade"},
+        "privacy": {"redact_level": "none", "contains_secrets": False},
+        "pins": {"model": {"provider": "stub", "model_id": "stub-model", "params": {}, "seed": None}, "tools": [], "runtime": {"executor_version": "v0"}},
+    }
+    assert client.post(f"/v1/runs/{run['id']}/events", json=event_payload).status_code == 200
+    comment = client.post(
+        f"/v1/projects/{project['id']}/comments",
+        json={"run_id": run["id"], "target_type": "run", "target_id": run["id"], "body": "cascade-note"},
+    )
+    assert comment.status_code == 200
+    deleted = client.delete(f"/v1/projects/{project['id']}")
+    assert deleted.status_code == 200
+    assert all(p["id"] != project["id"] for p in client.get("/v1/projects").json()["projects"])
+    assert client.get(f"/v1/threads/{thread['id']}/runs").status_code == 404
+    assert client.get(f"/v1/runs/{run['id']}/events", params={"after_seq": 0}).status_code == 404
+    with client.app.state.db.connect() as conn:
+        assert conn.execute("SELECT COUNT(*) AS c FROM comments WHERE project_id = ?", (project["id"],)).fetchone()["c"] == 0
+        assert conn.execute("SELECT COUNT(*) AS c FROM run_events WHERE run_id = ?", (run["id"],)).fetchone()["c"] == 0
+
+
+def test_login_does_not_auto_create_default_projects(client: TestClient):
+    projects = client.get("/v1/projects")
+    assert projects.status_code == 200
+    assert projects.json()["projects"] == []
+
+
+def test_cors_allows_delete_preflight_if_app_is_cross_origin():
+    app = create_app()
+    with TestClient(app) as c:
+        res = c.options(
+            "/v1/threads/fake-thread-id",
+            headers={
+                "Origin": "http://localhost:5173",
+                "Access-Control-Request-Method": "DELETE",
+                "Access-Control-Request-Headers": "authorization,x-omni-csrf",
+            },
+        )
+        assert res.status_code == 200
+        assert res.headers.get("access-control-allow-methods")
+        allowed_headers = (res.headers.get("access-control-allow-headers") or "").lower()
+        assert "authorization" in allowed_headers
+        assert "x-omni-csrf" in allowed_headers
+
+
 def test_comment_create_delete_emits_activity_and_validates_target(client: TestClient):
     login_as(client, "owner")
     project = client.post("/v1/projects", json={"name": "p2"}).json()

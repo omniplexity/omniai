@@ -1,36 +1,23 @@
-import { FormEvent, Suspense, lazy, useEffect, useMemo, useRef, useState } from "react";
+import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { createSseClient, type SseClient } from "./sse";
 import { discardAction, enqueueAction, listPending, markDone, markFailed } from "./offlineQueue";
 import { discardDeferredUpload, enqueueDeferredUpload, listPendingDeferredUploads, markDeferredUploadDone, markDeferredUploadFailed } from "./offlineUploads";
-import { SystemConfigPanel } from "./system/SystemConfigPanel";
-import { useSystemConfig } from "./system/useSystemConfig";
 import { Shell } from "./components/layout/Shell";
 import { LeftSidebar } from "./components/left-sidebar/LeftSidebar";
 import { ChatPanel } from "./components/center-panel/ChatPanel";
 import { EditorPanel } from "./components/center-panel/EditorPanel";
 import { DashboardPanel } from "./components/center-panel/DashboardPanel";
 import { McpBrowserPanel } from "./components/center-panel/McpBrowserPanel";
-import { NotificationsPanel } from "./components/center-panel/NotificationsPanel";
-import { TimelinePanel } from "./components/center-panel/TimelinePanel";
 import { ToolsPanel } from "./components/center-panel/ToolsPanel";
 import { MemoryPanel } from "./components/center-panel/MemoryPanel";
 import { RegistryPanel } from "./components/center-panel/RegistryPanel";
-import { CommentsPanel } from "./components/center-panel/CommentsPanel";
-import { ActivityPanel } from "./components/center-panel/ActivityPanel";
-import { CollaborationPanel } from "./components/center-panel/CollaborationPanel";
-import { ToolMetricsPanel } from "./components/center-panel/ToolMetricsPanel";
-import { ArtifactsPanel } from "./components/center-panel/ArtifactsPanel";
-import { OfflineQueuePanel } from "./components/center-panel/OfflineQueuePanel";
 import { LandingPage } from "./components/auth/LandingPage";
 import type {
   Project, Thread, Run, RunSummary, ArtifactRef, EventEnvelope, ToolRow, Approval, McpServer,
   MemoryItem, ResearchSource, WorkflowInfo, WorkflowRun, RegistryPackage, ToolPin, RunMetrics,
-  ToolMetricRow, ProvenanceSummary, ProvenanceGraph, ProvenanceWhyPath, Me, Member, CommentRow,
-  ActivityRow, NotificationRow, ProvenanceCaps
+  ToolMetricRow, ProvenanceSummary, ProvenanceGraph, ProvenanceWhyPath, Me, ProvenanceCaps
 } from "./types";
 import type { OfflineAction as OfflineActionType, DeferredUpload as DeferredUploadType } from "./types";
-
-const ProvenanceGraphView = lazy(() => import("./provenance/ProvenanceGraphView").then((m) => ({ default: m.ProvenanceGraphView })));
 
 const DEFAULT_API_BASE_URL = "";
 const STORAGE_KEY = "omniai.phase1.context";
@@ -61,8 +48,7 @@ export function App() {
   const [selectedRunId, setSelectedRunId] = useState("");
   const [activeTab, setActiveTab] = useState<
     "Chat" | "Editor" | "Dashboard" | "MCP Browser" |
-    "Notifications" | "Timeline" | "Tools" | "Memory" | "Marketplace" |
-    "Comments" | "Activity" | "Collaboration" | "Tool Metrics" | "Artifacts" | "Offline Queue"
+    "Tools" | "Memory" | "Marketplace"
   >("Chat");
   const [events, setEvents] = useState<EventEnvelope[]>([]);
   const [artifacts, setArtifacts] = useState<ArtifactRef[]>([]);
@@ -78,24 +64,12 @@ export function App() {
   const [provenanceCaps, setProvenanceCaps] = useState<ProvenanceCaps>({ max_depth: 6, node_cap: 5000, edge_cap: 10000 });
   const [provenanceGraphError, setProvenanceGraphError] = useState("");
   const [me, setMe] = useState<Me | null>(null);
-  const [members, setMembers] = useState<Member[]>([]);
-  const [newMemberId, setNewMemberId] = useState("");
-  const [newMemberRole, setNewMemberRole] = useState("viewer");
-  const [comments, setComments] = useState<CommentRow[]>([]);
-  const [activity, setActivity] = useState<ActivityRow[]>([]);
   const [projectUnread, setProjectUnread] = useState<Record<string, number>>({});
-  const [notifications, setNotifications] = useState<NotificationRow[]>([]);
-  const [notificationUnreadCount, setNotificationUnreadCount] = useState(0);
-  const [notificationsOpen, setNotificationsOpen] = useState(false);
-  const { opsOpen, toggleOps, loadSystemConfig, panelProps: systemConfigPanelProps } = useSystemConfig(apiBaseUrl);
   const [isOnline, setIsOnline] = useState<boolean>(navigator.onLine);
   const [pendingActions, setPendingActions] = useState<OfflineActionType[]>([]);
   const [replayBusy, setReplayBusy] = useState(false);
   const [deferredUploads, setDeferredUploads] = useState<DeferredUploadType[]>([]);
   const [uploadProgress, setUploadProgress] = useState<Record<string, number>>({});
-  const [commentTargetType, setCommentTargetType] = useState<"run" | "event" | "artifact">("run");
-  const [commentTargetId, setCommentTargetId] = useState("");
-  const [commentBody, setCommentBody] = useState("");
   const [csrfToken, setCsrfToken] = useState("");
   const [loginUsername, setLoginUsername] = useState("dev-user");
   const [loginPassword, setLoginPassword] = useState("");
@@ -136,24 +110,14 @@ export function App() {
   const [projectPins, setProjectPins] = useState<ToolPin[]>([]);
   const [pinToolId, setPinToolId] = useState("");
   const [pinToolVersion, setPinToolVersion] = useState("");
-  const [reportReason, setReportReason] = useState("malicious");
-  const [reportDetails, setReportDetails] = useState("");
   const [mirrorToPackageId, setMirrorToPackageId] = useState("");
   const [statusToSet, setStatusToSet] = useState("verified");
-  const [traceKind, setTraceKind] = useState("");
-  const [traceToolId, setTraceToolId] = useState("");
-  const [traceErrorsOnly, setTraceErrorsOnly] = useState(false);
-  const [traceSearch, setTraceSearch] = useState("");
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [deletingThreadIds, setDeletingThreadIds] = useState<Record<string, boolean>>({});
   const [deletingProjectIds, setDeletingProjectIds] = useState<Record<string, boolean>>({});
   const [deleteError, setDeleteError] = useState("");
   const isAdmin = String((import.meta as { env?: Record<string, string> }).env?.VITE_OMNI_DEV_MODE || "").toLowerCase() === "true" || import.meta.env.DEV;
   const sseRef = useRef<SseClient | null>(null);
-  const activitySseRef = useRef<SseClient | null>(null);
-  const notificationsSseRef = useRef<SseClient | null>(null);
-  const lastActivitySeqRef = useRef(0);
-  const lastNotificationSeqRef = useRef(0);
 
   const orderedEvents = useMemo(() => [...events].sort((a, b) => a.seq - b.seq), [events]);
   const validProjectIds = useMemo(() => new Set(projects.map((p) => p.id)), [projects]);
@@ -166,14 +130,6 @@ export function App() {
     if (!debugDataIntegrity) return;
     console.debug(`[omni:data-integrity] ${event}`, payload);
   }
-  const filteredEvents = useMemo(() => orderedEvents.filter((e) => {
-    if (traceKind && e.kind !== traceKind) return false;
-    if (traceErrorsOnly && !["tool_error", "system_event", "workflow_node_failed"].includes(e.kind)) return false;
-    if (traceToolId && String(e.payload?.tool_id || "") !== traceToolId) return false;
-    if (traceSearch && !JSON.stringify(e.payload).toLowerCase().includes(traceSearch.toLowerCase())) return false;
-    return true;
-  }), [orderedEvents, traceKind, traceToolId, traceErrorsOnly, traceSearch]);
-
   // Restore saved selection from localStorage (no API call)
   // Note: stale IDs are harmless — they'll get cleared when API calls 404
   useEffect(() => {
@@ -247,11 +203,6 @@ export function App() {
   }, [apiBaseUrl]);
 
   useEffect(() => {
-    if (!me || !apiBaseUrl) return;
-    void Promise.all([loadNotifications(), loadNotificationUnreadCount()]);
-  }, [me, apiBaseUrl]);
-
-  useEffect(() => {
     if (!selectedRunId) return;
     const last = orderedEvents.length ? orderedEvents[orderedEvents.length - 1].seq : 0;
     sseRef.current?.close();
@@ -266,16 +217,6 @@ export function App() {
     });
     return () => { sseRef.current?.close(); sseRef.current = null; };
   }, [selectedRunId, apiBaseUrl]);
-
-  useEffect(() => {
-    if (!selectedProjectId || !apiBaseUrl) return;
-    void Promise.all([loadMembers(selectedProjectId), loadActivity(selectedProjectId)]);
-  }, [selectedProjectId, apiBaseUrl]);
-
-  useEffect(() => {
-    if (!selectedProjectId || !apiBaseUrl) return;
-    void loadComments(selectedProjectId);
-  }, [selectedProjectId, selectedRunId, apiBaseUrl]);
 
   useEffect(() => {
     const onOnline = () => setIsOnline(true);
@@ -452,7 +393,7 @@ export function App() {
     if (!csrfToken) return;
     await fetch(`${apiBaseUrl}/v1/auth/logout`, { method: "POST", credentials: "include", headers: { "X-Omni-CSRF": csrfToken } });
     setProjects([]); setThreads([]); setUncategorizedThreads([]); setRuns([]); setSelectedProjectId(""); setSelectedThreadId(""); setSelectedRunId(""); setEvents([]);
-    setNotifications([]); setNotificationUnreadCount(0); setCsrfToken(""); setMe(null);
+    setCsrfToken(""); setMe(null);
   }
 
   async function refreshProjects() { setProjects((await api<{ projects: Project[] }>("/v1/projects")).projects); }
@@ -490,21 +431,6 @@ export function App() {
   async function loadArtifacts(runId: string) { setArtifacts((await api<{ artifacts: ArtifactRef[] }>(`/v1/runs/${runId}/artifacts`)).artifacts); }
   async function loadSummary(runId: string) { setSummary(await api<RunSummary>(`/v1/runs/${runId}/summary`)); }
   async function loadMe() { setMe(await api<Me>("/v1/me")); }
-  async function loadMembers(projectId: string) { setMembers((await api<{ members: Member[] }>(`/v1/projects/${projectId}/members`)).members); }
-  async function loadComments(projectId: string) { setComments((await api<{ comments: CommentRow[] }>(`/v1/projects/${projectId}/comments${selectedRunId ? `?run_id=${encodeURIComponent(selectedRunId)}` : ""}`)).comments); }
-  async function loadActivity(projectId: string) {
-    const data = await api<{ activity: ActivityRow[] }>(`/v1/projects/${projectId}/activity?limit=50`);
-    setActivity(data.activity);
-    if (data.activity.length) lastActivitySeqRef.current = Math.max(...data.activity.map((a) => Number(a.activity_seq || 0)));
-    const unread = await api<{ unread_count: number }>(`/v1/projects/${projectId}/activity/unread`);
-    setProjectUnread((prev) => ({ ...prev, [projectId]: unread.unread_count }));
-  }
-  async function loadNotifications() { setNotifications((await api<{ notifications: NotificationRow[] }>("/v1/notifications?limit=50")).notifications); }
-  async function loadNotificationUnreadCount() { setNotificationUnreadCount((await api<{ unread_count: number }>("/v1/notifications/unread_count")).unread_count); }
-  async function markNotificationsRead(payload: { notification_ids?: string[]; up_to_seq?: number }) {
-    await api("/v1/notifications/mark_read", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
-    await Promise.all([loadNotifications(), loadNotificationUnreadCount()]);
-  }
   async function loadRunMetrics(runId: string) { setRunMetrics(await api<RunMetrics>(`/v1/runs/${runId}/metrics`)); }
   async function loadToolMetrics() { setToolMetrics((await api<{ tools: ToolMetricRow[] }>("/v1/tools/metrics")).tools); }
   async function loadProvenance(runId: string) { setProvenance(await api<ProvenanceSummary>(`/v1/runs/${runId}/provenance`)); }
@@ -678,30 +604,6 @@ export function App() {
     await api(`/v1/projects/${selectedProjectId}/tools/pins`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ tool_id: pinToolId, tool_version: pinToolVersion, run_id: selectedRunId }) });
     await Promise.all([loadProjectPins(selectedProjectId), loadEvents(selectedRunId)]);
   }
-  async function addMember() {
-    if (!selectedProjectId || !newMemberId) return;
-    await api(`/v1/projects/${selectedProjectId}/members`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ user_id: newMemberId, role: newMemberRole }) });
-    setNewMemberId("");
-    await Promise.all([loadMembers(selectedProjectId), loadActivity(selectedProjectId)]);
-  }
-  async function createComment() {
-    if (!selectedProjectId || !commentTargetId || !commentBody.trim()) return;
-    const body = { run_id: selectedRunId || null, target_type: commentTargetType, target_id: commentTargetId, body: commentBody };
-    const idem = newIdempotencyKey();
-    setComments((prev) => [...prev, { comment_id: `pending-${idem}`, project_id: selectedProjectId, run_id: selectedRunId || null, target_type: commentTargetType, target_id: commentTargetId, author_id: me?.user_id || "me", body: commentBody, created_at: new Date().toISOString() }]);
-    await enqueueMutation({ method: "POST", endpoint: `/v1/projects/${selectedProjectId}/comments`, body, idempotency_key: idem, scope: { project_id: selectedProjectId, run_id: selectedRunId || undefined } });
-    setCommentBody("");
-  }
-  async function deleteComment(commentId: string) {
-    if (!selectedProjectId) return;
-    await api(`/v1/projects/${selectedProjectId}/comments/${commentId}`, { method: "DELETE" });
-    await Promise.all([loadComments(selectedProjectId), loadActivity(selectedProjectId)]);
-  }
-  async function reportPackage() {
-    if (!selectedPkg || !selectedPkgVersion || !selectedRunId) return;
-    await api(`/v1/registry/packages/${selectedPkg}/${selectedPkgVersion}/report`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ reporter: "ui", reason_code: reportReason, details: reportDetails || null, run_id: selectedRunId }) });
-    await Promise.all([loadRegistryPackages(), loadEvents(selectedRunId)]);
-  }
   async function verifyPackage() {
     if (!selectedPkg || !selectedPkgVersion || !selectedRunId) return;
     await api(`/v1/registry/packages/${selectedPkg}/${selectedPkgVersion}/verify`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ run_id: selectedRunId }) });
@@ -838,17 +740,9 @@ export function App() {
   }
 
   // Right sidebar migration map:
-  // Notifications -> Notifications tab
-  // Timeline -> Timeline tab
   // Tools/Approvals -> Tools tab
   // Memory -> Memory tab
   // Marketplace/Pins/Admin -> Marketplace tab
-  // Comments -> Comments tab
-  // Activity -> Activity tab
-  // Collaboration -> Collaboration tab
-  // Tool Metrics -> Tool Metrics tab
-  // Artifacts -> Artifacts tab
-  // Offline Queue/Deferred Uploads -> Offline Queue tab
   // Main App
   return (
     <Shell
@@ -882,17 +776,9 @@ export function App() {
           onPlugins={() => { /* TODO: Navigate to plugins */ }}
           onDeepResearch={() => { /* TODO: Navigate to deep research */ }}
           onMcpBrowser={() => setActiveTab("MCP Browser")}
-          onOpenNotifications={() => setActiveTab("Notifications")}
-          onOpenTimeline={() => setActiveTab("Timeline")}
           onOpenTools={() => setActiveTab("Tools")}
           onOpenMemory={() => setActiveTab("Memory")}
           onOpenMarketplace={() => setActiveTab("Marketplace")}
-          onOpenComments={() => setActiveTab("Comments")}
-          onOpenActivity={() => setActiveTab("Activity")}
-          onOpenCollaboration={() => setActiveTab("Collaboration")}
-          onOpenMetrics={() => setActiveTab("Tool Metrics")}
-          onOpenArtifacts={() => setActiveTab("Artifacts")}
-          onOpenOfflineQueue={() => setActiveTab("Offline Queue")}
           onRenameThread={(threadId, newTitle) => {
             setThreads(prev => prev.map(t => t.id === threadId ? { ...t, title: newTitle } : t));
             setUncategorizedThreads(prev => prev.map(t => t.id === threadId ? { ...t, title: newTitle } : t));
@@ -1017,7 +903,6 @@ export function App() {
                 onTextChange={setChatText}
                 onModeChange={setAgentMode}
                 onPromoteToMemory={promoteEventToMemory}
-                onAddComment={(eventId) => { setCommentTargetType("event"); setCommentTargetId(eventId); }}
               />
             )}
             {activeTab === "Editor" && (
@@ -1089,26 +974,6 @@ export function App() {
                 onPinMcpTool={pinMcpTool}
               />
             )}
-            {activeTab === "Notifications" && (
-              <NotificationsPanel
-                notifications={notifications}
-                notificationUnreadCount={notificationUnreadCount}
-                onMarkNotificationsRead={markNotificationsRead}
-              />
-            )}
-            {activeTab === "Timeline" && (
-              <TimelinePanel
-                traceKind={traceKind}
-                traceToolId={traceToolId}
-                traceErrorsOnly={traceErrorsOnly}
-                traceSearch={traceSearch}
-                filteredEvents={filteredEvents.map((e) => ({ seq: e.seq, kind: e.kind }))}
-                onTraceKindChange={setTraceKind}
-                onTraceToolIdChange={setTraceToolId}
-                onTraceErrorsOnlyChange={setTraceErrorsOnly}
-                onTraceSearchChange={setTraceSearch}
-              />
-            )}
             {activeTab === "Tools" && (
               <ToolsPanel
                 tools={tools}
@@ -1166,46 +1031,6 @@ export function App() {
                 onMirrorPackage={mirrorPackage}
                 onMirrorToChange={setMirrorToPackageId}
                 onStatusToSetChange={setStatusToSet}
-              />
-            )}
-            {activeTab === "Comments" && (
-              <CommentsPanel
-                comments={comments}
-                commentTargetType={commentTargetType}
-                commentTargetId={commentTargetId}
-                commentBody={commentBody}
-                selectedProjectId={selectedProjectId}
-                onCreateComment={createComment}
-                onDeleteComment={deleteComment}
-                onCommentTargetTypeChange={setCommentTargetType}
-                onCommentTargetIdChange={setCommentTargetId}
-                onCommentBodyChange={setCommentBody}
-              />
-            )}
-            {activeTab === "Activity" && <ActivityPanel activity={activity} />}
-            {activeTab === "Collaboration" && (
-              <CollaborationPanel
-                members={members}
-                newMemberId={newMemberId}
-                newMemberRole={newMemberRole}
-                selectedProjectId={selectedProjectId}
-                onAddMember={addMember}
-                onNewMemberIdChange={setNewMemberId}
-                onNewMemberRoleChange={setNewMemberRole}
-              />
-            )}
-            {activeTab === "Tool Metrics" && <ToolMetricsPanel toolMetrics={toolMetrics} />}
-            {activeTab === "Artifacts" && <ArtifactsPanel artifacts={artifacts} />}
-            {activeTab === "Offline Queue" && (
-              <OfflineQueuePanel
-                pendingActions={pendingActions}
-                deferredUploads={deferredUploads}
-                uploadProgress={uploadProgress}
-                isOnline={isOnline}
-                onReplayQueue={replayQueue}
-                onReplayUploads={replayDeferredUploads}
-                onDiscardPending={discardPending}
-                onDiscardUpload={discardUpload}
               />
             )}
           </div>

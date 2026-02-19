@@ -22,17 +22,9 @@ interface LeftSidebarProps {
   onPlugins: () => void;
   onDeepResearch: () => void;
   onMcpBrowser: () => void;
-  onOpenNotifications: () => void;
-  onOpenTimeline: () => void;
   onOpenTools: () => void;
   onOpenMemory: () => void;
   onOpenMarketplace: () => void;
-  onOpenComments: () => void;
-  onOpenActivity: () => void;
-  onOpenCollaboration: () => void;
-  onOpenMetrics: () => void;
-  onOpenArtifacts: () => void;
-  onOpenOfflineQueue: () => void;
   onRenameThread: (threadId: string, newTitle: string) => void;
   onMoveThread: (threadId: string, projectId: string) => void;
   onRemoveFromProject: (threadId: string) => void;
@@ -82,17 +74,9 @@ export function LeftSidebar({
   onPlugins,
   onDeepResearch,
   onMcpBrowser,
-  onOpenNotifications,
-  onOpenTimeline,
   onOpenTools,
   onOpenMemory,
   onOpenMarketplace,
-  onOpenComments,
-  onOpenActivity,
-  onOpenCollaboration,
-  onOpenMetrics,
-  onOpenArtifacts,
-  onOpenOfflineQueue,
   onRenameThread,
   onMoveThread,
   onRemoveFromProject,
@@ -348,17 +332,9 @@ export function LeftSidebar({
           </svg>
           <span>MCP Browser</span>
         </button>
-        <button className="sb-nav-item" onClick={onOpenNotifications}><span>Notifications</span></button>
-        <button className="sb-nav-item" onClick={onOpenTimeline}><span>Timeline</span></button>
         <button className="sb-nav-item" onClick={onOpenTools}><span>Tools</span></button>
         <button className="sb-nav-item" onClick={onOpenMemory}><span>Memory</span></button>
         <button className="sb-nav-item" onClick={onOpenMarketplace}><span>Marketplace</span></button>
-        <button className="sb-nav-item" onClick={onOpenComments}><span>Comments</span></button>
-        <button className="sb-nav-item" onClick={onOpenActivity}><span>Activity</span></button>
-        <button className="sb-nav-item" onClick={onOpenCollaboration}><span>Collaboration</span></button>
-        <button className="sb-nav-item" onClick={onOpenMetrics}><span>Tool Metrics</span></button>
-        <button className="sb-nav-item" onClick={onOpenArtifacts}><span>Artifacts</span></button>
-        <button className="sb-nav-item" onClick={onOpenOfflineQueue}><span>Offline Queue</span></button>
       </nav>
       {deleteError ? (
         <div role="alert" className="mt-sm" style={{ color: "#f85149", padding: "0 12px" }}>

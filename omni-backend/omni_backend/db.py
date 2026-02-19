@@ -22,7 +22,8 @@ CREATE TABLE IF NOT EXISTS projects(
 );
 CREATE TABLE IF NOT EXISTS threads(
   id TEXT PRIMARY KEY,
-  project_id TEXT NOT NULL,
+  project_id TEXT,
+  user_id TEXT,
   title TEXT NOT NULL,
   created_at TEXT NOT NULL,
   FOREIGN KEY(project_id) REFERENCES projects(id)
@@ -415,6 +416,7 @@ class Database:
                 pass
             for stmt in [
                 "ALTER TABLE runs ADD COLUMN created_by_user_id TEXT",
+                "ALTER TABLE threads ADD COLUMN user_id TEXT",
                 "ALTER TABLE artifact_links ADD COLUMN source_event_id TEXT",
                 "ALTER TABLE artifact_links ADD COLUMN correlation_id TEXT",
                 "ALTER TABLE artifact_links ADD COLUMN tool_id TEXT",
@@ -436,6 +438,33 @@ class Database:
                     conn.execute(stmt)
                 except sqlite3.OperationalError:
                     pass
+            # Migration: make project_id nullable in threads table for uncategorized threads
+            # SQLite doesn't support ALTER COLUMN, so recreate the table if project_id is NOT NULL
+            try:
+                ti = conn.execute("PRAGMA table_info(threads)").fetchall()
+                for col in ti:
+                    # col format: (cid, name, type, notnull, dflt, pk)
+                    if col[1] == "project_id" and col[3] == 1:  # notnull=1 means NOT NULL
+                        conn.execute("DROP TABLE IF EXISTS threads_new")
+                        conn.execute("PRAGMA foreign_keys = OFF")
+                        conn.executescript("""
+                            CREATE TABLE threads_new(
+                                id TEXT PRIMARY KEY,
+                                project_id TEXT,
+                                user_id TEXT,
+                                title TEXT NOT NULL,
+                                created_at TEXT NOT NULL,
+                                FOREIGN KEY(project_id) REFERENCES projects(id)
+                            );
+                            INSERT INTO threads_new(id, project_id, user_id, title, created_at)
+                            SELECT id, project_id, NULL, title, created_at FROM threads;
+                            DROP TABLE threads;
+                            ALTER TABLE threads_new RENAME TO threads;
+                        """)
+                        conn.execute("PRAGMA foreign_keys = ON")
+                        break
+            except sqlite3.OperationalError:
+                pass
             self._backfill_notification_state(conn)
 
     def _backfill_notification_state(self, conn: sqlite3.Connection) -> None:
@@ -474,17 +503,31 @@ class Database:
 
     @contextmanager
     def _retrying_connection(self):
+        """Yield a connection, retrying on 'database is locked' errors.
+
+        Unlike a naive retry-in-a-loop approach, this separates the
+        retry logic from the yield so @contextmanager only sees one yield.
+        """
+        last_exc: sqlite3.OperationalError | None = None
         for attempt in range(MAX_LOCK_RETRIES):
             conn = self.connect()
             try:
-                yield conn
-                conn.close()
-                return
+                # Try a lightweight write to detect locks before yielding
+                conn.execute("SELECT 1")
+                break  # Connection is good — exit retry loop
             except sqlite3.OperationalError as exc:
                 conn.close()
                 if "locked" not in str(exc).lower() or attempt == MAX_LOCK_RETRIES - 1:
                     raise
+                last_exc = exc
                 time.sleep(LOCK_BACKOFF_SECONDS * (attempt + 1))
+        else:
+            raise last_exc or sqlite3.OperationalError("database is locked after retries")
+        # Now yield exactly once
+        try:
+            yield conn
+        finally:
+            conn.close()
 
     def create_project(self, name: str) -> dict[str, str]:
         pid = str(uuid4())
@@ -499,18 +542,24 @@ class Database:
         now = datetime.now(UTC).isoformat()
         # Try to get the actual username from auth_identities to use as default display name
         actual_username = None
-        with self.connect() as conn:
-            identity_row = conn.execute("SELECT username FROM auth_identities WHERE user_id = ?", (user_id,)).fetchone()
+        conn0 = self.connect()
+        try:
+            identity_row = conn0.execute("SELECT username FROM auth_identities WHERE user_id = ?", (user_id,)).fetchone()
             if identity_row:
                 actual_username = identity_row["username"]
+        finally:
+            conn0.close()
         # Use provided display_name, or fall back to actual username, then UUID
         dname = (display_name or actual_username or user_id).strip() or user_id
         with self._retrying_connection() as conn:
             conn.execute("BEGIN IMMEDIATE")
             conn.execute("INSERT OR IGNORE INTO users(user_id, display_name, created_at) VALUES(?, ?, ?)", (user_id, dname, now))
             conn.execute("COMMIT")
-        with self.connect() as conn:
-            row = conn.execute("SELECT * FROM users WHERE user_id = ?", (user_id,)).fetchone()
+        conn2 = self.connect()
+        try:
+            row = conn2.execute("SELECT * FROM users WHERE user_id = ?", (user_id,)).fetchone()
+        finally:
+            conn2.close()
         return dict(row)
 
     def get_user(self, user_id: str) -> dict[str, Any] | None:
@@ -1055,23 +1104,163 @@ class Database:
             rows = conn.execute("SELECT id, name, created_at FROM projects ORDER BY created_at ASC").fetchall()
         return [dict(r) for r in rows]
 
-    def create_thread(self, project_id: str, title: str) -> dict[str, str] | None:
+    @staticmethod
+    def _delete_runs_in_tx(conn: sqlite3.Connection, run_ids: list[str]) -> None:
+        if not run_ids:
+            return
+        placeholders = ",".join("?" for _ in run_ids)
+        existing_tables = {str(r["name"]) for r in conn.execute("SELECT name FROM sqlite_master WHERE type='table'").fetchall()}
+        for table, column in [
+            ("run_events", "run_id"),
+            ("artifact_links", "run_id"),
+            ("tool_correlations", "run_id"),
+            ("research_source_links", "run_id"),
+            ("research_sources", "run_id"),
+            ("approvals", "run_id"),
+            ("workflow_runs", "run_id"),
+            ("run_metrics", "run_id"),
+            ("provenance_cache", "run_id"),
+            ("notifications", "run_id"),
+        ]:
+            if table in existing_tables:
+                conn.execute(f"DELETE FROM {table} WHERE {column} IN ({placeholders})", run_ids)
+        if "comments" in existing_tables:
+            conn.execute(f"DELETE FROM comments WHERE run_id IN ({placeholders})", run_ids)
+            conn.execute(
+                f"DELETE FROM comments WHERE target_type = 'run' AND target_id IN ({placeholders})",
+                run_ids,
+            )
+        if "runs" in existing_tables:
+            conn.execute(f"DELETE FROM runs WHERE id IN ({placeholders})", run_ids)
+
+    def get_thread(self, thread_id: str) -> dict[str, Any] | None:
+        with self.connect() as conn:
+            row = conn.execute("SELECT id, project_id, user_id, title, created_at FROM threads WHERE id = ?", (thread_id,)).fetchone()
+        return dict(row) if row else None
+
+    def delete_thread(self, thread_id: str, actor_user_id: str) -> bool:
+        with self._retrying_connection() as conn:
+            conn.execute("BEGIN IMMEDIATE")
+            row = conn.execute("SELECT id, project_id, user_id FROM threads WHERE id = ?", (thread_id,)).fetchone()
+            if not row:
+                conn.execute("ROLLBACK")
+                return False
+            if row["project_id"] is None and str(row["user_id"] or "") != str(actor_user_id):
+                conn.execute("ROLLBACK")
+                return False
+            run_rows = conn.execute("SELECT id FROM runs WHERE thread_id = ?", (thread_id,)).fetchall()
+            run_ids = [str(r["id"]) for r in run_rows]
+            self._delete_runs_in_tx(conn, run_ids)
+            conn.execute("DELETE FROM comments WHERE thread_id = ?", (thread_id,))
+            conn.execute(
+                "DELETE FROM comments WHERE target_type = 'thread' AND target_id = ?",
+                (thread_id,),
+            )
+            conn.execute("DELETE FROM threads WHERE id = ?", (thread_id,))
+            conn.execute("COMMIT")
+        return True
+
+    def delete_project(self, project_id: str) -> bool:
+        with self._retrying_connection() as conn:
+            conn.execute("BEGIN IMMEDIATE")
+            existing_tables = {str(r["name"]) for r in conn.execute("SELECT name FROM sqlite_master WHERE type='table'").fetchall()}
+            row = conn.execute("SELECT id FROM projects WHERE id = ?", (project_id,)).fetchone()
+            if not row:
+                conn.execute("ROLLBACK")
+                return False
+
+            thread_rows = conn.execute("SELECT id FROM threads WHERE project_id = ?", (project_id,)).fetchall()
+            thread_ids = [str(r["id"]) for r in thread_rows]
+
+            run_ids: list[str] = []
+            if thread_ids:
+                placeholders = ",".join("?" for _ in thread_ids)
+                run_rows = conn.execute(
+                    f"SELECT id FROM runs WHERE thread_id IN ({placeholders})",
+                    thread_ids,
+                ).fetchall()
+                run_ids = [str(r["id"]) for r in run_rows]
+                self._delete_runs_in_tx(conn, run_ids)
+                if "comments" in existing_tables:
+                    conn.execute(
+                        f"DELETE FROM comments WHERE thread_id IN ({placeholders})",
+                        thread_ids,
+                    )
+                    conn.execute(
+                        f"DELETE FROM comments WHERE target_type = 'thread' AND target_id IN ({placeholders})",
+                        thread_ids,
+                    )
+                conn.execute(
+                    f"DELETE FROM threads WHERE id IN ({placeholders})",
+                    thread_ids,
+                )
+
+            for table, column in [
+                ("comments", "project_id"),
+                ("activity", "project_id"),
+                ("notifications", "project_id"),
+                ("user_project_state", "project_id"),
+                ("project_members", "project_id"),
+                ("policy_grants", "project_id"),
+                ("project_tool_pins", "project_id"),
+            ]:
+                if table in existing_tables:
+                    conn.execute(f"DELETE FROM {table} WHERE {column} = ?", (project_id,))
+            conn.execute("DELETE FROM projects WHERE id = ?", (project_id,))
+            conn.execute("COMMIT")
+        return True
+
+    def create_thread(self, project_id: str | None, title: str, user_id: str) -> dict[str, str] | None:
         tid = str(uuid4())
         created_at = datetime.now(UTC).isoformat()
         with self._retrying_connection() as conn:
             conn.execute("BEGIN IMMEDIATE")
-            if not conn.execute("SELECT id FROM projects WHERE id = ?", (project_id,)).fetchone():
-                conn.execute("ROLLBACK")
-                return None
-            conn.execute("INSERT INTO threads(id, project_id, title, created_at) VALUES(?, ?, ?, ?)", (tid, project_id, title, created_at))
+            # Only validate project_id if it's provided (non-null)
+            if project_id is not None:
+                if not conn.execute("SELECT id FROM projects WHERE id = ?", (project_id,)).fetchone():
+                    conn.execute("ROLLBACK")
+                    return None
+            conn.execute(
+                "INSERT INTO threads(id, project_id, user_id, title, created_at) VALUES(?, ?, ?, ?, ?)",
+                (tid, project_id, user_id, title, created_at),
+            )
             conn.execute("COMMIT")
-        return {"id": tid, "project_id": project_id, "title": title, "created_at": created_at}
+        return {"id": tid, "project_id": project_id, "user_id": user_id, "title": title, "created_at": created_at}
+
+    def list_user_threads(self, user_id: str) -> list[dict[str, Any]]:
+        """List all threads accessible to a user: threads in their projects + uncategorized threads."""
+        with self.connect() as conn:
+            # Get threads from projects the user is a member of
+            rows = conn.execute("""
+                SELECT t.id, t.project_id, t.user_id, t.title, t.created_at
+                FROM threads t
+                LEFT JOIN project_members pm ON t.project_id = pm.project_id
+                WHERE pm.user_id = ?
+                ORDER BY t.created_at DESC
+            """, (user_id,)).fetchall()
+            
+            # Also get uncategorized threads (project_id is NULL)
+            uncategorized = conn.execute("""
+                SELECT id, project_id, user_id, title, created_at
+                FROM threads
+                WHERE project_id IS NULL AND user_id = ?
+                ORDER BY created_at DESC
+            """, (user_id,)).fetchall()
+            
+            # Combine and deduplicate by thread id
+            thread_map: dict[str, dict[str, Any]] = {}
+            for r in rows:
+                thread_map[r["id"]] = dict(r)
+            for r in uncategorized:
+                thread_map[r["id"]] = dict(r)
+            
+            return list(thread_map.values())
 
     def list_threads(self, project_id: str) -> tuple[bool, list[dict[str, str]]]:
         with self.connect() as conn:
             if not conn.execute("SELECT id FROM projects WHERE id = ?", (project_id,)).fetchone():
                 return False, []
-            rows = conn.execute("SELECT id, project_id, title, created_at FROM threads WHERE project_id = ? ORDER BY created_at ASC", (project_id,)).fetchall()
+            rows = conn.execute("SELECT id, project_id, user_id, title, created_at FROM threads WHERE project_id = ? ORDER BY created_at ASC", (project_id,)).fetchall()
         return True, [dict(r) for r in rows]
 
     def create_run(self, thread_id: str, status: str, pins: dict[str, Any], created_by_user_id: str | None = None) -> dict[str, Any] | None:

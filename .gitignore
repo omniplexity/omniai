@@ -40,3 +40,10 @@ omni-web/.vite/
 # Test results
 test-results/
 playwright-report/
+
+# TypeScript build cache
+*.tsbuildinfo
+
+# Local SQLite artifacts
+omni-backend/omniai_dev.db
+omniai_dev.db

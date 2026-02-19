@@ -455,7 +455,7 @@ def create_app() -> FastAPI:
     app.add_middleware(RequestSizeLimitMiddleware, max_bytes=settings.max_request_bytes)
     origins = settings.cors_origins
     if origins:
-        app.add_middleware(CORSMiddleware, allow_origins=origins, allow_credentials=True, allow_methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"], allow_headers=["Content-Type", "Last-Event-ID", "X-Omni-CSRF", "X-Omni-Idempotency-Key"])
+        app.add_middleware(CORSMiddleware, allow_origins=origins, allow_credentials=True, allow_methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"], allow_headers=["Content-Type", "Last-Event-ID", "X-Omni-CSRF", "X-Omni-Idempotency-Key", "Authorization"])
 
     # --- Raw ASGI middleware (avoids BaseHTTPMiddleware which breaks SSE streaming) ---
     class SessionBaselineMiddleware:
@@ -767,7 +767,12 @@ def create_app() -> FastAPI:
         ctx = app.state.db.get_run_context(run_id)
         if not ctx:
             raise HTTPException(status_code=404, detail="run not found")
-        require_project_role(ctx.project_id, user_id, minimum_role)
+        if ctx.project_id:
+            require_project_role(ctx.project_id, user_id, minimum_role)
+            return
+        thread = app.state.db.get_thread(ctx.thread_id)
+        if not thread or str(thread.get("user_id") or "") != str(user_id):
+            raise HTTPException(status_code=404, detail="run not found")
 
     def with_idempotency(user_id: str, endpoint: str, idempotency_key: str | None, compute) -> dict[str, Any]:
         key = (idempotency_key or "").strip()
@@ -1184,9 +1189,27 @@ def create_app() -> FastAPI:
     @app.post("/v1/projects/{project_id}/threads")
     def create_thread(project_id: str, payload: CreateThreadRequest, request: Request):
         require_project_role(project_id, request.state.user_id, "editor")
-        created = request.app.state.db.create_thread(project_id, payload.title)
+        created = request.app.state.db.create_thread(project_id, payload.title, request.state.user_id)
         if not created:
             raise HTTPException(status_code=404, detail="project not found")
+        return created
+
+    @app.get("/v1/threads")
+    def list_user_threads(request: Request):
+        """List all threads accessible to the current user: threads in their projects + uncategorized threads."""
+        if not request.state.user_id:
+            raise HTTPException(status_code=401, detail="authentication required")
+        threads = request.app.state.db.list_user_threads(request.state.user_id)
+        return {"threads": threads}
+
+    @app.post("/v1/threads")
+    def create_uncategorized_thread(payload: CreateThreadRequest, request: Request):
+        """Create a thread without a project (uncategorized). Any authenticated user can do this."""
+        if not request.state.user_id:
+            raise HTTPException(status_code=401, detail="authentication required")
+        created = request.app.state.db.create_thread(None, payload.title, request.state.user_id)
+        if not created:
+            raise HTTPException(status_code=500, detail="failed to create thread")
         return created
 
     @app.get("/v1/projects/{project_id}/threads")
@@ -1197,18 +1220,47 @@ def create_app() -> FastAPI:
             raise HTTPException(status_code=404, detail="project not found")
         return {"threads": threads}
 
+    @app.delete("/v1/threads/{thread_id}")
+    def delete_thread(thread_id: str, request: Request):
+        if not request.state.user_id:
+            raise HTTPException(status_code=401, detail="authentication required")
+        thread = request.app.state.db.get_thread(thread_id)
+        if not thread:
+            raise HTTPException(status_code=404, detail="thread not found")
+        project_id = thread.get("project_id")
+        if project_id:
+            try:
+                require_project_role(str(project_id), request.state.user_id, "editor")
+            except HTTPException:
+                raise HTTPException(status_code=404, detail="thread not found")
+        elif str(thread.get("user_id") or "") != str(request.state.user_id):
+            raise HTTPException(status_code=404, detail="thread not found")
+        if not request.app.state.db.delete_thread(thread_id, request.state.user_id):
+            raise HTTPException(status_code=404, detail="thread not found")
+        return {"deleted": True}
+
+    @app.delete("/v1/projects/{project_id}")
+    def delete_project(project_id: str, request: Request):
+        try:
+            require_project_role(project_id, request.state.user_id, "owner")
+        except HTTPException:
+            raise HTTPException(status_code=404, detail="project not found")
+        if not request.app.state.db.delete_project(project_id):
+            raise HTTPException(status_code=404, detail="project not found")
+        return {"deleted": True}
+
     @app.post("/v1/threads/{thread_id}/runs")
     def create_run(thread_id: str, payload: CreateRunRequest, request: Request):
         pins = payload.pins.copy()
-        ctx_project_id: str | None = None
-        for p in request.app.state.db.list_projects():
-            ok, threads = request.app.state.db.list_threads(p["id"])
-            if ok and any(t["id"] == thread_id for t in threads):
-                ctx_project_id = p["id"]
-                break
+        thread = request.app.state.db.get_thread(thread_id)
+        if not thread:
+            raise HTTPException(status_code=404, detail="thread not found")
+        ctx_project_id = thread.get("project_id")
         if ctx_project_id:
             require_project_role(ctx_project_id, request.state.user_id, "editor")
             pins["toolset"] = request.app.state.db.list_project_tool_pins(ctx_project_id)
+        elif str(thread.get("user_id") or "") != str(request.state.user_id):
+            raise HTTPException(status_code=404, detail="thread not found")
         created = request.app.state.db.create_run(thread_id, payload.status, pins, created_by_user_id=request.state.user_id)
         if not created:
             raise HTTPException(status_code=404, detail="thread not found")
@@ -1216,14 +1268,13 @@ def create_app() -> FastAPI:
 
     @app.get("/v1/threads/{thread_id}/runs")
     def list_runs(thread_id: str, request: Request):
-        ctx = None
-        for p in request.app.state.db.list_projects():
-            ok, threads = request.app.state.db.list_threads(p["id"])
-            if ok and any(t["id"] == thread_id for t in threads):
-                ctx = p["id"]
-                break
-        if ctx:
-            require_project_role(ctx, request.state.user_id, "viewer")
+        thread = request.app.state.db.get_thread(thread_id)
+        if not thread:
+            raise HTTPException(status_code=404, detail="thread not found")
+        if thread.get("project_id"):
+            require_project_role(str(thread["project_id"]), request.state.user_id, "viewer")
+        elif str(thread.get("user_id") or "") != str(request.state.user_id):
+            raise HTTPException(status_code=404, detail="thread not found")
         ok, runs = request.app.state.db.list_runs(thread_id)
         if not ok:
             raise HTTPException(status_code=404, detail="thread not found")

@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-test("right sidebar removed and relocated tabs are reachable from left nav", async ({ page }) => {
+test("right sidebar removed and remaining utility tabs are reachable from left nav", async ({ page }) => {
   await page.addInitScript(() => {
     localStorage.setItem("omniai.phase1.context", JSON.stringify({ projectId: "", threadId: "", runId: "" }));
   });
@@ -26,7 +26,6 @@ test("right sidebar removed and relocated tabs are reachable from left nav", asy
     if (p === "/v1/notifications/unread_count") return json({ unread_count: 0, last_seen_notification_seq: 0 });
     if (p === "/v1/notifications/state") return json({ last_seen_notification_seq: 0, updated_at: "2026-01-01T00:00:00Z" });
     if (p === "/v1/notifications") return json({ notifications: [] });
-    if (p === "/v1/notifications/mark_read" && method === "POST") return json({ changed: 0, unread_count: 0, last_seen_notification_seq: 0 });
     if (p.endsWith("/events/stream") || p.endsWith("/activity/stream") || p === "/v1/notifications/stream") {
       return route.fulfill({ status: 200, contentType: "text/event-stream", body: 'event: heartbeat\ndata: {"ts":"2026-01-01T00:00:00Z"}\n\n' });
     }
@@ -41,10 +40,6 @@ test("right sidebar removed and relocated tabs are reachable from left nav", asy
 
   await expect(page.locator(".right-sidebar")).toHaveCount(0);
 
-  await page.getByRole("button", { name: "Notifications" }).click();
-  await expect(page.locator(".center-content").getByText("Notifications", { exact: false })).toBeVisible();
-  await expect(page.locator(".center-content").getByRole("button", { name: "Mark All Read" })).toBeVisible();
-
   await page.getByRole("button", { name: "Tools" }).click();
   await expect(page.locator(".center-content").getByText("Tools", { exact: false })).toBeVisible();
   await expect(page.locator(".center-content").getByRole("button", { name: "Invoke" })).toBeVisible();
@@ -56,8 +51,4 @@ test("right sidebar removed and relocated tabs are reachable from left nav", asy
   await page.getByRole("button", { name: "Marketplace" }).click();
   await expect(page.locator(".center-content").getByText("Marketplace", { exact: false })).toBeVisible();
   await expect(page.locator(".center-content").getByRole("button", { name: "Install" })).toBeVisible();
-
-  await page.getByRole("button", { name: "Offline Queue" }).click();
-  await expect(page.locator(".center-content").getByText("Offline Queue", { exact: false })).toBeVisible();
-  await expect(page.locator(".center-content").getByRole("button", { name: "Retry Now" })).toBeVisible();
 });

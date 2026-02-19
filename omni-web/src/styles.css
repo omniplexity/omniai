@@ -1389,7 +1389,7 @@ select.input {
 /* Responsive */
 @media (max-width: 1200px) {
   .shell {
-    grid-template-columns: 200px 1fr 280px;
+    grid-template-columns: 200px 1fr;
   }
 }
 
@@ -1398,7 +1398,7 @@ select.input {
     grid-template-columns: 1fr;
   }
   
-  .pane-left, .pane-right {
+  .pane-left {
     display: none;
   }
 }
@@ -2080,7 +2080,8 @@ select.input {
   display: flex;
   flex-direction: column;
   height: 100%;
-  overflow: hidden;
+  overflow-y: auto;
+  overflow-x: hidden;
   background: var(--bg-secondary);
 }
 

@@ -10,7 +10,6 @@ interface ChatPanelProps {
   onTextChange: (text: string) => void;
   onModeChange: (mode: boolean) => void;
   onPromoteToMemory: (eventId: string) => void;
-  onAddComment: (eventId: string) => void;
 }
 
 export function ChatPanel({
@@ -22,7 +21,6 @@ export function ChatPanel({
   onTextChange,
   onModeChange,
   onPromoteToMemory,
-  onAddComment,
 }: ChatPanelProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -204,15 +202,6 @@ export function ChatPanel({
                         >
                           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                             <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
-                          </svg>
-                        </button>
-                        <button
-                          className="chat-v2-action-btn"
-                          onClick={() => onAddComment(event.event_id)}
-                          title="Comment"
-                        >
-                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
                           </svg>
                         </button>
                       </div>
