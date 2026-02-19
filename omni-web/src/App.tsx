@@ -9,7 +9,18 @@ import { LeftSidebar } from "./components/left-sidebar/LeftSidebar";
 import { ChatPanel } from "./components/center-panel/ChatPanel";
 import { EditorPanel } from "./components/center-panel/EditorPanel";
 import { DashboardPanel } from "./components/center-panel/DashboardPanel";
-import { RightSidebar } from "./components/right-sidebar/RightSidebar";
+import { McpBrowserPanel } from "./components/center-panel/McpBrowserPanel";
+import { NotificationsPanel } from "./components/center-panel/NotificationsPanel";
+import { TimelinePanel } from "./components/center-panel/TimelinePanel";
+import { ToolsPanel } from "./components/center-panel/ToolsPanel";
+import { MemoryPanel } from "./components/center-panel/MemoryPanel";
+import { RegistryPanel } from "./components/center-panel/RegistryPanel";
+import { CommentsPanel } from "./components/center-panel/CommentsPanel";
+import { ActivityPanel } from "./components/center-panel/ActivityPanel";
+import { CollaborationPanel } from "./components/center-panel/CollaborationPanel";
+import { ToolMetricsPanel } from "./components/center-panel/ToolMetricsPanel";
+import { ArtifactsPanel } from "./components/center-panel/ArtifactsPanel";
+import { OfflineQueuePanel } from "./components/center-panel/OfflineQueuePanel";
 import { LandingPage } from "./components/auth/LandingPage";
 import type {
   Project, Thread, Run, RunSummary, ArtifactRef, EventEnvelope, ToolRow, Approval, McpServer,
@@ -24,6 +35,7 @@ const ProvenanceGraphView = lazy(() => import("./provenance/ProvenanceGraphView"
 const DEFAULT_API_BASE_URL = "";
 const STORAGE_KEY = "omniai.phase1.context";
 const defaultPins = { model: { provider: "stub", model_id: "stub-model", params: {}, seed: null }, tools: [], runtime: { executor_version: "v0" } };
+const debugDataIntegrity = String((import.meta as { env?: Record<string, string> }).env?.VITE_OMNI_DEBUG_DATA_INTEGRITY || "").toLowerCase() === "true";
 
 export function App() {
   const [apiBaseUrl, setApiBaseUrl] = useState(DEFAULT_API_BASE_URL);
@@ -42,11 +54,16 @@ export function App() {
   // State
   const [projects, setProjects] = useState<Project[]>([]);
   const [threads, setThreads] = useState<Thread[]>([]);
+  const [uncategorizedThreads, setUncategorizedThreads] = useState<Thread[]>([]);
   const [runs, setRuns] = useState<Run[]>([]);
   const [selectedProjectId, setSelectedProjectId] = useState("");
   const [selectedThreadId, setSelectedThreadId] = useState("");
   const [selectedRunId, setSelectedRunId] = useState("");
-  const [activeTab, setActiveTab] = useState<"Chat" | "Editor" | "Dashboard">("Chat");
+  const [activeTab, setActiveTab] = useState<
+    "Chat" | "Editor" | "Dashboard" | "MCP Browser" |
+    "Notifications" | "Timeline" | "Tools" | "Memory" | "Marketplace" |
+    "Comments" | "Activity" | "Collaboration" | "Tool Metrics" | "Artifacts" | "Offline Queue"
+  >("Chat");
   const [events, setEvents] = useState<EventEnvelope[]>([]);
   const [artifacts, setArtifacts] = useState<ArtifactRef[]>([]);
   const [summary, setSummary] = useState<RunSummary | null>(null);
@@ -127,6 +144,10 @@ export function App() {
   const [traceToolId, setTraceToolId] = useState("");
   const [traceErrorsOnly, setTraceErrorsOnly] = useState(false);
   const [traceSearch, setTraceSearch] = useState("");
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [deletingThreadIds, setDeletingThreadIds] = useState<Record<string, boolean>>({});
+  const [deletingProjectIds, setDeletingProjectIds] = useState<Record<string, boolean>>({});
+  const [deleteError, setDeleteError] = useState("");
   const isAdmin = String((import.meta as { env?: Record<string, string> }).env?.VITE_OMNI_DEV_MODE || "").toLowerCase() === "true" || import.meta.env.DEV;
   const sseRef = useRef<SseClient | null>(null);
   const activitySseRef = useRef<SseClient | null>(null);
@@ -135,6 +156,16 @@ export function App() {
   const lastNotificationSeqRef = useRef(0);
 
   const orderedEvents = useMemo(() => [...events].sort((a, b) => a.seq - b.seq), [events]);
+  const validProjectIds = useMemo(() => new Set(projects.map((p) => p.id)), [projects]);
+  const validThreadIds = useMemo(() => new Set([...threads, ...uncategorizedThreads].map((t) => t.id)), [threads, uncategorizedThreads]);
+  const validRunIds = useMemo(() => new Set(runs.map((r) => r.id)), [runs]);
+  const normalizedProjectId = selectedProjectId && validProjectIds.has(selectedProjectId) ? selectedProjectId : "";
+  const normalizedThreadId = selectedThreadId && validThreadIds.has(selectedThreadId) ? selectedThreadId : "";
+  const normalizedRunId = selectedRunId && validRunIds.has(selectedRunId) ? selectedRunId : "";
+  function logDataIntegrity(event: string, payload: Record<string, unknown>) {
+    if (!debugDataIntegrity) return;
+    console.debug(`[omni:data-integrity] ${event}`, payload);
+  }
   const filteredEvents = useMemo(() => orderedEvents.filter((e) => {
     if (traceKind && e.kind !== traceKind) return false;
     if (traceErrorsOnly && !["tool_error", "system_event", "workflow_node_failed"].includes(e.kind)) return false;
@@ -144,13 +175,16 @@ export function App() {
   }), [orderedEvents, traceKind, traceToolId, traceErrorsOnly, traceSearch]);
 
   // Restore saved selection from localStorage (no API call)
+  // Note: stale IDs are harmless — they'll get cleared when API calls 404
   useEffect(() => {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (raw) {
-      const parsed = JSON.parse(raw) as { projectId?: string; threadId?: string; runId?: string };
-      setSelectedProjectId(parsed.projectId || "");
-      setSelectedThreadId(parsed.threadId || "");
-      setSelectedRunId(parsed.runId || "");
+      try {
+        const parsed = JSON.parse(raw) as { projectId?: string; threadId?: string; runId?: string };
+        setSelectedProjectId(parsed.projectId || "");
+        setSelectedThreadId(parsed.threadId || "");
+        setSelectedRunId(parsed.runId || "");
+      } catch { /* corrupt storage — ignore */ }
     }
   }, []);
 
@@ -158,11 +192,24 @@ export function App() {
   useEffect(() => {
     if (!apiBaseUrl) return;
     void refreshProjects();
+    void loadUncategorizedThreads();
   }, [apiBaseUrl]);
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify({ projectId: selectedProjectId, threadId: selectedThreadId, runId: selectedRunId }));
-  }, [selectedProjectId, selectedThreadId, selectedRunId]);
+    if (!me || !apiBaseUrl) return;
+    void Promise.all([refreshProjects(), loadUncategorizedThreads()]);
+  }, [me, apiBaseUrl]);
+
+  useEffect(() => {
+    if (selectedProjectId !== normalizedProjectId) setSelectedProjectId(normalizedProjectId);
+    if (selectedThreadId !== normalizedThreadId) setSelectedThreadId(normalizedThreadId);
+    if (selectedRunId !== normalizedRunId) setSelectedRunId(normalizedRunId);
+  }, [selectedProjectId, selectedThreadId, selectedRunId, normalizedProjectId, normalizedThreadId, normalizedRunId]);
+
+  useEffect(() => {
+    logDataIntegrity("selection.persist.write", { key: STORAGE_KEY, projectId: normalizedProjectId, threadId: normalizedThreadId, runId: normalizedRunId });
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ projectId: normalizedProjectId, threadId: normalizedThreadId, runId: normalizedRunId }));
+  }, [normalizedProjectId, normalizedThreadId, normalizedRunId]);
 
   useEffect(() => {
     if (!selectedProjectId || !apiBaseUrl) return;
@@ -182,7 +229,12 @@ export function App() {
 
   useEffect(() => {
     if (!selectedRunId || !apiBaseUrl) return;
-    void Promise.all([loadEvents(selectedRunId), loadArtifacts(selectedRunId), loadSummary(selectedRunId), loadApprovals(selectedRunId), loadRunMetrics(selectedRunId), loadProvenance(selectedRunId), loadProvenanceGraph(selectedRunId)]);
+    Promise.all([loadEvents(selectedRunId), loadArtifacts(selectedRunId), loadSummary(selectedRunId), loadApprovals(selectedRunId), loadRunMetrics(selectedRunId), loadProvenance(selectedRunId), loadProvenanceGraph(selectedRunId)])
+      .catch(() => {
+        // Run doesn't exist (stale ID) — clear selection
+        setSelectedRunId("");
+        setEvents([]);
+      });
   }, [selectedRunId, apiBaseUrl]);
 
   useEffect(() => {
@@ -367,7 +419,7 @@ export function App() {
         throw new Error(errorText || "Login failed");
       }
       await bootstrapAuth();
-      await refreshProjects();
+      await Promise.all([refreshProjects(), loadUncategorizedThreads()]);
     } catch (err) {
       setLoginError(err instanceof Error ? err.message : "Login failed");
     } finally {
@@ -388,7 +440,7 @@ export function App() {
         throw new Error(errorText || "Registration failed");
       }
       await bootstrapAuth();
-      await refreshProjects();
+      await Promise.all([refreshProjects(), loadUncategorizedThreads()]);
     } catch (err) {
       setLoginError(err instanceof Error ? err.message : "Registration failed");
     } finally {
@@ -399,13 +451,41 @@ export function App() {
   async function logout() {
     if (!csrfToken) return;
     await fetch(`${apiBaseUrl}/v1/auth/logout`, { method: "POST", credentials: "include", headers: { "X-Omni-CSRF": csrfToken } });
-    setProjects([]); setThreads([]); setRuns([]); setSelectedProjectId(""); setSelectedThreadId(""); setSelectedRunId(""); setEvents([]);
+    setProjects([]); setThreads([]); setUncategorizedThreads([]); setRuns([]); setSelectedProjectId(""); setSelectedThreadId(""); setSelectedRunId(""); setEvents([]);
     setNotifications([]); setNotificationUnreadCount(0); setCsrfToken(""); setMe(null);
   }
 
   async function refreshProjects() { setProjects((await api<{ projects: Project[] }>("/v1/projects")).projects); }
   async function refreshThreads(projectId: string) { setThreads((await api<{ threads: Thread[] }>(`/v1/projects/${projectId}/threads`)).threads); }
-  async function refreshRuns(threadId: string) { setRuns((await api<{ runs: Run[] }>(`/v1/threads/${threadId}/runs`)).runs); }
+  async function loadUncategorizedThreads() {
+    try {
+      const allThreads = (await api<{ threads: Thread[] }>("/v1/threads")).threads;
+      // Filter to only uncategorized threads (those without a project_id)
+      setUncategorizedThreads(allThreads.filter(t => !t.project_id));
+    } catch { setUncategorizedThreads([]); }
+  }
+  async function refreshRuns(threadId: string) {
+    const data = await api<{ runs: Run[] }>(`/v1/threads/${threadId}/runs`);
+    setRuns(data.runs);
+    // Auto-select the latest run, or create one if none exist
+    if (data.runs.length > 0) {
+      const latest = data.runs[data.runs.length - 1];
+      if (!selectedRunId || !data.runs.some(r => r.id === selectedRunId)) {
+        setSelectedRunId(latest.id);
+      }
+    } else {
+      // No runs yet — auto-create one so the chat is immediately usable
+      try {
+        logDataIntegrity("run.autocreate.trigger", { threadId, reason: "thread has no runs" });
+        const r = await api<Run>(`/v1/threads/${threadId}/runs`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ status: "active", pins: defaultPins }) });
+        setRuns([r]);
+        setSelectedRunId(r.id);
+        setEvents([]);
+      } catch {
+        // Silently fail — user can still see the welcome screen
+      }
+    }
+  }
   async function loadEvents(runId: string) { setEvents((await api<{ events: EventEnvelope[] }>(`/v1/runs/${runId}/events?after_seq=0`)).events); }
   async function loadArtifacts(runId: string) { setArtifacts((await api<{ artifacts: ArtifactRef[] }>(`/v1/runs/${runId}/artifacts`)).artifacts); }
   async function loadSummary(runId: string) { setSummary(await api<RunSummary>(`/v1/runs/${runId}/summary`)); }
@@ -421,6 +501,10 @@ export function App() {
   }
   async function loadNotifications() { setNotifications((await api<{ notifications: NotificationRow[] }>("/v1/notifications?limit=50")).notifications); }
   async function loadNotificationUnreadCount() { setNotificationUnreadCount((await api<{ unread_count: number }>("/v1/notifications/unread_count")).unread_count); }
+  async function markNotificationsRead(payload: { notification_ids?: string[]; up_to_seq?: number }) {
+    await api("/v1/notifications/mark_read", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+    await Promise.all([loadNotifications(), loadNotificationUnreadCount()]);
+  }
   async function loadRunMetrics(runId: string) { setRunMetrics(await api<RunMetrics>(`/v1/runs/${runId}/metrics`)); }
   async function loadToolMetrics() { setToolMetrics((await api<{ tools: ToolMetricRow[] }>("/v1/tools/metrics")).tools); }
   async function loadProvenance(runId: string) { setProvenance(await api<ProvenanceSummary>(`/v1/runs/${runId}/provenance`)); }
@@ -468,20 +552,116 @@ export function App() {
   }
 
   async function createProject() {
+    logDataIntegrity("project.create.trigger", { existingProjectCount: projects.length });
     const p = await api<Project>("/v1/projects", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: `Project ${projects.length + 1}` }) });
     await refreshProjects();
     setSelectedProjectId(p.id);
     setSelectedThreadId(""); setSelectedRunId(""); setThreads([]); setRuns([]);
   }
   async function createThread() {
-    const t = await api<Thread>(`/v1/projects/${selectedProjectId}/threads`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ title: `Thread ${threads.length + 1}` }) });
-    await refreshThreads(selectedProjectId);
-    setSelectedThreadId(t.id); setSelectedRunId(""); setRuns([]);
+    try {
+      // Create uncategorized thread (no project)
+      const t = await api<Thread>("/v1/threads", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ title: `Chat ${(uncategorizedThreads.length || 0) + 1}` }) });
+      await loadUncategorizedThreads();
+      setSelectedProjectId("");
+      setSelectedThreadId(t.id);
+      // Auto-create a run so the chat interface is immediately usable
+      try {
+        logDataIntegrity("run.autocreate.trigger", { threadId: t.id, reason: "new thread created" });
+        const r = await api<Run>(`/v1/threads/${t.id}/runs`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ status: "active", pins: defaultPins }) });
+        setRuns([r]);
+        setSelectedRunId(r.id);
+        setEvents([]);
+      } catch {
+        setSelectedRunId("");
+        setRuns([]);
+      }
+    } catch (err) {
+      console.error("Failed to create thread:", err);
+    }
   }
   async function createRun() {
     const r = await api<Run>(`/v1/threads/${selectedThreadId}/runs`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ status: "active", pins: defaultPins }) });
     await refreshRuns(selectedThreadId);
     setSelectedRunId(r.id);
+  }
+  async function deleteThread(threadId: string) {
+    if (deletingThreadIds[threadId]) return;
+    setDeleteError("");
+    setDeletingThreadIds((prev) => ({ ...prev, [threadId]: true }));
+    logDataIntegrity("thread.delete.before", {
+      threadId,
+      selectedThreadId,
+      selectedProjectId,
+      threadCount: threads.length + uncategorizedThreads.length,
+    });
+    try {
+      await api(`/v1/threads/${threadId}`, { method: "DELETE" });
+      const wasSelected = selectedThreadId === threadId;
+      setThreads(prev => prev.filter(t => t.id !== threadId));
+      setUncategorizedThreads(prev => prev.filter(t => t.id !== threadId));
+      if (wasSelected) {
+        setSelectedThreadId("");
+        setSelectedRunId("");
+        setRuns([]);
+        setEvents([]);
+      }
+      await Promise.all([
+        refreshProjects(),
+        loadUncategorizedThreads(),
+        selectedProjectId ? refreshThreads(selectedProjectId) : Promise.resolve(),
+      ]);
+      logDataIntegrity("thread.delete.after", { threadId, wasSelected });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      setDeleteError(`Failed to delete chat: ${message}`);
+      logDataIntegrity("thread.delete.error", { threadId, message });
+    } finally {
+      setDeletingThreadIds((prev) => {
+        const next = { ...prev };
+        delete next[threadId];
+        return next;
+      });
+    }
+  }
+  async function deleteProject(projectId: string) {
+    if (deletingProjectIds[projectId]) return;
+    setDeleteError("");
+    setDeletingProjectIds((prev) => ({ ...prev, [projectId]: true }));
+    const affectedThreadIds = new Set(threads.filter(t => t.project_id === projectId).map(t => t.id));
+    const selectedThreadWasDeleted = affectedThreadIds.has(selectedThreadId);
+    logDataIntegrity("project.delete.before", {
+      projectId,
+      selectedProjectId,
+      selectedThreadId,
+      selectedRunId,
+      projectCount: projects.length,
+      affectedThreadCount: affectedThreadIds.size,
+    });
+    try {
+      await api(`/v1/projects/${projectId}`, { method: "DELETE" });
+      setProjects(prev => prev.filter(p => p.id !== projectId));
+      setThreads(prev => prev.filter(t => t.project_id !== projectId));
+      if (selectedProjectId === projectId || selectedThreadWasDeleted) {
+        setSelectedProjectId("");
+        setSelectedThreadId("");
+        setSelectedRunId("");
+        setRuns([]);
+        setEvents([]);
+      }
+      await Promise.all([refreshProjects(), loadUncategorizedThreads()]);
+      logDataIntegrity("project.delete.after", { projectId, selectedThreadWasDeleted });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      setDeleteError(`Failed to delete project: ${message}`);
+      logDataIntegrity("project.delete.error", { projectId, message });
+    } finally {
+      setDeletingProjectIds((prev) => {
+        const next = { ...prev };
+        delete next[projectId];
+        return next;
+      });
+    }
   }
   async function installPackage() {
     if (!selectedProjectId || !selectedRunId || !selectedPkg || !selectedPkgVersion) return;
@@ -657,30 +837,111 @@ export function App() {
     );
   }
 
+  // Right sidebar migration map:
+  // Notifications -> Notifications tab
+  // Timeline -> Timeline tab
+  // Tools/Approvals -> Tools tab
+  // Memory -> Memory tab
+  // Marketplace/Pins/Admin -> Marketplace tab
+  // Comments -> Comments tab
+  // Activity -> Activity tab
+  // Collaboration -> Collaboration tab
+  // Tool Metrics -> Tool Metrics tab
+  // Artifacts -> Artifacts tab
+  // Offline Queue/Deferred Uploads -> Offline Queue tab
   // Main App
   return (
     <Shell
+      sidebarCollapsed={sidebarCollapsed}
+      onExpandSidebar={() => setSidebarCollapsed(false)}
       leftSidebar={
         <LeftSidebar
           projects={projects}
           threads={threads}
+          uncategorizedThreads={uncategorizedThreads}
           runs={runs}
           selectedProjectId={selectedProjectId}
           selectedThreadId={selectedThreadId}
           selectedRunId={selectedRunId}
           projectUnread={projectUnread}
           onSelectProject={(id) => { setSelectedProjectId(id); setSelectedThreadId(""); setSelectedRunId(""); }}
-          onSelectThread={(id) => { setSelectedThreadId(id); setSelectedRunId(""); }}
+          onSelectThread={(id) => {
+            // Check if this is an uncategorized thread — if so, clear project selection
+            const isUncategorized = uncategorizedThreads.some(t => t.id === id);
+            if (isUncategorized) setSelectedProjectId("");
+            setSelectedThreadId(id);
+            setSelectedRunId("");
+          }}
           onSelectRun={setSelectedRunId}
           onCreateProject={createProject}
           onCreateThread={createThread}
           onCreateRun={createRun}
-          onNewChat={() => { /* TODO: Navigate to new chat */ }}
+          onNewChat={() => { void createThread(); }}
           onSearchChats={() => { /* TODO: Open search */ }}
           onImages={() => { /* TODO: Navigate to images */ }}
           onPlugins={() => { /* TODO: Navigate to plugins */ }}
           onDeepResearch={() => { /* TODO: Navigate to deep research */ }}
-          onMcpBrowser={() => { /* TODO: Navigate to MCP browser */ }}
+          onMcpBrowser={() => setActiveTab("MCP Browser")}
+          onOpenNotifications={() => setActiveTab("Notifications")}
+          onOpenTimeline={() => setActiveTab("Timeline")}
+          onOpenTools={() => setActiveTab("Tools")}
+          onOpenMemory={() => setActiveTab("Memory")}
+          onOpenMarketplace={() => setActiveTab("Marketplace")}
+          onOpenComments={() => setActiveTab("Comments")}
+          onOpenActivity={() => setActiveTab("Activity")}
+          onOpenCollaboration={() => setActiveTab("Collaboration")}
+          onOpenMetrics={() => setActiveTab("Tool Metrics")}
+          onOpenArtifacts={() => setActiveTab("Artifacts")}
+          onOpenOfflineQueue={() => setActiveTab("Offline Queue")}
+          onRenameThread={(threadId, newTitle) => {
+            setThreads(prev => prev.map(t => t.id === threadId ? { ...t, title: newTitle } : t));
+            setUncategorizedThreads(prev => prev.map(t => t.id === threadId ? { ...t, title: newTitle } : t));
+            // TODO: backend PATCH /v1/threads/:id
+          }}
+          onMoveThread={(threadId, projectId) => {
+            // Move from uncategorized to a project
+            const thread = uncategorizedThreads.find(t => t.id === threadId) || threads.find(t => t.id === threadId);
+            if (thread) {
+              setUncategorizedThreads(prev => prev.filter(t => t.id !== threadId));
+              setThreads(prev => {
+                const exists = prev.some(t => t.id === threadId);
+                if (exists) return prev.map(t => t.id === threadId ? { ...t, project_id: projectId } : t);
+                return [...prev, { ...thread, project_id: projectId }];
+              });
+            }
+            // TODO: backend PATCH /v1/threads/:id
+          }}
+          onRemoveFromProject={(threadId) => {
+            // Move from project to uncategorized
+            const thread = threads.find(t => t.id === threadId);
+            if (thread) {
+              setThreads(prev => prev.filter(t => t.id !== threadId));
+              setUncategorizedThreads(prev => [...prev, { ...thread, project_id: "" }]);
+            }
+            // TODO: backend PATCH /v1/threads/:id
+          }}
+          onArchiveThread={(threadId) => {
+            setThreads(prev => prev.filter(t => t.id !== threadId));
+            setUncategorizedThreads(prev => prev.filter(t => t.id !== threadId));
+            if (selectedThreadId === threadId) { setSelectedThreadId(""); setSelectedRunId(""); }
+            // TODO: backend PATCH /v1/threads/:id { archived_at: ... }
+          }}
+          onDeleteThread={async (threadId) => {
+            if (!confirm("Delete this chat? This cannot be undone.")) return;
+            await deleteThread(threadId);
+          }}
+          onRenameProject={(projectId, newName) => {
+            setProjects(prev => prev.map(p => p.id === projectId ? { ...p, name: newName } : p));
+            // TODO: backend PATCH /v1/projects/:id
+          }}
+          onDeleteProject={async (projectId) => {
+            if (!confirm("Delete this project and all its threads? This cannot be undone.")) return;
+            await deleteProject(projectId);
+          }}
+          deletingThreadIds={deletingThreadIds}
+          deletingProjectIds={deletingProjectIds}
+          deleteError={deleteError}
+          onCollapseSidebar={() => setSidebarCollapsed(true)}
           onUpdateUser={async (data) => {
             if (!csrfToken) return;
             await api("/v1/me", {
@@ -698,17 +959,54 @@ export function App() {
       }
       centerPanel={
         <div className="center-content" style={{ display: "flex", flexDirection: "column", height: "100%" }}>
-          {/* Tabs */}
-          <div className="tabs" style={{ padding: "var(--space-md)" }}>
-            {(["Chat", "Editor", "Dashboard"] as const).map((t) => (
-              <button key={t} className={`tab ${activeTab === t ? "active" : ""}`} onClick={() => setActiveTab(t)}>
-                {t}
+          {/* Toolbar — replaces old tab bar */}
+          <div className="center-toolbar">
+            <div className="center-toolbar-left">
+              {selectedRunId ? (
+                <span className="center-toolbar-title">
+                  {threads.find(t => t.id === selectedThreadId)?.title || "Conversation"}
+                </span>
+              ) : (
+                <span className="center-toolbar-title">OmniAI</span>
+              )}
+            </div>
+            <div className="center-toolbar-right">
+              <button
+                className={`toolbar-btn ${activeTab === "Chat" ? "active" : ""}`}
+                onClick={() => setActiveTab("Chat")}
+                title="Chat"
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+                </svg>
               </button>
-            ))}
+              <button
+                className={`toolbar-btn ${activeTab === "Editor" ? "active" : ""}`}
+                onClick={() => setActiveTab("Editor")}
+                title="Editor"
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                  <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                </svg>
+              </button>
+              <button
+                className={`toolbar-btn ${activeTab === "Dashboard" ? "active" : ""}`}
+                onClick={() => setActiveTab("Dashboard")}
+                title="Dashboard"
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <rect x="3" y="3" width="7" height="7" />
+                  <rect x="14" y="3" width="7" height="7" />
+                  <rect x="14" y="14" width="7" height="7" />
+                  <rect x="3" y="14" width="7" height="7" />
+                </svg>
+              </button>
+            </div>
           </div>
 
           {/* Panel Content */}
-          <div style={{ flex: 1, overflow: "auto" }}>
+          <div style={{ flex: 1, overflow: "hidden" }}>
             {activeTab === "Chat" && (
               <ChatPanel
                 events={events}
@@ -772,118 +1070,146 @@ export function App() {
                 onArtifactSelect={(id) => { setSelectedProvArtifact(id); void loadProvenanceWhy(id); }}
               />
             )}
+            {activeTab === "MCP Browser" && (
+              <McpBrowserPanel
+                mcpServers={mcpServers}
+                selectedMcpServerId={selectedMcpServerId}
+                mcpTools={mcpTools}
+                mcpToolName={mcpToolName}
+                mcpArgs={mcpArgs}
+                mcpEndpoint={mcpEndpoint}
+                selectedRunId={selectedRunId}
+                onRegisterMcp={registerMcpServer}
+                onEndpointChange={setMcpEndpoint}
+                onMcpServerSelect={setSelectedMcpServerId}
+                onRefreshMcpCatalog={refreshMcpCatalog}
+                onMcpToolSelect={setMcpToolName}
+                onMcpArgsChange={setMcpArgs}
+                onTryMcpTool={tryMcpTool}
+                onPinMcpTool={pinMcpTool}
+              />
+            )}
+            {activeTab === "Notifications" && (
+              <NotificationsPanel
+                notifications={notifications}
+                notificationUnreadCount={notificationUnreadCount}
+                onMarkNotificationsRead={markNotificationsRead}
+              />
+            )}
+            {activeTab === "Timeline" && (
+              <TimelinePanel
+                traceKind={traceKind}
+                traceToolId={traceToolId}
+                traceErrorsOnly={traceErrorsOnly}
+                traceSearch={traceSearch}
+                filteredEvents={filteredEvents.map((e) => ({ seq: e.seq, kind: e.kind }))}
+                onTraceKindChange={setTraceKind}
+                onTraceToolIdChange={setTraceToolId}
+                onTraceErrorsOnlyChange={setTraceErrorsOnly}
+                onTraceSearchChange={setTraceSearch}
+              />
+            )}
+            {activeTab === "Tools" && (
+              <ToolsPanel
+                tools={tools}
+                approvals={approvals}
+                invokeToolId={invokeToolId}
+                invokeInputs={invokeInputs}
+                selectedRunId={selectedRunId}
+                onInvokeTool={invokeTool}
+                onToolIdChange={setInvokeToolId}
+                onInputsChange={setInvokeInputs}
+                onDecideApproval={decideApproval}
+              />
+            )}
+            {activeTab === "Memory" && (
+              <MemoryPanel
+                memoryItems={memoryItems}
+                memoryType={memoryType}
+                memoryTitle={memoryTitle}
+                memoryContent={memoryContent}
+                memoryQuery={memoryQuery}
+                memoryBudget={memoryBudget}
+                memoryPreview={memoryPreview}
+                onCreateMemory={createMemory}
+                onDeleteMemory={deleteMemory}
+                onSearchMemory={searchMemory}
+                onMemoryTypeChange={setMemoryType}
+                onMemoryTitleChange={setMemoryTitle}
+                onMemoryContentChange={setMemoryContent}
+                onMemoryQueryChange={setMemoryQuery}
+                onMemoryBudgetChange={setMemoryBudget}
+              />
+            )}
+            {activeTab === "Marketplace" && (
+              <RegistryPanel
+                registryPackages={registryPackages}
+                selectedPkg={selectedPkg}
+                selectedPkgVersion={selectedPkgVersion}
+                projectPins={projectPins}
+                pinToolId={pinToolId}
+                pinToolVersion={pinToolVersion}
+                mirrorToPackageId={mirrorToPackageId}
+                statusToSet={statusToSet}
+                isAdmin={isAdmin}
+                selectedProjectId={selectedProjectId}
+                selectedRunId={selectedRunId}
+                onInstallPackage={installPackage}
+                onSelectPackage={(p) => { setSelectedPkg(p); setSelectedPkgVersion(registryPackages.find((pkg) => pkg.package_id === p)?.version || ""); }}
+                onPackageVersionChange={setSelectedPkgVersion}
+                onSetPin={setPin}
+                onUninstallPinned={uninstallPinned}
+                onPinToolIdChange={setPinToolId}
+                onPinToolVersionChange={setPinToolVersion}
+                onVerifyPackage={verifyPackage}
+                onSetPackageStatus={setPackageStatus}
+                onMirrorPackage={mirrorPackage}
+                onMirrorToChange={setMirrorToPackageId}
+                onStatusToSetChange={setStatusToSet}
+              />
+            )}
+            {activeTab === "Comments" && (
+              <CommentsPanel
+                comments={comments}
+                commentTargetType={commentTargetType}
+                commentTargetId={commentTargetId}
+                commentBody={commentBody}
+                selectedProjectId={selectedProjectId}
+                onCreateComment={createComment}
+                onDeleteComment={deleteComment}
+                onCommentTargetTypeChange={setCommentTargetType}
+                onCommentTargetIdChange={setCommentTargetId}
+                onCommentBodyChange={setCommentBody}
+              />
+            )}
+            {activeTab === "Activity" && <ActivityPanel activity={activity} />}
+            {activeTab === "Collaboration" && (
+              <CollaborationPanel
+                members={members}
+                newMemberId={newMemberId}
+                newMemberRole={newMemberRole}
+                selectedProjectId={selectedProjectId}
+                onAddMember={addMember}
+                onNewMemberIdChange={setNewMemberId}
+                onNewMemberRoleChange={setNewMemberRole}
+              />
+            )}
+            {activeTab === "Tool Metrics" && <ToolMetricsPanel toolMetrics={toolMetrics} />}
+            {activeTab === "Artifacts" && <ArtifactsPanel artifacts={artifacts} />}
+            {activeTab === "Offline Queue" && (
+              <OfflineQueuePanel
+                pendingActions={pendingActions}
+                deferredUploads={deferredUploads}
+                uploadProgress={uploadProgress}
+                isOnline={isOnline}
+                onReplayQueue={replayQueue}
+                onReplayUploads={replayDeferredUploads}
+                onDiscardPending={discardPending}
+                onDiscardUpload={discardUpload}
+              />
+            )}
           </div>
         </div>
-      }
-      rightSidebar={
-        <RightSidebar
-          notifications={notifications}
-          notificationUnreadCount={notificationUnreadCount}
-          notificationsOpen={notificationsOpen}
-          onToggleNotifications={() => setNotificationsOpen((v) => !v)}
-          onMarkNotificationsRead={() => {}}
-          onLoadNotifications={loadNotifications}
-          tools={tools}
-          approvals={approvals}
-          toolMetrics={toolMetrics}
-          invokeToolId={invokeToolId}
-          invokeInputs={invokeInputs}
-          onInvokeTool={invokeTool}
-          onToolIdChange={setInvokeToolId}
-          onInputsChange={setInvokeInputs}
-          onDecideApproval={decideApproval}
-          mcpServers={mcpServers}
-          selectedMcpServerId={selectedMcpServerId}
-          mcpTools={mcpTools}
-          mcpToolName={mcpToolName}
-          mcpArgs={mcpArgs}
-          mcpEndpoint={mcpEndpoint}
-          onRegisterMcp={registerMcpServer}
-          onEndpointChange={setMcpEndpoint}
-          onMcpServerSelect={setSelectedMcpServerId}
-          onRefreshMcpCatalog={refreshMcpCatalog}
-          onMcpToolSelect={setMcpToolName}
-          onMcpArgsChange={setMcpArgs}
-          onTryMcpTool={tryMcpTool}
-          onPinMcpTool={pinMcpTool}
-          memoryItems={memoryItems}
-          memoryType={memoryType}
-          memoryTitle={memoryTitle}
-          memoryContent={memoryContent}
-          memoryQuery={memoryQuery}
-          memoryBudget={memoryBudget}
-          memoryPreview={memoryPreview}
-          onCreateMemory={createMemory}
-          onDeleteMemory={deleteMemory}
-          onSearchMemory={searchMemory}
-          onMemoryTypeChange={setMemoryType}
-          onMemoryTitleChange={setMemoryTitle}
-          onMemoryContentChange={setMemoryContent}
-          onMemoryQueryChange={setMemoryQuery}
-          onMemoryBudgetChange={setMemoryBudget}
-          registryPackages={registryPackages}
-          selectedPkg={selectedPkg}
-          selectedPkgVersion={selectedPkgVersion}
-          projectPins={projectPins}
-          pinToolId={pinToolId}
-          pinToolVersion={pinToolVersion}
-          reportReason={reportReason}
-          reportDetails={reportDetails}
-          mirrorToPackageId={mirrorToPackageId}
-          statusToSet={statusToSet}
-          isAdmin={isAdmin}
-          onInstallPackage={installPackage}
-          onSelectPackage={(p) => { setSelectedPkg(p); setSelectedPkgVersion(registryPackages.find((pkg) => pkg.package_id === p)?.version || ""); }}
-          onPackageVersionChange={setSelectedPkgVersion}
-          onSetPin={setPin}
-          onUninstallPinned={uninstallPinned}
-          onPinToolIdChange={setPinToolId}
-          onPinToolVersionChange={setPinToolVersion}
-          onReportPackage={reportPackage}
-          onVerifyPackage={verifyPackage}
-          onSetPackageStatus={setPackageStatus}
-          onMirrorPackage={mirrorPackage}
-          onReportReasonChange={setReportReason}
-          onReportDetailsChange={setReportDetails}
-          onMirrorToChange={setMirrorToPackageId}
-          onStatusToSetChange={setStatusToSet}
-          traceKind={traceKind}
-          traceToolId={traceToolId}
-          traceErrorsOnly={traceErrorsOnly}
-          traceSearch={traceSearch}
-          filteredEvents={filteredEvents}
-          onTraceKindChange={setTraceKind}
-          onTraceToolIdChange={setTraceToolId}
-          onTraceErrorsOnlyChange={setTraceErrorsOnly}
-          onTraceSearchChange={setTraceSearch}
-          comments={comments}
-          commentTargetType={commentTargetType}
-          commentTargetId={commentTargetId}
-          commentBody={commentBody}
-          onCreateComment={createComment}
-          onDeleteComment={deleteComment}
-          onCommentTargetTypeChange={setCommentTargetType}
-          onCommentTargetIdChange={setCommentTargetId}
-          onCommentBodyChange={setCommentBody}
-          activity={activity}
-          members={members}
-          newMemberId={newMemberId}
-          newMemberRole={newMemberRole}
-          onMarkActivitySeen={() => selectedProjectId && api(`/v1/projects/${selectedProjectId}/activity/mark_seen`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ seq: lastActivitySeqRef.current }) })}
-          onAddMember={addMember}
-          onNewMemberIdChange={setNewMemberId}
-          onNewMemberRoleChange={setNewMemberRole}
-          pendingActions={pendingActions}
-          deferredUploads={deferredUploads}
-          uploadProgress={uploadProgress}
-          isOnline={isOnline}
-          onReplayQueue={replayQueue}
-          onReplayUploads={replayDeferredUploads}
-          onDiscardPending={discardPending}
-          onDiscardUpload={discardUpload}
-          selectedProjectId={selectedProjectId}
-          selectedRunId={selectedRunId}
-        />
       }
     />
   );

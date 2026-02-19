@@ -7,6 +7,7 @@ export type OfflineAction = {
   created_at: string;
   status: "pending" | "failed" | "done";
   last_error?: string;
+  retry_count?: number;
   scope?: { project_id?: string; run_id?: string };
 };
 
@@ -99,7 +100,14 @@ export async function markDone(id: string): Promise<void> {
 export async function markFailed(id: string, error: string): Promise<void> {
   const row = await tx("readonly", (s) => s.get(id));
   if (!row) return;
-  await tx("readwrite", (s) => s.put({ ...(row as OfflineAction), status: "failed", last_error: error.slice(0, 500) }));
+  const action = row as OfflineAction;
+  const retryCount = (action.retry_count || 0) + 1;
+  // After 3 retries, auto-discard to prevent infinite 404 spam
+  if (retryCount >= 3) {
+    await tx("readwrite", (s) => s.put({ ...action, status: "done", last_error: `Discarded after ${retryCount} retries: ${error.slice(0, 400)}` }));
+  } else {
+    await tx("readwrite", (s) => s.put({ ...action, status: "failed", retry_count: retryCount, last_error: error.slice(0, 500) }));
+  }
 }
 
 export async function discardAction(id: string): Promise<void> {
